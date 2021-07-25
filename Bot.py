@@ -1,21 +1,55 @@
 import logging
-from typing import Text
+import asyncio
+
 from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types.inline_keyboard import InlineKeyboardButton
-from aiogram.types.message import Message
-from aiogram.utils import callback_data
 from aiogram.utils.exceptions import MessageNotModified
-from aiogram.dispatcher.filters import Text
+# from aiogram.dispatcher.filters import Text
 from aiogram.utils.callback_data import CallbackData
+from aiogram.types import BotCommand
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+
+from app.config_reader import load_config
+from app.handlers.drinks import register_handlers_drinks
+from app.handlers.food import register_handlers_food
+from app.handlers.common import register_handlers_common
 
 
 from contextlib import suppress
 import aiogram.utils.markdown as fmt
 from random import randint
 
-token = '1909941584:AAHRt33_hZPH9XzGRbQpAyqGzh9sbwEWZtQ'
-bot = Bot(token=token, parse_mode=types.ParseMode.HTML)
-dp = Dispatcher(bot=bot)
+config = load_config("config/bot.ini")
+# token = '1909941584:AAHRt33_hZPH9XzGRbQpAyqGzh9sbwEWZtQ'
+bot = Bot(token=config.tg_bot.token)
+dp = Dispatcher(bot, storage=MemoryStorage())
+
+
+async def main():
+    # Настройка логирования в stdout
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    )
+    logger.error("Starting bot")
+
+    # парсинг файла конфигурации
+    # config = load_config("config/bot.ini")
+
+    # Объявление и инициализация объектов бота и диспетчера
+    # bot = Bot(token=config.tg_bot.token)
+    # dp = Dispatcher(bot, storage=MemoryStorage())
+
+    # Регистрация хэндлеров
+    register_handlers_common(dp)
+    register_handlers_drinks(dp)
+    register_handlers_food(dp)
+
+    # Установка команд бота
+    await set_commands(bot)
+
+    # Запуск поллинга
+    await dp.skip_updates()  # пропуск накопившихся апдейтов (необязательно)
+    await dp.start_polling()
 
 user_data = {}
 
@@ -41,7 +75,7 @@ async def cmd_test1(message: types.Message):
 async def cmd_test1(message: types.Message):
     name = message.from_user['first_name']
     answer = [f"Наталья, морская пехота",
-              f"Стартуем, <i>{name}!</i>",
+              f"Стартуем, <i>{name}!</i>", # TODO починить курсив
               f"Введи /help чтобы получить список команд"
               ]
     await message.answer_photo('https://pbs.twimg.com/media/Dui9iFPXQAEIHR5.jpg', caption='\n'.join(answer))
@@ -176,13 +210,25 @@ async def echo_document(message: types.Message):
     await message.answer_sticker(message.sticker.file_id)
 
 
-# запуск бота
-def main():
-    executor.start_polling(
-        dispatcher=dp,
-    )
+# Регстрация команд, отображаемых в интерефейсе Телеграм
+async def set_commands(bot: Bot):
+    commands = [
+        BotCommand(command="/drinks", description="Заказать напитки"),
+        BotCommand(command="/food", description="Заказать блюда"),
+        BotCommand(command="/cancel", description="Отменить текущее действие")
+    ]
+    await bot.set_my_commands(commands)
+
+
+#
+#
+# # запуск бота
+# def main():
+#     executor.start_polling(
+#         dispatcher=dp,
+#     )
 
 
 # проверка запуска
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
