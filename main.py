@@ -23,6 +23,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# Вывод списка комманд
 @dp.message_handler(commands="help")
 async def cmd_test1(message: types.Message):
     text_help = [
@@ -35,13 +36,15 @@ async def cmd_test1(message: types.Message):
     await message.answer(answer)
 
 
+# memevercion /start
 @dp.message_handler(commands="start")
 async def cmd_test1(message: types.Message):
     name = message.from_user['first_name']
-    answer = ("Стартуем, " + f"<i>{name}!</i>" +
-              f'\nВведи /help чтобы получить список команд'
-              )
-    await message.answer(answer)
+    answer = [f"Наталья, морская пехота",
+              f"Стартуем, <i>{name}!</i>",
+              f"Введи /help чтобы получить список команд"
+              ]
+    await message.answer_photo('https://pbs.twimg.com/media/Dui9iFPXQAEIHR5.jpg', caption='\n'.join(answer))
     print(message.message_id)
 
 
@@ -58,6 +61,7 @@ async def with_hidden_link(message: types.Message):
         parse_mode=types.ParseMode.HTML)
 
 
+# Выбор обеда с клавиатуры
 @dp.message_handler(commands="dinner")
 async def get_dinner(message: types.Message):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -66,16 +70,19 @@ async def get_dinner(message: types.Message):
     await message.answer("Как подавать котлеты?", reply_markup=keyboard)
 
 
+# Обработка ответа выбора обеда
 @dp.message_handler(lambda message: message.text == "Без пюрешки")
 async def without_puree(message: types.Message):
     await message.answer(f"{message.from_user.first_name}, фу не вкусно", reply_markup=types.ReplyKeyboardRemove())
 
 
+# Обработка ответа выбора обеда
 @dp.message_handler(lambda message: message.text == "С пюрешкой")
 async def with_puree(message: types.Message):
     await message.answer("Ням-ням", reply_markup=types.ReplyKeyboardRemove())
 
 
+# Ввод комманды рандомного числа и вывод клавиатура с кнопкой
 @dp.message_handler(commands="random")
 async def cmd_random(message: types.Message):
     keyboard = types.InlineKeyboardMarkup()
@@ -83,6 +90,7 @@ async def cmd_random(message: types.Message):
     await message.answer("Нажмите на кнопку, чтобы бот отправил число от 1 до 10", reply_markup=keyboard)
 
 
+# Вывод рандомного числа
 @dp.callback_query_handler(text="random_value")
 async def send_random_value(call: types.CallbackQuery):
     rnd_num = randint(1, 10)
@@ -94,6 +102,7 @@ async def send_random_value(call: types.CallbackQuery):
 callback_numbers = CallbackData("fab_num", "action")
 
 
+# Генерация клавиатуры для выбора цирфы
 def get_keyboard_fab():
     buttons = [
         types.InlineKeyboardButton(text="-1", callback_data=callback_numbers.new(action="decrement")),
@@ -106,17 +115,20 @@ def get_keyboard_fab():
     return keyboard
 
 
+# Обновление цифры в клавиатуре при выборе цифры
 async def update_num_text(message: types.Message, new_value: int):
     with suppress(MessageNotModified):
         await message.edit_text(f"Укажите число: {new_value}", reply_markup=get_keyboard_fab())
 
 
+# Запуск выбора цифры
 @dp.message_handler(commands="numbers")
 async def cmd_numbers(message: types.Message):
     user_data[message.from_user.id] = 0
     await message.answer("Укажите число: 0", reply_markup=get_keyboard_fab())
 
 
+# Выбор цифры
 @dp.callback_query_handler(callback_numbers.filter(action=["increment", "decrement", "random"]))
 async def callbacks_num_change(call: types.CallbackQuery, callback_data: dict):
     user_value = user_data.get(call.from_user.id, 0)
@@ -136,6 +148,7 @@ async def callbacks_num_change(call: types.CallbackQuery, callback_data: dict):
     await call.answer()
 
 
+# Вывод выбранной цифры
 @dp.callback_query_handler(callback_numbers.filter(action=["finish"]))
 async def callbacks_num_finish(call: types.CallbackQuery):
     user_value = user_data.get(call.from_user.id, 0)
@@ -143,6 +156,7 @@ async def callbacks_num_finish(call: types.CallbackQuery):
     await call.answer()
 
 
+# эхо текста
 @dp.message_handler(content_types=types.ContentType.TEXT)
 async def do_echo(message: types.Message):
     text = message.text
@@ -150,21 +164,25 @@ async def do_echo(message: types.Message):
         await message.answer(text)
 
 
+# эхо анимации
 @dp.message_handler(content_types=[types.ContentType.ANIMATION])
 async def echo_document(message: types.Message):
     await message.reply_animation(message.animation.file_id)
 
 
+# эхо стикеров
 @dp.message_handler(content_types=[types.ContentType.STICKER])
 async def echo_document(message: types.Message):
     await message.answer_sticker(message.sticker.file_id)
 
 
+# запуск бота
 def main():
     executor.start_polling(
         dispatcher=dp,
     )
 
 
+# проверка запуска
 if __name__ == "__main__":
     main()
