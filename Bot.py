@@ -20,7 +20,7 @@ from random import randint
 
 config = load_config("config/bot.ini")
 # token = '1909941584:AAHRt33_hZPH9XzGRbQpAyqGzh9sbwEWZtQ'
-bot = Bot(token=config.tg_bot.token)
+bot = Bot(token=config.tg_bot.token, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
 
@@ -65,6 +65,9 @@ async def cmd_test1(message: types.Message):
         f'/dinner - получить обед',
         f'/numbers - кнопочки с цыфорками',
         f'/random - рандом цифра',
+        f'/food - заказать покушоть',
+        f'/drinks - заказать попить',
+        f'/cancel или "отмена" - отмена операции'
         ]
     answer = '\n'.join(text_help)
     await message.answer(answer)
@@ -75,7 +78,7 @@ async def cmd_test1(message: types.Message):
 async def cmd_test1(message: types.Message):
     name = message.from_user['first_name']
     answer = [f"Наталья, морская пехота",
-              f"Стартуем, <i>{name}!</i>", # TODO починить курсив
+              f"Стартуем, <i>{name}!</i>",
               f"Введи /help чтобы получить список команд"
               ]
     await message.answer_photo('https://pbs.twimg.com/media/Dui9iFPXQAEIHR5.jpg', caption='\n'.join(answer))
@@ -190,24 +193,24 @@ async def callbacks_num_finish(call: types.CallbackQuery):
     await call.answer()
 
 
-# эхо текста
-@dp.message_handler(content_types=types.ContentType.TEXT)
-async def do_echo(message: types.Message):
-    text = message.text
-    if text:
-        await message.answer(text)
-
-
-# эхо анимации
-@dp.message_handler(content_types=[types.ContentType.ANIMATION])
-async def echo_document(message: types.Message):
-    await message.reply_animation(message.animation.file_id)
-
-
-# эхо стикеров
-@dp.message_handler(content_types=[types.ContentType.STICKER])
-async def echo_document(message: types.Message):
-    await message.answer_sticker(message.sticker.file_id)
+# # эхо текста
+# @dp.message_handler(content_types=types.ContentType.TEXT)
+# async def do_echo(message: types.Message):
+#     text = message.text
+#     if text:
+#         await message.answer(text)
+#
+#
+# # эхо анимации
+# @dp.message_handler(content_types=[types.ContentType.ANIMATION])
+# async def echo_document(message: types.Message):
+#     await message.reply_animation(message.animation.file_id)
+#
+#
+# # эхо стикеров
+# @dp.message_handler(content_types=[types.ContentType.STICKER])
+# async def echo_document(message: types.Message):
+#     await message.answer_sticker(message.sticker.file_id)
 
 
 # Регстрация команд, отображаемых в интерефейсе Телеграм
@@ -215,7 +218,11 @@ async def set_commands(bot: Bot):
     commands = [
         BotCommand(command="/drinks", description="Заказать напитки"),
         BotCommand(command="/food", description="Заказать блюда"),
-        BotCommand(command="/cancel", description="Отменить текущее действие")
+        BotCommand(command="/cancel", description="Отменить текущее действие"),
+        BotCommand(command="/help", description="Показать список команд"),
+        BotCommand(command="/random", description="Рандомное число от 0 до 10"),
+        BotCommand(command="/numbers", description="Выбрать число"),
+
     ]
     await bot.set_my_commands(commands)
 

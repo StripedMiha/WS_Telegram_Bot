@@ -8,4 +8,4 @@ async def drinks_start(message: types.Message):
 
 
 def register_handlers_drinks(dp: Dispatcher):
-    dp.register_message_handler(drinks_start, commands="food", state="*")
+    dp.register_message_handler(drinks_start, commands="drinks", state="*")
