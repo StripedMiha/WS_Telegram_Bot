@@ -26,8 +26,8 @@ async def food_chosen(message: types.Message, state: FSMContext):
     if message.text.lower() not in available_food_names:
         await message.answer("Пожалуйста, выберите блюдо, используя клавиатуру ниже.")
         return
-    if message.text.lower() == "Отмена":
-        cmd_cancel()
+    # if message.text.lower() == "отмена":
+    #     cmd_cancel()
     await state.update_data(chosen_food=message.text.lower())
 
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -42,8 +42,8 @@ async def food_size_chosen(message: types.Message, state: FSMContext):
     if message.text.lower() not in available_food_sizes:
         await message.answer("Пожалуйста, выберите размер порции, используя клавиатуру ниже.")
         return
-    if message.text.lower() == "Отмена":
-        cmd_cancel()
+    # if message.text.lower() == "отмена":
+    #     cmd_cancel()
     user_data = await state.get_data()
     await message.answer(f"Вы заказали {message.text.lower()} порцию {user_data['chosen_food']}.\n"
                          f"Поробуйте теперь заказать напитки: /drinks", reply_markup=types.ReplyKeyboardRemove())
