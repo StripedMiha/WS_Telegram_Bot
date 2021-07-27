@@ -12,6 +12,7 @@ from app.config_reader import load_config
 from app.handlers.drinks import register_handlers_drinks
 from app.handlers.food import register_handlers_food
 from app.handlers.common import register_handlers_common
+from app.handlers.common import cmd_cancel
 
 
 from contextlib import suppress
@@ -147,6 +148,7 @@ def get_keyboard_fab():
         types.InlineKeyboardButton(text="+1", callback_data=callback_numbers.new(action="increment")),
         types.InlineKeyboardButton(text="Подтвердить", callback_data=callback_numbers.new(action="finish")),
     ]
+    buttons.append(types.InlineKeyboardButton(text="Отмена", callback_data=callback_numbers.new(action="отмена")))
     keyboard = types.InlineKeyboardMarkup(row_width=3)
     keyboard.add(*buttons)
     return keyboard
@@ -166,11 +168,14 @@ async def cmd_numbers(message: types.Message):
 
 
 # Выбор цифры
-@dp.callback_query_handler(callback_numbers.filter(action=["increment", "decrement", "random"]))
+@dp.callback_query_handler(callback_numbers.filter(action=["increment", "decrement", "random", "отмена"]))
 async def callbacks_num_change(call: types.CallbackQuery, callback_data: dict):
     user_value = user_data.get(call.from_user.id, 0)
     action = callback_data["action"]
     print(action)
+    if action == "отмена":
+        await call.message.edit_text(f"Выбор числа отменён.")
+        await call.answer()
     if action == "increment":
         user_data[call.from_user.id] = user_value + 1
         await update_num_text(call.message, user_value + 1)
