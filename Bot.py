@@ -18,6 +18,11 @@ from app.handlers.common import register_handlers_common
 from app.handlers.common import cmd_cancel
 
 
+drinks = available_glasses_alcohol_free_drinks_names + available_glasses_alcohol_drinks_names\
+         + available_bottle_alcohol_free_drinks_names + available_bottle_alcohol_drinks_names
+sizes = available_bottle_drinks_sizes + available_glasses_drinks_sizes
+
+
 from contextlib import suppress
 import aiogram.utils.markdown as fmt
 from random import randint
@@ -77,7 +82,7 @@ async def cmd_test1(message: types.Message):
     await message.answer(answer)
 
 
-# memevercion /start
+# meme_version /start
 @dp.message_handler(commands="start")
 async def cmd_test1(message: types.Message):
     name = message.from_user['first_name']
@@ -112,9 +117,12 @@ async def get_dinner(message: types.Message):
 
 
 # Обработка ответа выбора обеда
+photo_NET = 'AgACAgIAAxkBAAIDnGEDu0dVy3ZspjM_FewxbFSaLPQ8AAIhsjEbJ4IhSNtbXBPPyiAwAQADAgADcwADIAQ'
+
+
 @dp.message_handler(lambda message: message.text == "С макарошками")
 async def with_pasta(message: types.Message):
-    await message.answer_photo('AgACAgIAAxkBAAIDnGEDu0dVy3ZspjM_FewxbFSaLPQ8AAIhsjEbJ4IhSNtbXBPPyiAwAQADAgADcwADIAQ',reply_markup=types.ReplyKeyboardRemove())
+    await message.answer_photo(photo_NET, reply_markup=types.ReplyKeyboardRemove())
 
 
 # Обработка ответа выбора обеда
@@ -140,6 +148,7 @@ async def send_random_value(call: types.CallbackQuery):
     await call.answer()
 
 
+# словарь для считывания инлайн кнопок
 callback_numbers = CallbackData("fab_num", "action")
 
 
@@ -201,25 +210,29 @@ async def callbacks_num_finish(call: types.CallbackQuery):
     await call.answer()
 
 
+# Словарь для считывания инлайн кнопок
 callback_fd = CallbackData("fab_num", "action")
 
 
-def get_keyboard_list(list_data: list):
+# Формирование инлайн клавиатуры для еды питья с отменой
+def get_keyboard_list(list_data: list, width=3):
     buttons = []
     for button in list_data:
         buttons.append(types.InlineKeyboardButton(text=button, callback_data=callback_fd.new(action=button)))
     buttons.append(types.InlineKeyboardButton(text="Отмена", callback_data=callback_fd.new(action="Отмена")))
-    keyboard = types.InlineKeyboardMarkup(row_width=3)
+    keyboard = types.InlineKeyboardMarkup(row_width=width)
     keyboard.add(*buttons)
     return keyboard
 
 
+# Инлайн отмена
 @dp.callback_query_handler(callback_fd.filter(action="Отмена"))
 async def chose_cancel(call: types.CallbackQuery):
     await call.message.edit_text("Выбор отменён.")
     await call.answer()
 
 
+# Словарь данных пользователя
 fd_dict = {"Chosen_food": "",
            "Chosen_size_food": "",
            "Chosen_type_drink": "",
@@ -228,6 +241,7 @@ fd_dict = {"Chosen_food": "",
            }
 
 
+# Начало /food
 @dp.message_handler(commands="food")
 async def food_start(message: types.Message):
     if message.from_user.id not in user_data.keys():
@@ -235,6 +249,7 @@ async def food_start(message: types.Message):
     await message.answer("Выберите блюдо:", reply_markup=get_keyboard_list(available_food_names))
 
 
+# Выбор еды
 @dp.callback_query_handler(callback_fd.filter(action=available_food_names))
 async def food_food_chosen(call: types.CallbackQuery, callback_data: dict):
     print(user_data)
@@ -244,25 +259,25 @@ async def food_food_chosen(call: types.CallbackQuery, callback_data: dict):
     await call.message.edit_text("Выберите размер блюда:", reply_markup=get_keyboard_list(available_food_sizes))
 
 
+# Выбор размеров порции еды
 @dp.callback_query_handler(callback_fd.filter(action=available_food_sizes))
 async def food_size_chosen(call: types.CallbackQuery, callback_data: dict):
     user_data[call.from_user.id]["Chosen_size_food"] = callback_data["action"]
     print(user_data)
-    await call.message.edit_text(f"Вы заказали {user_data[call.from_user.id]['Chosen_food']} порцию {user_data[call.from_user.id]['Chosen_size_food']}.\n"
+    await call.message.edit_text(f"Вы заказали {user_data[call.from_user.id]['Chosen_food']}"
+                                 f" порцию {user_data[call.from_user.id]['Chosen_size_food']}.\n"
                                  f"Поробуйте теперь заказать напитки: /drinks")
 
-drinks = available_glasses_alcohol_free_drinks_names + available_glasses_alcohol_drinks_names\
-         + available_bottle_alcohol_free_drinks_names + available_bottle_alcohol_drinks_names
-sizes = available_bottle_drinks_sizes + available_glasses_drinks_sizes
 
-
+# Начало выбора напитка
 @dp.message_handler(commands="drinks")
 async def drinks_start(message: types.Message):
     if message.from_user.id not in user_data.keys():
         user_data[message.from_user.id] = fd_dict
-    await message.answer("Выберите тип напитка:", reply_markup=get_keyboard_list(["Алкогольный", "Безалкогольный"]))
+    await message.answer("Выберите тип напитка:", reply_markup=get_keyboard_list(["Алкогольный", "Безалкогольный"], 2))
 
 
+# Выбор типа напитка
 @dp.callback_query_handler(callback_fd.filter(action=["Алкогольный", "Безалкогольный"]))
 async def drinks_type_chosen(call: types.CallbackQuery, callback_data: dict):
     user_data[call.from_user.id]["Chosen_type_drink"] = callback_data["action"]
@@ -270,18 +285,28 @@ async def drinks_type_chosen(call: types.CallbackQuery, callback_data: dict):
         union_data = available_bottle_alcohol_drinks_names + available_glasses_alcohol_drinks_names
     elif callback_data["action"] == "Безалкогольный":
         union_data = available_bottle_alcohol_free_drinks_names + available_glasses_alcohol_free_drinks_names
-    await call.message.edit_text(f"Выберите напиток:", reply_markup=get_keyboard_list(union_data))
+    await call.message.edit_text(f"Выберите напиток:", reply_markup=get_keyboard_list(union_data, 3))
 
 
+# Выбор напитка
 @dp.callback_query_handler(callback_fd.filter(action=drinks))
 async def drinks_chosen(call: types.CallbackQuery, callback_data: dict):
     user_data[call.from_user.id]["Chosen_drink"] = callback_data["action"]
     if callback_data["action"] in available_glasses_alcohol_drinks_names \
             or callback_data["action"] in available_glasses_alcohol_free_drinks_names:
-        union_data = available_bottle_alcohol_drinks_names + available_glasses_alcohol_drinks_names
-    elif callback_data["action"] == "Безалкогольный":
-        union_data = available_bottle_alcohol_free_drinks_names + available_glasses_alcohol_free_drinks_names
-    await call.message.edit_text(f"Выберите напиток:", reply_markup=get_keyboard_list(union_data))
+        union_data = available_glasses_drinks_sizes
+    elif callback_data["action"] in available_bottle_alcohol_drinks_names \
+            or callback_data["action"] in available_bottle_alcohol_free_drinks_names:
+        union_data = available_bottle_drinks_sizes
+    await call.message.edit_text(f"Выберите размер порции:", reply_markup=get_keyboard_list(union_data, 2))
+
+
+# Выбор обьёмов напитка
+@dp.callback_query_handler(callback_fd.filter(action=sizes))
+async def drinks_size_chosen(call: types.CallbackQuery, callback_data: dict):
+    user_data[call.from_user.id]["Chosen_size_drink"] = callback_data["action"]
+    await call.message.edit_text(f"Вы выбрали {user_data[call.from_user.id]['Chosen_drink']} "
+                                 f"в количестве {user_data[call.from_user.id]['Chosen_size_drink']}")
 
 
 # Регстрация команд, отображаемых в интерефейсе Телеграм
