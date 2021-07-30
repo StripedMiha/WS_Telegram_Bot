@@ -1,6 +1,8 @@
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.utils.callback_data import CallbackData
+
 from app.handlers.common import cmd_cancel
 
 
@@ -11,6 +13,19 @@ available_food_sizes = ["маленькую", "среднюю", "большую"
 class OrderFood(StatesGroup):
     waiting_for_food_name = State()
     waiting_for_food_size = State()
+
+
+callback_food = CallbackData("fab_num", "action")
+
+
+def get_keyboard_food(list_data: list):
+    buttons = []
+    for button in list_data:
+        buttons.append(types.InlineKeyboardButton(text=button, callback_data=callback_food.new(action=button)))
+    buttons.append(types.InlineKeyboardButton(text="Отмена", callback_data=callback_food.new(action="Отмена")))
+    keyboard = types.InlineKeyboardMarkup(row_width=3)
+    keyboard.add(*buttons)
+    return keyboard
 
 
 async def food_start(message: types.Message):

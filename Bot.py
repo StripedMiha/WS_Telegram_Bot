@@ -10,7 +10,8 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from app.config_reader import load_config
 from app.handlers.drinks import register_handlers_drinks
-from app.handlers.food import register_handlers_food
+# from app.handlers.food import get_keyboard_food
+from app.handlers.food import available_food_names, available_food_sizes
 from app.handlers.common import register_handlers_common
 from app.handlers.common import cmd_cancel
 
@@ -43,7 +44,7 @@ async def main():
     # Регистрация хэндлеров
     register_handlers_common(dp)
     register_handlers_drinks(dp)
-    register_handlers_food(dp)
+    # register_handlers_food(dp)
 
     # Установка команд бота
     await set_commands(bot)
@@ -86,32 +87,33 @@ async def cmd_test1(message: types.Message):
     print(message.message_id)
 
 
-@dp.message_handler(commands="test4")
-async def with_hidden_link(message: types.Message):
-    await message.answer(
-        f"{fmt.hide_link('https://bezablog.ru/wp-content/uploads/2020/04/%D1%80%D0%B8%D1%81-25.jpg')}"
-        f"Кто бы мог подумать, что "
-        f"в 2020 году в Telegram появятся видеозвонки!\n\nОбычные голосовые вызовы "
-        f"возникли в Telegram лишь в 2017, заметно позже своих конкурентов. А спустя три года, "
-        f"когда огромное количество людей на планете приучились работать из дома из-за эпидемии "
-        f"коронавируса, команда Павла Дурова не растерялась и сделала качественные "
-        f"видеозвонки на WebRTC!\n\nP.S. а ещё ходят слухи про демонстрацию своего экрана :)",
-        parse_mode=types.ParseMode.HTML)
+# @dp.message_handler(commands="test4")
+# async def with_hidden_link(message: types.Message):
+#     await message.answer(
+#         f"{fmt.hide_link('https://bezablog.ru/wp-content/uploads/2020/04/%D1%80%D0%B8%D1%81-25.jpg')}"
+#         f"Кто бы мог подумать, что "
+#         f"в 2020 году в Telegram появятся видеозвонки!\n\nОбычные голосовые вызовы "
+#         f"возникли в Telegram лишь в 2017, заметно позже своих конкурентов. А спустя три года, "
+#         f"когда огромное количество людей на планете приучились работать из дома из-за эпидемии "
+#         f"коронавируса, команда Павла Дурова не растерялась и сделала качественные "
+#         f"видеозвонки на WebRTC!\n\nP.S. а ещё ходят слухи про демонстрацию своего экрана :)",
+#         parse_mode=types.ParseMode.HTML)
 
 
 # Выбор обеда с клавиатуры
 @dp.message_handler(commands="dinner")
 async def get_dinner(message: types.Message):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    buttons = ["С пюрешкой", "Без пюрешки"]
+    buttons = ["С пюрешкой", "С макарошками"]
     keyboard.add(*buttons)
     await message.answer("Как подавать котлеты?", reply_markup=keyboard)
 
 
+url_puree = 'https://otvet.imgsmail.ru/download/214880555_ab5a400b4f358b8003dcdd86d4186d58_800.jpg'
 # Обработка ответа выбора обеда
-@dp.message_handler(lambda message: message.text == "Без пюрешки")
-async def without_puree(message: types.Message):
-    await message.answer(f"{message.from_user.first_name}, фу не вкусно", reply_markup=types.ReplyKeyboardRemove())
+@dp.message_handler(lambda message: message.text == "С макарошками")
+async def with_pasta(message: types.Message):
+    await message.answer_photo('AgACAgIAAxkBAAIDnGEDu0dVy3ZspjM_FewxbFSaLPQ8AAIhsjEbJ4IhSNtbXBPPyiAwAQADAgADcwADIAQ',reply_markup=types.ReplyKeyboardRemove())
 
 
 # Обработка ответа выбора обеда
@@ -141,7 +143,7 @@ callback_numbers = CallbackData("fab_num", "action")
 
 
 # Генерация клавиатуры для выбора цирфы
-def get_keyboard_fab():
+def get_keyboard_numbers():
     buttons = [
         types.InlineKeyboardButton(text="-1", callback_data=callback_numbers.new(action="decrement")),
         types.InlineKeyboardButton(text="random", callback_data=callback_numbers.new(action="random")),
@@ -157,14 +159,14 @@ def get_keyboard_fab():
 # Обновление цифры в клавиатуре при выборе цифры
 async def update_num_text(message: types.Message, new_value: int):
     with suppress(MessageNotModified):
-        await message.edit_text(f"Укажите число: {new_value}", reply_markup=get_keyboard_fab())
+        await message.edit_text(f"Укажите число: {new_value}", reply_markup=get_keyboard_numbers())
 
 
 # Запуск выбора цифры
 @dp.message_handler(commands="numbers")
 async def cmd_numbers(message: types.Message):
     user_data[message.from_user.id] = 0
-    await message.answer("Укажите число: 0", reply_markup=get_keyboard_fab())
+    await message.answer("Укажите число: 0", reply_markup=get_keyboard_numbers())
 
 
 # Выбор цифры
@@ -198,24 +200,46 @@ async def callbacks_num_finish(call: types.CallbackQuery):
     await call.answer()
 
 
-# # эхо текста
-# @dp.message_handler(content_types=types.ContentType.TEXT)
-# async def do_echo(message: types.Message):
-#     text = message.text
-#     if text:
-#         await message.answer(text)
-#
-#
-# # эхо анимации
-# @dp.message_handler(content_types=[types.ContentType.ANIMATION])
-# async def echo_document(message: types.Message):
-#     await message.reply_animation(message.animation.file_id)
-#
-#
-# # эхо стикеров
-# @dp.message_handler(content_types=[types.ContentType.STICKER])
-# async def echo_document(message: types.Message):
-#     await message.answer_sticker(message.sticker.file_id)
+callback_food = CallbackData("fab_num", "action")
+
+
+def get_keyboard_food(list_data: list):
+    buttons = []
+    for button in list_data:
+        buttons.append(types.InlineKeyboardButton(text=button, callback_data=callback_food.new(action=button)))
+    buttons.append(types.InlineKeyboardButton(text="Отмена", callback_data=callback_food.new(action="Отмена")))
+    keyboard = types.InlineKeyboardMarkup(row_width=3)
+    keyboard.add(*buttons)
+    return keyboard
+
+
+@dp.message_handler(commands="food")
+async def food_start(message: types.Message):
+    user_data[message.from_user.id] = {"Chosen_food": "", "Chosen_size_food": ""}
+    await message.answer("Выберите блюдо:", reply_markup=get_keyboard_food(available_food_names))
+
+
+@dp.callback_query_handler(callback_food.filter(action="Отмена"))
+async def chose_cancel(call: types.CallbackQuery):
+    await call.message.edit_text("Выбор отменён.")
+    await call.answer()
+
+
+@dp.callback_query_handler(callback_food.filter(action=available_food_names))
+async def food_food_chosen(call: types.CallbackQuery, callback_data: dict):
+    print(user_data)
+    print(callback_data["action"])
+    user_data[call.from_user.id]["Chosen_food"] = callback_data["action"]
+    print(user_data)
+    await call.message.edit_text("Выберите размер блюда:", reply_markup=get_keyboard_food(available_food_sizes))
+
+
+@dp.callback_query_handler(callback_food.filter(action=available_food_sizes))
+async def food_size_chosen(call: types.CallbackQuery, callback_data: dict):
+    user_data[call.from_user.id]["Chosen_size_food"] = callback_data["action"]
+    print(user_data)
+    await call.message.edit_text(f"Вы заказали {user_data[call.from_user.id]['Chosen_food']} порцию {user_data[call.from_user.id]['Chosen_size_food']}.\n"
+                                 f"Поробуйте теперь заказать напитки: /drinks")
 
 
 # Регстрация команд, отображаемых в интерефейсе Телеграм
@@ -230,15 +254,6 @@ async def set_commands(bot: Bot):
 
     ]
     await bot.set_my_commands(commands)
-
-
-#
-#
-# # запуск бота
-# def main():
-#     executor.start_polling(
-#         dispatcher=dp,
-#     )
 
 
 # проверка запуска
