@@ -19,10 +19,9 @@ from app.handlers.common import register_handlers_common
 from contextlib import suppress
 from random import randint
 
-drinks = available_glasses_alcohol_free_drinks_names + available_glasses_alcohol_drinks_names\
+drinks = available_glasses_alcohol_free_drinks_names + available_glasses_alcohol_drinks_names \
          + available_bottle_alcohol_free_drinks_names + available_bottle_alcohol_drinks_names
 sizes = available_bottle_drinks_sizes + available_glasses_drinks_sizes
-
 
 config = load_config("config/bot.ini")
 # token = '1909941584:AAHRt33_hZPH9XzGRbQpAyqGzh9sbwEWZtQ'
@@ -57,6 +56,7 @@ async def main():
     await dp.skip_updates()  # пропуск накопившихся апдейтов (необязательно)
     await dp.start_polling()
 
+
 user_data = {}
 
 logging.basicConfig(level=logging.INFO)
@@ -74,7 +74,7 @@ async def cmd_test1(message: types.Message):
         f'/food - заказать покушоть',
         f'/drinks - заказать попить',
         f'/cancel или "отмена" - отмена операции'
-        ]
+    ]
     answer = '\n'.join(text_help)
     await message.answer(answer)
 
@@ -114,8 +114,9 @@ async def get_dinner(message: types.Message):
 
     @dp.message_handler(lambda message: message.text == "С макарошками")
     async def with_pasta(message: types.Message):
-        await message.answer_photo('https://otvet.imgsmail.ru/download/214880555_ab5a400b4f358b8003dcdd86d4186d58_800.jpg',
-                                                                               reply_markup=types.ReplyKeyboardRemove())
+        await message.answer_photo(
+            'https://otvet.imgsmail.ru/download/214880555_ab5a400b4f358b8003dcdd86d4186d58_800.jpg',
+            reply_markup=types.ReplyKeyboardRemove())
 
     # Обработка ответа выбора обеда
     @dp.message_handler(lambda message: message.text == "С пюрешкой")
@@ -260,6 +261,7 @@ async def drinks_start(message: types.Message):
     @dp.callback_query_handler(callback_fd.filter(action=["Алкогольный", "Безалкогольный"]))
     async def drinks_type_chosen(call: types.CallbackQuery, callback_data: dict):
         user_data[call.from_user.id]["Chosen_type_drink"] = callback_data["action"]
+        union_data = []
         if callback_data["action"] == "Алкогольный":
             union_data = available_bottle_alcohol_drinks_names + available_glasses_alcohol_drinks_names
         elif callback_data["action"] == "Безалкогольный":
@@ -270,6 +272,7 @@ async def drinks_start(message: types.Message):
     @dp.callback_query_handler(callback_fd.filter(action=drinks))
     async def drinks_chosen(call: types.CallbackQuery, callback_data: dict):
         user_data[call.from_user.id]["Chosen_drink"] = callback_data["action"]
+        union_data = []
         if callback_data["action"] in available_glasses_alcohol_drinks_names \
                 or callback_data["action"] in available_glasses_alcohol_free_drinks_names:
             union_data = available_glasses_drinks_sizes
@@ -286,7 +289,7 @@ async def drinks_start(message: types.Message):
                  f" в количестве {user_data[call.from_user.id]['Chosen_size_drink']}."
         if user_data[call.from_user.id]['Chosen_type_drink'] == "Алкогольный":
             answer += f"\nБудьте осторожны, алкоголь вредит вашему здоровью!!!"
-        if user_data[call.from_user.id]['Chosen_drink'] == 'Энергетик'\
+        if user_data[call.from_user.id]['Chosen_drink'] == 'Энергетик' \
                 and user_data[call.from_user.id]['Chosen_size_drink'] != '1 бутылку':
             answer += f"\nБудьте крайне осторожны, есть вероятность увидеть время"
         await call.message.edit_text(answer)
