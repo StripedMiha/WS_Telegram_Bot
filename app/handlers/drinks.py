@@ -1,15 +1,14 @@
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from app.handlers.common import cmd_cancel
 
 
 available_bottle_alcohol_drinks_names = ["Светлое пиво", "Сидр", "Тёмное пиво", "Медовуха"]
 available_glasses_alcohol_drinks_names = ["Ром", "Виски", "Джин", "Водка"]
 available_bottle_drinks_sizes = ["1 бутылку", "2 бутылки", "3 бутылки", "4 бутылки"]
-available_glasses_drinks_sizes = ["Только попробовал", "1 стакан", "2 стакана", "3 стакана", "Слишком много"]
+available_glasses_drinks_sizes = ["Только попробовать", "1 стакан", "2 стакана", "3 стакана", "Слишком много"]
 available_bottle_alcohol_free_drinks_names = ["Энергетик", "Коктельный напиток"]
-available_glasses_alcohol_free_drinks_names = ["Сок", "Вода", "Газировка", "Квас"]
+available_glasses_alcohol_free_drinks_names = ["Сок", "Вода", "Газировка", "Квас", "Гейская пинаколада"]
 
 
 class OrderDrinks(StatesGroup):
