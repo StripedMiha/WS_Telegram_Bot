@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+app/list_users.json
+app/list_waiting.json
+app/list_black.json
