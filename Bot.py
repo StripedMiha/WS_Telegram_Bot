@@ -307,10 +307,14 @@ callback_fd = CallbackData("fab_num", "action")
 
 
 # Формирование инлайн клавиатуры для еды питья с отменой
-def get_keyboard_list(list_data: list, width=3):
+def get_keyboard_list(list_data, width=3):
     buttons = []
-    for button in list_data:
-        buttons.append(types.InlineKeyboardButton(text=button, callback_data=callback_fd.new(action=button)))
+    if type(list_data) is list:
+        for button in list_data:
+            buttons.append(types.InlineKeyboardButton(text=button, callback_data=callback_fd.new(action=button)))
+    elif type(list_data) is dict:
+        for i, j in list_data.items():
+            buttons.append(types.InlineKeyboardButton(text=j, callback_data=callback_fd.new(action=i)))
     buttons.append(types.InlineKeyboardButton(text="Отмена", callback_data=callback_fd.new(action="Отмена")))
     keyboard = types.InlineKeyboardMarkup(row_width=width)
     keyboard.add(*buttons)
@@ -426,9 +430,18 @@ async def set_commands(bot: Bot):
     await bot.set_my_commands(commands)
 
 
-@dp.message_handler(command="menu")
+@dp.message_handler(commands="menu")
 async def menu(message: types.Message):
-
+    buttons = {}
+    user_mail = check_mail(message.from_user.id)
+    if user_mail is None:
+        buttons['set email'] = 'Установить почту'
+    else:
+        buttons['change email'] = 'Изменить почту'
+    buttons['about me'] = 'Обо мне'
+    buttons['add time cost'] = 'Внести трудоёмкость'
+    buttons['add book'] = 'Добавить закладку'
+    await message.answer('Доступные действия:', reply_markup=get_keyboard_list(buttons, 2))
 
 
 # проверка запуска

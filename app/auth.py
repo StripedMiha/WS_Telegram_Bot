@@ -67,7 +67,7 @@ def check_mail(input_data):
     user_data = user_dict.get(str(input_data))
     user_email = user_data.get('email')
     if user_email is None:
-        return '-'
+        return None
     else:
         return user_email
 
@@ -119,6 +119,6 @@ def add_admin():
     return None
 
 
-print(check_mail(300617281))
-edit_mail(300617281, 'm.ignatenko@smde.ru')
-print(check_mail(300617281))
+# print(check_mail(300617281))
+# edit_mail(300617281, 'm.ignatenko@smde.ru')
+# print(check_mail(300617281))
