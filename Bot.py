@@ -426,6 +426,11 @@ async def set_commands(bot: Bot):
     await bot.set_my_commands(commands)
 
 
+@dp.message_handler(command="menu")
+async def menu(message: types.Message):
+
+
+
 # проверка запуска
 if __name__ == "__main__":
     asyncio.run(main())

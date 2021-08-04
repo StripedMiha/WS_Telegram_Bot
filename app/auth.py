@@ -62,6 +62,23 @@ def check_admin(input_data):
     return True if (user_dict.get(str(input_data))).get('status') == 'admin' else False
 
 
+def check_mail(input_data):
+    user_dict = read_json('users')
+    user_data = user_dict.get(str(input_data))
+    user_email = user_data.get('email')
+    if user_email is None:
+        return '-'
+    else:
+        return user_email
+
+
+def edit_mail(user_id, new_mail):
+    user_dict = read_json('users')
+    user_dict[str(user_id)]['email'] = new_mail
+    write_json('users', user_dict)
+    pass
+
+
 # получение короткого словаря пользователей
 def get_list(select_list):
     user_dict = read_json(select_list)
@@ -100,3 +117,8 @@ def add_admin():
     user_dict = {"300617281": user}
     write_json('users', user_dict)
     return None
+
+
+print(check_mail(300617281))
+edit_mail(300617281, 'm.ignatenko@smde.ru')
+print(check_mail(300617281))
