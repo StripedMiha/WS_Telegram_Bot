@@ -1,12 +1,16 @@
 import logging
 import asyncio
+import re
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.utils.exceptions import MessageNotModified
-# from aiogram.dispatcher.filters import Text
+from aiogram.dispatcher.filters import Text
 from aiogram.utils.callback_data import CallbackData
 from aiogram.types import BotCommand
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.dispatcher import FSMContext
+
 
 from app.config_reader import load_config
 from app.handlers.drinks import register_handlers_drinks
@@ -430,6 +434,12 @@ async def set_commands(bot: Bot):
     await bot.set_my_commands(commands)
 
 
+# class OrderMenu(StatesGroup):
+#     waiting_email = State()
+#     waiting_hours = State()
+#     waiting_task = State()
+
+
 @dp.message_handler(commands="menu")
 async def menu(message: types.Message):
     buttons = {}
@@ -442,6 +452,47 @@ async def menu(message: types.Message):
     buttons['add time cost'] = 'Внести трудоёмкость'
     buttons['add book'] = 'Добавить закладку'
     await message.answer('Доступные действия:', reply_markup=get_keyboard_list(buttons, 2))
+
+
+@dp.callback_query_handler(callback_fd.filter(action=
+                                              ['set email', 'change email', 'about me', 'add time cost', 'add book']))
+async def menu_action(call: types.CallbackQuery, callback_data: dict):
+    action = callback_data.get('action')
+    if action == 'set email' or action == 'change email':
+        await call.message.edit_text('Введите почту:')
+        # await OrderMenu.waiting_email.set()
+
+        @dp.message_handler(content_types=['text'])
+        async def wait_email(message: types.Message):
+            text = message.text
+            print(text)
+            if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru', text):
+                await call.answer()
+                await call.message.edit_text('харош')
+                await message.answer('сойдёт')
+            # await state.finish()
+            return
+
+
+    return None
+
+
+
+async def wait_hours(message: types.Message, state: FSMContext):
+    await OrderMenu.waiting_task.set()
+    pass
+
+
+async def wait_task(message: types.Message, state: FSMContext):
+    await state.finish()
+    pass
+
+
+# def register_handlers_menu(dp: Dispatcher):
+#     dp.register_message_handler(menu, commands="menu", state="*")
+#     dp.register_message_handler(wait_email, state=OrderMenu.waiting_email)
+#     dp.register_message_handler(wait_hours, state=OrderMenu.waiting_hours)
+#     dp.register_message_handler(wait_task, state=OrderMenu.waiting_task)
 
 
 # проверка запуска
