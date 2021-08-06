@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.utils.exceptions import MessageNotModified
 from aiogram.dispatcher.filters import Text
 from aiogram.utils.callback_data import CallbackData
-from aiogram.types import BotCommand
+from aiogram.types import BotCommand, message
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
@@ -423,12 +423,14 @@ async def drinks_start(message: types.Message):
 # Регстрация команд, отображаемых в интерефейсе Телеграм
 async def set_commands(bot: Bot):
     commands = [
-        BotCommand(command="/drinks", description="Заказать напитки"),
-        BotCommand(command="/food", description="Заказать блюда"),
-        # BotCommand(command="/cancel", description="Отменить текущее действие"),
-        BotCommand(command="/help", description="Показать список команд"),
-        BotCommand(command="/random", description="Рандомное число от 0 до 10"),
-        BotCommand(command="/numbers", description="Выбрать число"),
+        # BotCommand(command="/drinks", description="Заказать напитки"),
+        # BotCommand(command="/food", description="Заказать блюда"),
+        # # BotCommand(command="/cancel", description="Отменить текущее действие"),
+        # BotCommand(command="/help", description="Показать список команд"),
+        # BotCommand(command="/random", description="Рандомное число от 0 до 10"),
+        # BotCommand(command="/numbers", description="Выбрать число"),
+        BotCommand(command="/menu", description="Взаимодействие с ботом"),
+
 
     ]
     await bot.set_my_commands(commands)
@@ -442,6 +444,11 @@ async def set_commands(bot: Bot):
 
 @dp.message_handler(commands="menu")
 async def menu(message: types.Message):
+    if not check_user(message.from_user.id):
+        if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
+            return None
+        await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
+        return None
     buttons = {}
     user_mail = check_mail(message.from_user.id)
     if user_mail is None:
@@ -458,20 +465,40 @@ async def menu(message: types.Message):
                                               ['set email', 'change email', 'about me', 'add time cost', 'add book']))
 async def menu_action(call: types.CallbackQuery, callback_data: dict):
     action = callback_data.get('action')
+    print(action)
     if action == 'set email' or action == 'change email':
         await call.message.edit_text('Введите почту:')
-        # await OrderMenu.waiting_email.set()
+        global wait_mail
+        wait_mail = True
 
+        # @dp.message_handler(re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru', Text))
         @dp.message_handler(content_types=['text'])
         async def wait_email(message: types.Message):
-            text = message.text
-            print(text)
-            if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru', text):
-                await call.answer()
-                await call.message.edit_text('харош')
-                await message.answer('сойдёт')
+            global wait_mail
+            # text = message.text
+            if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru', message.text) and wait_mail == True:
+                # await call.answer()
+                # await call.message.edit_text('харош')
+                edit_mail(message.from_user.id, message.text)
+                answer = message.from_user.full_name + ', вы установили почту: ' + check_mail(message.from_user.id)
+                await message.answer(answer)
+                wait_mail = False
+            else:
+                await message.answer('Error')
             # await state.finish()
             return
+
+    elif action == 'about me':
+        user_dict = read_json('users').get(str(call.from_user.id))
+        # print(call.from_user.id, call.from_user.full_name)
+        # print(user_dict)
+        # print(read_json('users'))
+        status = 'Администратор' if check_admin(str(call.from_user.id)) else 'Пользователь'
+        answer = f"Ваше имя - {user_dict['first_name']} {user_dict['last_name']}\n" +\
+                 f"Ваша почта - {user_dict['email']}\n" +\
+                 f"Ваш статус - {status}"
+        await call.message.edit_text(answer)         
+    await call.answer()
 
 
     return None
