@@ -20,6 +20,7 @@ from app.handlers.drinks import available_bottle_alcohol_drinks_names, available
 from app.handlers.drinks import available_bottle_alcohol_free_drinks_names, available_glasses_alcohol_free_drinks_names
 from app.handlers.common import register_handlers_common
 from app.auth import *
+from ws_api import get_all_project_for_user
 
 from contextlib import suppress
 from random import randint
@@ -310,8 +311,8 @@ async def cmd_numbers(message: types.Message):
 callback_fd = CallbackData("fab_num", "action")
 
 
-# Формирование инлайн клавиатуры для еды питья с отменой
-def get_keyboard_list(list_data, width=3):
+# Формирование инлайн клавиатуры отменой
+def get_keyboard(list_data, width=3):
     buttons = []
     if type(list_data) is list:
         for button in list_data:
@@ -351,13 +352,13 @@ async def food_start(message: types.Message):
         return None
     if message.from_user.id not in user_data.keys():
         user_data[message.from_user.id] = fd_dict
-    await message.answer("Выберите блюдо:", reply_markup=get_keyboard_list(available_food_names))
+    await message.answer("Выберите блюдо:", reply_markup=get_keyboard(available_food_names))
 
     # Выбор еды
     @dp.callback_query_handler(callback_fd.filter(action=available_food_names))
     async def food_food_chosen(call: types.CallbackQuery, callback_data: dict):
         user_data[call.from_user.id]["Chosen_food"] = callback_data["action"]
-        await call.message.edit_text("Выберите размер блюда:", reply_markup=get_keyboard_list(available_food_sizes))
+        await call.message.edit_text("Выберите размер блюда:", reply_markup=get_keyboard(available_food_sizes))
 
     # Выбор размеров порции еды
     @dp.callback_query_handler(callback_fd.filter(action=available_food_sizes))
@@ -378,7 +379,7 @@ async def drinks_start(message: types.Message):
         return None
     if message.from_user.id not in user_data.keys():
         user_data[message.from_user.id] = fd_dict
-    await message.answer("Выберите тип напитка:", reply_markup=get_keyboard_list(["Алкогольный", "Безалкогольный"], 2))
+    await message.answer("Выберите тип напитка:", reply_markup=get_keyboard(["Алкогольный", "Безалкогольный"], 2))
 
     # Выбор типа напитка
     @dp.callback_query_handler(callback_fd.filter(action=["Алкогольный", "Безалкогольный"]))
@@ -389,7 +390,7 @@ async def drinks_start(message: types.Message):
             union_data = available_bottle_alcohol_drinks_names + available_glasses_alcohol_drinks_names
         elif callback_data["action"] == "Безалкогольный":
             union_data = available_bottle_alcohol_free_drinks_names + available_glasses_alcohol_free_drinks_names
-        await call.message.edit_text(f"Выберите напиток:", reply_markup=get_keyboard_list(union_data, 3))
+        await call.message.edit_text(f"Выберите напиток:", reply_markup=get_keyboard(union_data, 3))
 
     # Выбор напитка
     @dp.callback_query_handler(callback_fd.filter(action=drinks))
@@ -402,7 +403,7 @@ async def drinks_start(message: types.Message):
         elif callback_data["action"] in available_bottle_alcohol_drinks_names \
                 or callback_data["action"] in available_bottle_alcohol_free_drinks_names:
             union_data = available_bottle_drinks_sizes
-        await call.message.edit_text(f"Выберите размер порции:", reply_markup=get_keyboard_list(union_data, 2))
+        await call.message.edit_text(f"Выберите размер порции:", reply_markup=get_keyboard(union_data, 2))
 
     # Выбор обьёмов напитка
     @dp.callback_query_handler(callback_fd.filter(action=sizes))
@@ -456,9 +457,10 @@ async def menu(message: types.Message):
     else:
         buttons['change email'] = 'Изменить почту'
     buttons['about me'] = 'Обо мне'
-    buttons['add time cost'] = 'Внести трудоёмкость'
+    buttons['add time cost search'] = 'Внести часы через поиск'
+    buttons['add time cost bookmark'] = 'Внести часы через закладки'
     buttons['add book'] = 'Добавить закладку'
-    await message.answer('Доступные действия:', reply_markup=get_keyboard_list(buttons, 2))
+    await message.answer('Доступные действия:', reply_markup=get_keyboard(buttons, 2))
 
 
 @dp.callback_query_handler(callback_fd.filter(action=
@@ -497,8 +499,14 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict):
         answer = f"Ваше имя - {user_dict['first_name']} {user_dict['last_name']}\n" +\
                  f"Ваша почта - {user_dict['email']}\n" +\
                  f"Ваш статус - {status}"
-        await call.message.edit_text(answer)         
+        await call.message.edit_text(answer)
+    elif action == 'add time cost search':
+        user_email = read_json('users').get(str(call.from_user.id)).get('email')
+        if user_email is not None:
+            user_projects = get_all_project_for_user(user_email)
+        await call.message.edit_text('Выберите проект', reply_markup=get_keyboard(user_projects, 2))
     await call.answer()
+
 
 
     return None
