@@ -457,7 +457,7 @@ async def menu(message: types.Message):
     else:
         buttons['change email'] = 'Изменить почту'
     buttons['about me'] = 'Обо мне'
-    buttons['add time cost search'] = 'Внести часы через поиск'
+    buttons['add time cost'] = 'Внести часы'
     buttons['add time cost bookmark'] = 'Внести часы через закладки'
     buttons['add book'] = 'Добавить закладку'
     await message.answer('Доступные действия:', reply_markup=get_keyboard(buttons, 2))
@@ -492,7 +492,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict):
                  f"Ваша почта - {user_dict['email']}\n" +\
                  f"Ваш статус - {status}"
         await call.message.edit_text(answer)
-    elif action == 'add time cost search':
+    elif action == 'add time cost':
         user_email = read_json('users').get(str(call.from_user.id)).get('email')
         if user_email is not None:
             user_projects = get_all_project_for_user(user_email)
@@ -509,13 +509,6 @@ async def wait_hours(message: types.Message, state: FSMContext):
 async def wait_task(message: types.Message, state: FSMContext):
     await state.finish()
     pass
-
-
-# def register_handlers_menu(dp: Dispatcher):
-#     dp.register_message_handler(menu, commands="menu", state="*")
-#     dp.register_message_handler(wait_email, state=OrderMenu.waiting_email)
-#     dp.register_message_handler(wait_hours, state=OrderMenu.waiting_hours)
-#     dp.register_message_handler(wait_task, state=OrderMenu.waiting_task)
 
 
 # проверка запуска
