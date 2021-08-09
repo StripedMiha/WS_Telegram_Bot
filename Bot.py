@@ -151,7 +151,7 @@ async def user_decide(call: types.CallbackQuery, callback_data: dict):
                   f"Стартуем, <i>{new_user_list[1]}!</i>",
                   f"Введи /help чтобы получить список команд"
                   ]
-        await bot.send_photo(new_user_list[0],'https://pbs.twimg.com/media/Dui9iFPXQAEIHR5.jpg', caption='\n'.join(answer))
+        await bot.send_photo(new_user_list[0], 'https://pbs.twimg.com/media/Dui9iFPXQAEIHR5.jpg', caption='\n'.join(answer))
         new_user_list.clear()
     elif action == "Игнорировать пользователя":
         black_user(new_user_list)
@@ -473,28 +473,20 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict):
         global wait_mail
         wait_mail = True
 
-        # @dp.message_handler(re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru', Text))
         @dp.message_handler(content_types=['text'])
         async def wait_email(message: types.Message):
             global wait_mail
-            # text = message.text
-            if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru', message.text) and wait_mail == True:
-                # await call.answer()
-                # await call.message.edit_text('харош')
+            if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru', message.text) and wait_mail is True:
                 edit_mail(message.from_user.id, message.text)
                 answer = message.from_user.full_name + ', вы установили почту: ' + check_mail(message.from_user.id)
                 await message.answer(answer)
                 wait_mail = False
             else:
                 await message.answer('Error')
-            # await state.finish()
             return
 
     elif action == 'about me':
         user_dict = read_json('users').get(str(call.from_user.id))
-        # print(call.from_user.id, call.from_user.full_name)
-        # print(user_dict)
-        # print(read_json('users'))
         status = 'Администратор' if check_admin(str(call.from_user.id)) else 'Пользователь'
         answer = f"Ваше имя - {user_dict['first_name']} {user_dict['last_name']}\n" +\
                  f"Ваша почта - {user_dict['email']}\n" +\
@@ -506,15 +498,11 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict):
             user_projects = get_all_project_for_user(user_email)
         await call.message.edit_text('Выберите проект', reply_markup=get_keyboard(user_projects, 2))
     await call.answer()
-
-
-
     return None
 
 
-
 async def wait_hours(message: types.Message, state: FSMContext):
-    await OrderMenu.waiting_task.set()
+    # await OrderMenu.waiting_task.set()
     pass
 
 
