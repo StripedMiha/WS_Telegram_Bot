@@ -18,10 +18,11 @@ from app.handlers.food import available_food_names, available_food_sizes
 from app.handlers.drinks import available_bottle_drinks_sizes, available_glasses_drinks_sizes
 from app.handlers.drinks import available_bottle_alcohol_drinks_names, available_glasses_alcohol_drinks_names
 from app.handlers.drinks import available_bottle_alcohol_free_drinks_names, available_glasses_alcohol_free_drinks_names
-from app.handlers.common import register_handlers_common
+# from app.handlers.common import register_handlers_common
 from app.auth import *
-from ws_api import get_all_project_for_user
+from ws_api import get_all_project_for_user, get_tasks
 
+from pprint import pprint
 from contextlib import suppress
 from random import randint
 
@@ -51,8 +52,8 @@ async def main():
     # dp = Dispatcher(bot, storage=MemoryStorage())
 
     # Регистрация хэндлеров
-    register_handlers_common(dp)
-    register_handlers_drinks(dp)
+    # register_handlers_common(dp)
+    # register_handlers_drinks(dp)
     # register_handlers_food(dp)
 
     # Установка команд бота
@@ -458,13 +459,13 @@ async def menu(message: types.Message):
         buttons['change email'] = 'Изменить почту'
     buttons['about me'] = 'Обо мне'
     buttons['add time cost'] = 'Внести часы'
-    buttons['add time cost bookmark'] = 'Внести часы через закладки'
+    # buttons['add time cost bookmark'] = 'Внести часы через закладки'
     buttons['add book'] = 'Добавить закладку'
     await message.answer('Доступные действия:', reply_markup=get_keyboard(buttons, 2))
 
 
 @dp.callback_query_handler(callback_fd.filter(action=
-                                              ['set email', 'change email', 'about me', 'add time cost', 'add book']))
+                                              ['set email', 'change email', 'about me', 'add book']))
 async def menu_action(call: types.CallbackQuery, callback_data: dict):
     action = callback_data.get('action')
     print(action)
@@ -492,13 +493,45 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict):
                  f"Ваша почта - {user_dict['email']}\n" +\
                  f"Ваш статус - {status}"
         await call.message.edit_text(answer)
-    elif action == 'add time cost':
-        user_email = read_json('users').get(str(call.from_user.id)).get('email')
-        if user_email is not None:
-            user_projects = get_all_project_for_user(user_email)
-        await call.message.edit_text('Выберите проект', reply_markup=get_keyboard(user_projects, 2))
+    # elif action == 'add time cost':
+    #     user_email = read_json('users').get(str(call.from_user.id)).get('email')
+    #     if user_email is not None:
+    #         user_projects = get_all_project_for_user(user_email)
+    #     await call.message.edit_text('Выберите проект', reply_markup=get_keyboard(user_projects, 2))
     await call.answer()
     return None
+
+
+@dp.callback_query_handler(callback_fd.filter(action=['add time cost']))
+async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
+    buttons = {'via search': 'Через поиск', 'via bookmarks': 'Через закладки'}
+    await call.message.edit_text('Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
+
+
+@dp.callback_query_handler(callback_fd.filter(action=['via search']))
+async def search_project_via_search(call: types.CallbackQuery, callback_data: dict):
+    user_email = read_json('users').get(str(call.from_user.id)).get('email')
+    if user_email is not None:
+        user_projects = get_all_project_for_user(user_email)
+    await call.message.edit_text('Выберите проект', reply_markup=get_keyboard(user_projects, 2))
+    # pprint(user_projects)
+
+
+@dp.callback_query_handler(callback_fd.filter(action=['via bookmarks']))
+async def search_project_via_bookmarks(call: types.CallbackQuery, callback_data: dict):
+    pass
+
+
+@dp.callback_query_handler(lambda callback: (callback['data'].split(':')[1]).startswith('id_'))
+# @dp.callback_query_handler(custom_filters=(callback_fd['action'].startswith('id_')))
+async def search_project_via_search(call: types.CallbackQuery):
+    project_id = call['data'].split(':')[1].split('_')[1]
+    user_data[call.from_user.id] = {'path': '/project/' + project_id + '/'}
+    path = user_data[call.from_user.id].get('path')
+    tasks = get_tasks(path)
+    # pprint(tasks)
+    # print(len(tasks))
+    await call.message.edit_text('Выберите задачу', reply_markup=get_keyboard(tasks, 2))
 
 
 async def wait_hours(message: types.Message, state: FSMContext):
