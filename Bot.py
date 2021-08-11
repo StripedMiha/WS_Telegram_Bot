@@ -20,7 +20,7 @@ from app.handlers.drinks import available_bottle_alcohol_drinks_names, available
 from app.handlers.drinks import available_bottle_alcohol_free_drinks_names, available_glasses_alcohol_free_drinks_names
 # from app.handlers.common import register_handlers_common
 from app.auth import *
-from ws_api import get_all_project_for_user, get_tasks
+from ws_api import get_all_project_for_user, get_tasks, search_tasks
 
 from pprint import pprint
 from contextlib import suppress
@@ -498,6 +498,8 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict):
     #     if user_email is not None:
     #         user_projects = get_all_project_for_user(user_email)
     #     await call.message.edit_text('Выберите проект', reply_markup=get_keyboard(user_projects, 2))
+    else:
+        await call.message.edit_text('Пока ниработает :с')
     await call.answer()
     return None
 
@@ -513,25 +515,65 @@ async def search_project_via_search(call: types.CallbackQuery, callback_data: di
     user_email = read_json('users').get(str(call.from_user.id)).get('email')
     if user_email is not None:
         user_projects = get_all_project_for_user(user_email)
+    user_data[call.from_user.id] = {'path': '/project/'}
     await call.message.edit_text('Выберите проект', reply_markup=get_keyboard(user_projects, 2))
-    # pprint(user_projects)
 
 
 @dp.callback_query_handler(callback_fd.filter(action=['via bookmarks']))
 async def search_project_via_bookmarks(call: types.CallbackQuery, callback_data: dict):
+    await call.message.edit_text('Пока ниработаит :С')
     pass
 
 
 @dp.callback_query_handler(lambda callback: (callback['data'].split(':')[1]).startswith('id_'))
-# @dp.callback_query_handler(custom_filters=(callback_fd['action'].startswith('id_')))
-async def search_project_via_search(call: types.CallbackQuery):
-    project_id = call['data'].split(':')[1].split('_')[1]
-    user_data[call.from_user.id] = {'path': '/project/' + project_id + '/'}
+async def search_tasks_via_search(call: types.CallbackQuery):
+    project_id = call['data'].split(':')[1].split('_')[-1]
+    user_data[call.from_user.id]['path'] += project_id + '/'
     path = user_data[call.from_user.id].get('path')
     tasks = get_tasks(path)
-    # pprint(tasks)
-    # print(len(tasks))
-    await call.message.edit_text('Выберите задачу', reply_markup=get_keyboard(tasks, 2))
+    await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(tasks, 2))
+
+
+@dp.callback_query_handler(lambda callback: (callback['data'].split(':')[1]).startswith('task_id_'))
+async def search_subtasks_via_search(call: types.CallbackQuery):
+    task_id = call['data'].split(':')[1].split('_')[-1]
+    # print(user_data[call.from_user.id]['path'])
+    # pprint(call['data'])
+    user_data[call.from_user.id]['path'] += task_id + '/'
+    path = user_data[call.from_user.id].get('path')
+    print(user_data[call.from_user.id]['path'])
+    tasks = search_tasks(path)
+    print('id = ', task_id)
+    print('tasks =')
+    pprint(tasks)
+    if tasks.get(task_id) is None:
+        await call.message.edit_text('Введите часы и описание деятельности:')
+        await call.message.answer(path)
+        await call.answer()
+        return 0
+    subtask = tasks.get(task_id)
+    print('subtask =')
+    pprint(subtask)
+    if subtask.get('child') is None:
+        await call.message.edit_text('Введите часы и описание деятельности:')
+        await call.message.answer(path)
+        await call.answer()
+        return 0
+    subtasks = subtask.get('child')
+    # print('subtasks =')
+    # pprint(subtasks)
+    subtasks_buttons = {}
+    for i, j in subtasks.items():
+        subtasks_buttons['task_id_'+i] = j.get('name')
+
+    # pprint(subtasks_buttons)
+    await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(subtasks_buttons, 2))
+
+
+@dp.callback_query_handler(lambda callback: True)
+async def search_task_via_search(call: types.CallbackQuery):
+    pprint(call['data'])
+    print('lel')
 
 
 async def wait_hours(message: types.Message, state: FSMContext):
