@@ -57,7 +57,6 @@ def get_tasks(page, filter='active'):
         query = '{SMDE_URL}action={action}&page={page}&hash={hash}'.format(**attributes_requests)
     else:
         query = '{SMDE_URL}action={action}&page={page}&hash={hash}&filter={filter}'.format(**attributes_requests)
-    print(query)
     req = requests.get(query)
     tasks = req.json().get('data')
     project_task = {}
@@ -118,12 +117,13 @@ def get_today_costs(email):
     return user_list_costs
 
 
-def get_format_today_costs(user_email):
+def get_format_today_costs(user_email, with_id=False):
     data = get_today_costs(user_email)
     answer = ''
     all_comment = []
     total_time = [0, 0]
     for i in data:
+        # pprint(i)
         time = i.get('time')
         hours = int(time.split(':')[0])
         minutes = int(time.split(':')[1])
@@ -141,7 +141,9 @@ def get_format_today_costs(user_email):
         this_comment = {'comment': i.get('comment'),
                         'task_name': i.get('task').get('name'),
                         'project_name': i.get('task').get('project').get('name'),
-                        'time_cost': time_str
+                        'time_cost': time_str,
+                        'page': i.get('task').get('page'),
+                        'comment_id': i.get('id')
                         }
         all_comment.append(this_comment)
         text = f"Проект: {this_comment['project_name']}\n" \
@@ -149,6 +151,9 @@ def get_format_today_costs(user_email):
                f"Потрачено {this_comment['time_cost']}на {this_comment['comment']}\n\n"
         answer += text
         total_time = [total_time[0] + hours, total_time[1] + minutes]
+    # pprint(all_comment)
+    if with_id:
+        return all_comment
     total_time = [total_time[0] + total_time[1] // 60, total_time[1] % 60]
     total_time_str = ''
     if total_time[0] > 0:
@@ -166,8 +171,44 @@ def get_format_today_costs(user_email):
         return None
     return answer
 
+
+def remove_cost(page, cost_id):
+    action = 'delete_costs'
+    hash_key = hashlib.md5(page.encode(ENCOD) + action.encode(ENCOD) + API_KEY.encode(ENCOD))
+
+    attributes_requests = {
+        'SMDE_URL': SMDE_URL,
+        'action': action,
+        'hash': hash_key.hexdigest(),
+        'id': cost_id,
+        'page': page
+    }
+    query = '{SMDE_URL}action={action}&page={page}&id={id}&hash={hash}'.format(**attributes_requests)
+    req = requests.get(query).json()
+    print(req)
+    return req.get('status')
+
+
+def add_cost(page, user_email, comment, time):
+    action = 'add_costs'
+    hash_key = hashlib.md5(page.encode(ENCOD) + action.encode(ENCOD) + API_KEY.encode(ENCOD))
+
+    attributes_requests = {
+        'SMDE_URL': SMDE_URL,
+        'action': action,
+        'hash': hash_key.hexdigest(),
+        'email': user_email,
+        'page': page,
+        'comment':comment,
+        'time':time
+    }
+    query = '{SMDE_URL}action={action}&page={page}&email_user_from={email}&time={time}' \
+            '&comment={comment}&hash={hash}'.format(**attributes_requests)
+    req = requests.get(query).json()
+    print(req)
+    return req.get('status')
+
 # pprint(get_tasks('/project/246875/'))
 # get_subtasks('/project/243605/8297507/')
 # pprint(search_tasks('/project/243605/8290051/8349103/'), width=160)
 # get_subtasks('/project/243605/8297507/7604753/')
-get_today_costs('m.ignatenko@smde.ru')
