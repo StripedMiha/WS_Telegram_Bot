@@ -185,7 +185,6 @@ def remove_cost(page, cost_id):
     }
     query = '{SMDE_URL}action={action}&page={page}&id={id}&hash={hash}'.format(**attributes_requests)
     req = requests.get(query).json()
-    print(req)
     return req.get('status')
 
 

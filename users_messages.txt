@@ -1,0 +1,50 @@
+2021-08-16 15:53:24.744432 Mikhail Ignatenko /menu
+2021-08-16 15:53:24.745388 Mikhail Ignatenko menu
+2021-08-16 15:53:28.611795 Mikhail Ignatenko daily report
+2021-08-16 15:53:34.605209 Mikhail Ignatenko /menu
+2021-08-16 15:53:34.605209 Mikhail Ignatenko menu
+2021-08-16 15:53:35.428192 Mikhail Ignatenko cancel
+2021-08-16 15:53:36.211854 Mikhail Ignatenko /menu
+2021-08-16 15:53:36.211854 Mikhail Ignatenko menu
+2021-08-16 15:53:37.620751 Mikhail Ignatenko about me
+2021-08-16 15:53:38.816690 Mikhail Ignatenko /menu
+2021-08-16 15:53:38.816690 Mikhail Ignatenko menu
+2021-08-16 15:53:42.107750 Mikhail Ignatenko add book
+2021-08-16 15:53:43.213741 Mikhail Ignatenko /menu
+2021-08-16 15:53:43.214740 Mikhail Ignatenko menu
+2021-08-16 15:53:43.982933 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-16 15:53:44.838401 Mikhail Ignatenko cancel
+2021-08-16 15:58:54.466865 Mikhail Ignatenko /menu
+2021-08-16 15:58:54.467898 Mikhail Ignatenko menu
+2021-08-16 15:58:55.397647 Mikhail Ignatenko remove time cost
+2021-08-16 15:59:03.190048 Mikhail Ignatenko fab_num:/project/all/:---
+2021-08-16 15:59:05.414724 Mikhail Ignatenko /menu
+2021-08-16 15:59:05.415678 Mikhail Ignatenko menu
+2021-08-16 15:59:06.399595 Mikhail Ignatenko remove time cost
+2021-08-16 15:59:07.486631 Mikhail Ignatenko fab_num:/project/cancel/:---
+2021-08-16 16:06:13.854245 Ivan SHCHipunov /menu
+2021-08-16 16:06:13.855243 Ivan SHCHipunov menu
+2021-08-16 16:06:19.795782 Ivan SHCHipunov i.shchipunov@smde.ru - add time cost
+2021-08-16 16:06:22.556769 Ivan SHCHipunov fab_num:via search
+2021-08-16 16:06:37.154926 Ivan SHCHipunov fab_num:id_257475
+2021-08-16 16:06:39.508143 Ivan SHCHipunov fab_num:task_id_9783819
+2021-08-16 16:07:33.376990 Ivan SHCHipunov 1,5! Анализ компоновки! 0,3! Анализ компоновки!
+2021-08-16 16:07:33.556897 Ivan SHCHipunov add comments /project/257475/9783819/ i.shchipunov@smde.ru ['Анализ компоновки', '0,3', 'Анализ компоновки', ''] 0.375
+2021-08-16 16:07:34.555058 Ivan SHCHipunov add comments /project/257475/9783819/ i.shchipunov@smde.ru ['Анализ компоновки', '0,3', 'Анализ компоновки', ''] 0.375
+2021-08-16 16:07:35.555002 Ivan SHCHipunov add comments /project/257475/9783819/ i.shchipunov@smde.ru ['Анализ компоновки', '0,3', 'Анализ компоновки', ''] 0.375
+2021-08-16 16:07:36.554702 Ivan SHCHipunov add comments /project/257475/9783819/ i.shchipunov@smde.ru ['Анализ компоновки', '0,3', 'Анализ компоновки', ''] 0.375
+2021-08-16 16:11:25.557405 Ivan SHCHipunov /menu
+2021-08-16 16:11:25.558354 Ivan SHCHipunov menu
+2021-08-16 16:11:27.523834 Ivan SHCHipunov remove time cost
+2021-08-16 16:12:24.167836 Ivan SHCHipunov fab_num:/project/all/:---
+2021-08-16 16:21:38.877921 Ivan SHCHipunov /menu
+2021-08-16 16:21:38.878967 Ivan SHCHipunov menu
+2021-08-16 16:21:45.328043 Ivan SHCHipunov add book
+2021-08-16 16:21:56.463321 Ivan SHCHipunov /menu
+2021-08-16 16:21:56.463321 Ivan SHCHipunov menu
+2021-08-16 16:22:11.896006 Ivan SHCHipunov i.shchipunov@smde.ru - add time cost
+2021-08-16 16:22:15.576958 Ivan SHCHipunov fab_num:via search
+2021-08-16 16:22:28.872853 Ivan SHCHipunov fab_num:id_251872
+2021-08-16 16:22:35.087661 Ivan SHCHipunov fab_num:task_id_8771530
+2021-08-16 16:22:59.258750 Ivan SHCHipunov 1,3! Компоновка
+2021-08-16 16:22:59.433995 Ivan SHCHipunov add comments /project/251872/8771530/ i.shchipunov@smde.ru ['Компоновка'] 1.3

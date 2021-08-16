@@ -1,11 +1,11 @@
+import datetime
 import logging
 import asyncio
 import re
-import math
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.utils.exceptions import MessageNotModified
-# from aiogram.dispatcher.filters import Text, IDFilter
+from aiogram.dispatcher.filters import Text, IDFilter
 from aiogram.utils.callback_data import CallbackData
 from aiogram.types import BotCommand
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -19,6 +19,7 @@ from app.handlers.drinks import available_bottle_alcohol_drinks_names, available
 from app.handlers.drinks import available_bottle_alcohol_free_drinks_names, available_glasses_alcohol_free_drinks_names
 from app.auth import *
 from ws_api import get_all_project_for_user, get_tasks, search_tasks, get_format_today_costs, remove_cost, add_cost
+from app.fun import register_handlers_fun
 
 from pprint import pprint
 from contextlib import suppress
@@ -63,7 +64,7 @@ async def main():
     # dp = Dispatcher(bot, storage=MemoryStorage())
 
     # Регистрация хэндлеров
-    # register_handlers_common(dp)
+    register_handlers_fun(dp)
     # register_handlers_drinks(dp)
     # register_handlers_food(dp)
     register_handlers_time_cost(dp)
@@ -82,9 +83,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def log_in(*arg):
+    time = str(datetime.datetime.today())
+    string = time + ' ' + ' '.join([str(i) for i in arg])
+    with open('users_messages.txt', 'a', encoding='utf-8') as f:
+        print(string, file=f)
+
+
 # Вывод списка комманд
 @dp.message_handler(commands="help")
 async def cmd_test1(message: types.Message):
+    log_in(message.from_user.full_name, message.from_user.id, message.text)
     if not check_user(message.from_user.id):
         if check_user(message.from_user.id, 'black'):
             return None
@@ -132,7 +141,7 @@ def get_keyboard_admin(list_data, width=1):
 @dp.message_handler(commands="start")
 async def cmd_test1(message: types.Message):
     if message.chat.type != 'private':
-        print(message.from_user.first_name, message.from_user.last_name, 'дебил')
+        log_in(message.from_user.full_name, 'не прав')
         return None
     if not check_user(message.from_user.id):
         if check_user(message.from_user.id, 'black'):
@@ -214,7 +223,8 @@ async def select_list(call: types.callback_query, callback_data: dict):
             answer = f'Пользователь {name} удалён из списка пользователей.'
         else:
             answer = f'Пользователь {name} удалён из чёрного списка.'
-        print(name, 'del from', selected_list)
+
+        log_in(name, 'del from', selected_list)
         change_list(id_of, selected_list)
         await call.message.edit_text(answer)
         await call.answer()
@@ -245,25 +255,25 @@ async def get_dinner(message: types.Message):
         await message.answer("Ням-ням", reply_markup=types.ReplyKeyboardRemove())
 
 
-# Ввод комманды рандомного числа и вывод клавиатура с кнопкой
-@dp.message_handler(commands="random")
-async def cmd_random(message: types.Message):
-    if not check_user(message.from_user.id):
-        if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
-            return None
-        await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
-        return None
-    keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='Нажми меня', callback_data="random_value"))
-    await message.answer("Нажмите на кнопку, чтобы бот отправил число от 1 до 10", reply_markup=keyboard)
-
-    # Вывод рандомного числа
-    @dp.callback_query_handler(text="random_value")
-    async def send_random_value(call: types.CallbackQuery):
-        rnd_num = randint(1, 10)
-        await call.message.answer(str(rnd_num))
-        # await call.answer(text=f"Случайное число - {rnd_num}.", show_alert=True)
-        await call.answer()
+# # Ввод комманды рандомного числа и вывод клавиатура с кнопкой
+# @dp.message_handler(commands="random")
+# async def cmd_random(message: types.Message):
+#     if not check_user(message.from_user.id):
+#         if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
+#             return None
+#         await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
+#         return None
+#     keyboard = types.InlineKeyboardMarkup()
+#     keyboard.add(types.InlineKeyboardButton(text='Нажми меня', callback_data="random_value"))
+#     await message.answer("Нажмите на кнопку, чтобы бот отправил число от 1 до 10", reply_markup=keyboard)
+#
+#     # Вывод рандомного числа
+#     @dp.callback_query_handler(text="random_value")
+#     async def send_random_value(call: types.CallbackQuery):
+#         rnd_num = randint(1, 10)
+#         await call.message.answer(str(rnd_num))
+#         # await call.answer(text=f"Случайное число - {rnd_num}.", show_alert=True)
+#         await call.answer()
 
 
 # Запуск выбора цифры
@@ -349,6 +359,7 @@ def get_keyboard(list_data, width=3):
 # Инлайн отмена
 @dp.callback_query_handler(callback_fd.filter(action="Отмена"))
 async def chose_cancel(call: types.CallbackQuery):
+    log_in(call.from_user.full_name, 'cancel')
     await call.message.edit_text("Выбор отменён.")
     await call.answer()
 
@@ -460,7 +471,8 @@ async def set_commands(bot: Bot):
 
 # @dp.message_handler(commands="menu")
 async def menu(message: types.Message):
-    print(message.from_user.full_name, '- menu')
+    log_in(message.from_user.full_name, message.text)
+    log_in(message.from_user.full_name, 'menu')
     if not check_user(message.from_user.id):
         if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
             return None
@@ -497,11 +509,10 @@ pages = []
                                                       'daily report', 'remove time cost', 'offers']))
 async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     action = callback_data.get('action')
-    print(call.from_user.full_name, '-', action)
+    log_in(call.from_user.full_name, action)
     if action == 'set email' or action == 'change email':
         await call.message.edit_text('Введите почту:\n'
                                      'Введите "Отмена" для отмены ввода')
-        await state.update_data(wait_mail=True)
         await OrderMenu.wait_for_email.set()
     elif action == 'about me':
         user_dict = read_json('users').get(str(call.from_user.id))
@@ -523,7 +534,6 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
         comment = get_format_today_costs(check_mail(str(call.from_user.id)), True)
         buttons = []
         global pages
-        # pages[str(call.from_user.id)] = []
         for i in comment:
             pages.append(i.get('page'))
             buttons.append(types.InlineKeyboardButton(text=(i.get('time_cost') + i.get('comment') +
@@ -532,10 +542,11 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
                                                                                       page=i.get('page'))))
         buttons.append(types.InlineKeyboardButton(text='Отмена',
                                                   callback_data=callback_task.new(page="/project/cancel/", id='---')))
+        buttons.append(types.InlineKeyboardButton(text='Удалить все',
+                                                  callback_data=callback_task.new(page="/project/all/", id='---')))
         keyboard = types.InlineKeyboardMarkup(row_width=1)
         keyboard.add(*buttons)
         await call.message.edit_text('Выберите трудоёмкость, которую хоитие удалить:', reply_markup=keyboard)
-        # await OrderMenu.wait_remove_comment.set()
     elif action == 'offers':
         await call.message.edit_text('Наберите ваше предложение/замечание и отправьте:\n'
                                      'Наберите "Отмена" для отмены.')
@@ -547,12 +558,14 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
 
 
 async def wait_email(message: types.Message, state: FSMContext):
+    log_in(message.from_user.full_name, message.text)
     if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru', message.text):
         edit_mail(message.from_user.id, message.text)
         answer = message.from_user.full_name + ', вы установили почту: ' + check_mail(message.from_user.id)
         await message.answer(answer)
     elif message.text.lower() == 'отмена':
         await message.answer('Отменён ввод почты.\n')
+        log_in(message.from_user.full_name, 'cancel input email')
         await state.finish()
     else:
         await message.answer('Почта введена в неверном формате.\n'
@@ -564,9 +577,11 @@ async def wait_email(message: types.Message, state: FSMContext):
 
 async def wait_offer(message: types.Message, state: FSMContext):
     if message.text.lower() == 'отмена':
+        log_in(message.from_user.full_name, 'cancel input offer')
         await message.answer('Отменён ввод.\n')
         await state.finish()
         return
+    log_in(message.from_user.full_name, 'offer:', message.text)
     text = message.from_user.full_name + ' воспользовался кнопкой предложений/замечаний.\n' \
                                          '#Отзыв_SMDE_WS_bot\n\n' + message.text
     await bot.send_message(300617281, text)
@@ -574,28 +589,16 @@ async def wait_offer(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-# @dp.callback_query_handler(lambda call: call['data'].split(':')[-1].endswith('/project/cancel/'))
-# async def cancel_remove_comment(call: types.CallbackQuery, callback_data: dict):
-#     print(callback_data)
-#     await call.message.edit_text('Выбор отменён')
-
-
-# @dp.callback_query_handler(callback_task.filter(page=[pages]))
-# async def remove_comment(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
-#     print(callback_data)
-#     print(call)
-#     print(state.get_data())
-
-
 @dp.callback_query_handler(callback_fd.filter(action=['add time cost']))
 async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
-    print(call.from_user.full_name, check_mail(str(call.from_user.id)), '- add time cost')
+    log_in(call.from_user.full_name, check_mail(str(call.from_user.id)), '- add time cost')
     buttons = {'via search': 'Через поиск', 'via bookmarks': 'Через закладки'}
     await call.message.edit_text('Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
 
 
 @dp.callback_query_handler(callback_fd.filter(action=['via search']))
 async def search_project_via_search(call: types.CallbackQuery, callback_data: dict):
+    log_in(call.from_user.full_name, call['data'])
     user_email = read_json('users').get(str(call.from_user.id)).get('email')
     if user_email is not None:
         user_projects = get_all_project_for_user(user_email)
@@ -605,12 +608,14 @@ async def search_project_via_search(call: types.CallbackQuery, callback_data: di
 
 @dp.callback_query_handler(callback_fd.filter(action=['via bookmarks']))
 async def search_project_via_bookmarks(call: types.CallbackQuery, callback_data: dict):
+    log_in(call.from_user.full_name, call['data'])
     await call.message.edit_text('Пока ниработаит :С')
     pass
 
 
 @dp.callback_query_handler(lambda callback: callback['data'].split(':')[1].startswith('id_'))
 async def search_tasks_via_search(call: types.CallbackQuery):
+    log_in(call.from_user.full_name, call['data'])
     project_id = call['data'].split(':')[1].split('_')[-1]
     user_data[call.from_user.id]['path'] += project_id + '/'
     path = user_data[call.from_user.id].get('path')
@@ -620,6 +625,7 @@ async def search_tasks_via_search(call: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda callback: (callback['data'].split(':')[1]).startswith('task_id_'))
 async def search_subtasks_via_search(call: types.CallbackQuery):
+    log_in(call.from_user.full_name, call['data'])
     task_id = call['data'].split(':')[1].split('_')[-1]
     user_data[call.from_user.id]['path'] += task_id + '/'
     path = user_data[call.from_user.id].get('path')
@@ -631,7 +637,7 @@ async def search_subtasks_via_search(call: types.CallbackQuery):
                                      " деятельностей, не забыв разделить их разделяющим сиволом '!'\n"
                                      "Можно ввести больше двух часов. Алгоритм сам разделит по два часа\n"
                                      "Для отмены введите 'отмена'\n\n"
-                                     "Шаблон:\n<i>число</i>! <i>деятельность</i>!....! <i>деятельность</i>")
+                                     "Шаблон:\n<i>Количество часов</i>! <i>деятельность</i>!....! <i>деятельность</i>")
         await OrderMenu.waiting_for_time_comment.set()
         return 0
     subtask = tasks.get(task_id)
@@ -644,24 +650,36 @@ async def search_subtasks_via_search(call: types.CallbackQuery):
 
 @dp.callback_query_handler()
 async def search_task_via_search(call: types.CallbackQuery):
+    log_in(call.from_user.full_name, call['data'])
     if 'project' in call['data'].split(':')[1]:
         # Удаление трудомкости
         if 'cancel' in call['data'].split(':')[1]:
             await call.message.edit_text('Отмена выбора')
             return
+        if 'all' in call['data'].split(':')[1]:
+            comments = get_format_today_costs(check_mail(str(call.from_user.id)), True)
+            pprint(comments)
+            print(type(comments))
+            await call.message.edit_text('Будет удалено ' + str(len(comments)) + ' записей')
+            for comment in comments:
+                page = comment.get('page')
+                comment_id = comment.get('comment_id')
+                status = remove_cost(page, comment_id)
+                answer = 'Успешно удалено' if status == 'ok' else 'Не успех'
+                print(call.from_user.full_name, answer)
+                await call.message.answer(answer)
         else:
             calldata = call['data'].split(':')
             page, comment_id = calldata[1], calldata[2]
             status = remove_cost(page, comment_id)
-            if status == 'ok':
-                answer = 'Успешно удалено'
-            else:
-                answer = 'Не успех'
+            answer = 'Успешно удалено' if status == 'ok' else 'Не успех'
+            print(call.from_user.full_name, answer)
             await call.message.edit_text(answer)
     return
 
 
 async def wait_hours(message: types.Message, state: FSMContext):
+    log_in(message.from_user.full_name, message.text)
     text = message.text
     if 'отмена' in text.lower():
         await message.answer('Отмена ввода')
@@ -671,12 +689,11 @@ async def wait_hours(message: types.Message, state: FSMContext):
         await message.answer("Используйте шаблон:\n"
                              "<i>число</i>! <i>деятельность</i>!....! <i>деятельность</i>")
         return
-    time = int(text.split('!')[0])
+    time_str = text.split('!')[0]
+    time = float(time_str.replace(',', '.') if ',' in time_str else time_str)
     comment = [i.strip(' ') for i in text.split('!')[1:]]  # Удаление пробелов в начале и концекаждой задачи
-
     path = user_data[message.from_user.id]['path']
     email = check_mail(str(message.from_user.id))
-    print(path, email, comment[0], time)
     for i in comment:
         comment_time = time/len(comment)
         if comment_time > 2:
@@ -687,14 +704,14 @@ async def wait_hours(message: types.Message, state: FSMContext):
                 delta = delta - q_time
                 status = add_cost(path, email, i, 2)
                 if status == 'ok':
-                    print(path, email, comment, delta)
+                    log_in(message.from_user.full_name, 'add comments', path, email, i, '2')
                     answer = 'Успешно внесено'
                 else:
                     answer = 'Не успех'
                 await message.answer(answer)
             status = add_cost(path, email, i, q_time)
             if status == 'ok':
-                print(path, email, comment, q_time)
+                log_in(message.from_user.full_name, 'add comments', path, email, i, q_time)
                 answer = 'Успешно внесено'
             else:
                 answer = 'Не успех'
@@ -702,12 +719,11 @@ async def wait_hours(message: types.Message, state: FSMContext):
         else:
             status = add_cost(path, email, i, comment_time)
             if status == 'ok':
-                print(path, email, comment, comment_time)
+                log_in(message.from_user.full_name, 'add comments', path, email, i, comment_time)
                 answer = 'Успешно внесено'
             else:
                 answer = 'Не успех'
             await message.answer(answer)
-    # print(user_data[message.from_user.id]['path'])
     answer2 = '<b>Время</b> - ' + str(time) + 'ч\n<b>Проделанная работа</b> - ' + ', '.join(comment)
     await message.answer(answer2)
     await state.finish()
