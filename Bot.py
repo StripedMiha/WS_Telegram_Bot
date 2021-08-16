@@ -632,12 +632,22 @@ async def search_subtasks_via_search(call: types.CallbackQuery):
     tasks = search_tasks(path)
     if tasks.get(task_id) is None or tasks.get(task_id).get('child') is None:
         await call.message.edit_text("Введите часы и описание деятельности:\n"
-                                     "Разделяйте часы и перечень действий символом '!'\n"
-                                     "Пробелы между разделителями не важны.\nМожно ввести одну или несколько"
-                                     " деятельностей, не забыв разделить их разделяющим сиволом '!'\n"
-                                     "Можно ввести больше двух часов. Алгоритм сам разделит по два часа\n"
+                                     "Можно ввести в одну строку, можно в несколько(но в одном сообщении).\n"
+                                     "В начале указываете количество часов, следом через '!' можно перечислить один "
+                                     "или несколько комментариев.\n"      
+                                     "Можно ввести больше двух часов. Алгоритм сам разделит по два часа."
+                                     " Пробелы между '!' не важны\n"
                                      "Для отмены введите 'отмена'\n\n"
-                                     "Шаблон:\n<i>Количество часов</i>! <i>деятельность</i>!....! <i>деятельность</i>")
+                                     "Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> !"
+                                     " <i>Сборка печатного прототипа</i>"
+                                     "\n\n"
+                                     "Пример№2:\n<i>0.5</i>! <i>Печать деталей корпуса</i> \n"
+                                     "<i>2.5</i>! <i>Сборка печатного прототипа</i>\n\n"
+                                     "В первом примере в бот разделит указанное количество часов на количество задач,"
+                                     "в данном случае в WS улетит две записи по полтора часа.\n"
+                                     "Во втором примере в WS улетит 3 записи:\n"
+                                     "Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся "
+                                     "на две записи: на запись с двумя часами и запись с получасом.")
         await OrderMenu.waiting_for_time_comment.set()
         return 0
     subtask = tasks.get(task_id)
@@ -689,41 +699,44 @@ async def wait_hours(message: types.Message, state: FSMContext):
         await message.answer("Используйте шаблон:\n"
                              "<i>число</i>! <i>деятельность</i>!....! <i>деятельность</i>")
         return
-    time_str = text.split('!')[0]
-    time = float(time_str.replace(',', '.') if ',' in time_str else time_str)
-    comment = [i.strip(' ') for i in text.split('!')[1:]]  # Удаление пробелов в начале и концекаждой задачи
-    path = user_data[message.from_user.id]['path']
-    email = check_mail(str(message.from_user.id))
-    for i in comment:
-        comment_time = time/len(comment)
-        if comment_time > 2:
-            q_time = comment_time
-            while q_time > 2:
-                delta = q_time
-                q_time -= 2
-                delta = delta - q_time
-                status = add_cost(path, email, i, 2)
+    for string in text.split('\n'):
+        time_str = string.split('!')[0]
+        time = float(time_str.replace(',', '.') if ',' in time_str else time_str)
+        comment = [i.strip(' ') for i in string.split('!')[1:]]  # Удаление пробелов в начале и концекаждой задачи
+        if '' in comment:
+            comment.remove('')
+        path = user_data[message.from_user.id]['path']
+        email = check_mail(str(message.from_user.id))
+        for i in comment:
+            comment_time = time/len(comment)
+            if comment_time > 2:
+                q_time = comment_time
+                while q_time > 2:
+                    delta = q_time
+                    q_time -= 2
+                    delta = delta - q_time
+                    status = add_cost(path, email, i, 2)
+                    if status == 'ok':
+                        log_in(message.from_user.full_name, 'add comments', path, email, i, '2')
+                        answer = 'Успешно внесено'
+                    else:
+                        answer = 'Не успех'
+                    await message.answer(answer)
+                status = add_cost(path, email, i, q_time)
                 if status == 'ok':
-                    log_in(message.from_user.full_name, 'add comments', path, email, i, '2')
+                    log_in(message.from_user.full_name, 'add comments', path, email, i, q_time)
                     answer = 'Успешно внесено'
                 else:
                     answer = 'Не успех'
                 await message.answer(answer)
-            status = add_cost(path, email, i, q_time)
-            if status == 'ok':
-                log_in(message.from_user.full_name, 'add comments', path, email, i, q_time)
-                answer = 'Успешно внесено'
             else:
-                answer = 'Не успех'
-            await message.answer(answer)
-        else:
-            status = add_cost(path, email, i, comment_time)
-            if status == 'ok':
-                log_in(message.from_user.full_name, 'add comments', path, email, i, comment_time)
-                answer = 'Успешно внесено'
-            else:
-                answer = 'Не успех'
-            await message.answer(answer)
+                status = add_cost(path, email, i, comment_time)
+                if status == 'ok':
+                    log_in(message.from_user.full_name, 'add comments', path, email, i, comment_time)
+                    answer = 'Успешно внесено'
+                else:
+                    answer = 'Не успех'
+                await message.answer(answer)
     answer2 = '<b>Время</b> - ' + str(time) + 'ч\n<b>Проделанная работа</b> - ' + ', '.join(comment)
     await message.answer(answer2)
     await state.finish()

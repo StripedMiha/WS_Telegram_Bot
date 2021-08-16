@@ -48,3 +48,71 @@
 2021-08-16 16:22:35.087661 Ivan SHCHipunov fab_num:task_id_8771530
 2021-08-16 16:22:59.258750 Ivan SHCHipunov 1,3! Компоновка
 2021-08-16 16:22:59.433995 Ivan SHCHipunov add comments /project/251872/8771530/ i.shchipunov@smde.ru ['Компоновка'] 1.3
+2021-08-16 16:48:52.056714 Mikhail Ignatenko 300617281 /help
+2021-08-16 16:48:53.501225 Mikhail Ignatenko /menu
+2021-08-16 16:48:53.501225 Mikhail Ignatenko menu
+2021-08-16 16:49:24.849771 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-16 16:49:27.179915 Mikhail Ignatenko fab_num:via search
+2021-08-16 16:49:28.708883 Mikhail Ignatenko fab_num:id_241710
+2021-08-16 16:49:29.774259 Mikhail Ignatenko fab_num:task_id_9365145
+2021-08-16 16:49:40.951786 Mikhail Ignatenko 5! test!
+2021-08-16 16:49:41.102011 Mikhail Ignatenko add comments /project/241710/9365145/ m.ignatenko@smde.ru test 2
+2021-08-16 16:49:42.111605 Mikhail Ignatenko add comments /project/241710/9365145/ m.ignatenko@smde.ru test 2
+2021-08-16 16:49:43.103580 Mikhail Ignatenko add comments /project/241710/9365145/ m.ignatenko@smde.ru test 1.0
+2021-08-16 16:49:48.664708 Mikhail Ignatenko /menu
+2021-08-16 16:49:48.665706 Mikhail Ignatenko menu
+2021-08-16 16:49:51.356598 Mikhail Ignatenko daily report
+2021-08-16 16:50:23.383833 Mikhail Ignatenko /menu
+2021-08-16 16:50:23.383833 Mikhail Ignatenko menu
+2021-08-16 16:50:24.494100 Mikhail Ignatenko remove time cost
+2021-08-16 16:50:26.128971 Mikhail Ignatenko fab_num:/project/all/:---
+2021-08-16 17:03:55.006201 Mikhail Ignatenko /menu
+2021-08-16 17:03:55.007195 Mikhail Ignatenko menu
+2021-08-16 17:03:56.348327 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-16 17:03:57.916113 Mikhail Ignatenko fab_num:via search
+2021-08-16 17:03:59.365286 Mikhail Ignatenko fab_num:id_256242
+2021-08-16 17:04:00.274953 Mikhail Ignatenko fab_num:task_id_9432492
+2021-08-16 17:04:01.633341 Mikhail Ignatenko fab_num:task_id_9550530
+2021-08-16 17:04:13.315515 Mikhail Ignatenko 4! test one string
+2021-08-16 17:04:13.474421 Mikhail Ignatenko add comments /project/256242/9432492/9550530/ m.ignatenko@smde.ru test one string 2
+2021-08-16 17:04:14.489446 Mikhail Ignatenko add comments /project/256242/9432492/9550530/ m.ignatenko@smde.ru test one string 2.0
+2021-08-16 17:04:17.871278 Mikhail Ignatenko /menu
+2021-08-16 17:04:17.871278 Mikhail Ignatenko menu
+2021-08-16 17:04:19.083669 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-16 17:04:20.404492 Mikhail Ignatenko fab_num:via search
+2021-08-16 17:04:21.472045 Mikhail Ignatenko fab_num:id_241710
+2021-08-16 17:04:22.795824 Mikhail Ignatenko fab_num:task_id_9365145
+2021-08-16 17:13:38.374587 Mikhail Ignatenko 2! first string
+4! second string! third comment
+2021-08-16 17:13:38.535597 Mikhail Ignatenko add comments /project/241710/9365145/ m.ignatenko@smde.ru first string 2.0
+2021-08-16 17:13:39.542709 Mikhail Ignatenko add comments /project/241710/9365145/ m.ignatenko@smde.ru second string 2.0
+2021-08-16 17:13:40.536762 Mikhail Ignatenko add comments /project/241710/9365145/ m.ignatenko@smde.ru third comment 2.0
+2021-08-16 17:13:47.987357 Mikhail Ignatenko /menu
+2021-08-16 17:13:47.988388 Mikhail Ignatenko menu
+2021-08-16 17:13:49.023300 Mikhail Ignatenko daily report
+2021-08-16 17:34:56.383996 Mikhail Ignatenko /menu
+2021-08-16 17:34:56.383996 Mikhail Ignatenko menu
+2021-08-16 17:34:57.365587 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-16 17:34:58.294788 Mikhail Ignatenko fab_num:via search
+2021-08-16 17:34:59.313170 Mikhail Ignatenko fab_num:id_243605
+2021-08-16 17:35:00.855012 Mikhail Ignatenko fab_num:task_id_8191224
+2021-08-16 17:35:12.558822 Mikhail Ignatenko 0.5! Печать деталей корпуса 
+2.5! Сборка печатного прототипа
+2021-08-16 17:35:12.712584 Mikhail Ignatenko add comments /project/243605/8191224/ m.ignatenko@smde.ru Печать деталей корпуса 0.5
+2021-08-16 17:35:13.714410 Mikhail Ignatenko add comments /project/243605/8191224/ m.ignatenko@smde.ru Сборка печатного прототипа 2
+2021-08-16 17:35:14.712829 Mikhail Ignatenko add comments /project/243605/8191224/ m.ignatenko@smde.ru Сборка печатного прототипа 0.5
+2021-08-16 17:36:17.642342 Mikhail Ignatenko /menu
+2021-08-16 17:36:17.642342 Mikhail Ignatenko menu
+2021-08-16 17:36:20.073389 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-16 17:36:20.768866 Mikhail Ignatenko fab_num:via search
+2021-08-16 17:36:22.370098 Mikhail Ignatenko fab_num:id_243605
+2021-08-16 17:36:23.598988 Mikhail Ignatenko fab_num:task_id_8191224
+2021-08-16 17:36:43.379091 Mikhail Ignatenko 0.5! Печать деталей корпуса 
+2.5! Сборка печатного прототипа
+2021-08-16 17:36:43.533509 Mikhail Ignatenko add comments /project/243605/8191224/ m.ignatenko@smde.ru Печать деталей корпуса 0.5
+2021-08-16 17:36:44.536880 Mikhail Ignatenko add comments /project/243605/8191224/ m.ignatenko@smde.ru Сборка печатного прототипа 2
+2021-08-16 17:36:45.538393 Mikhail Ignatenko add comments /project/243605/8191224/ m.ignatenko@smde.ru Сборка печатного прототипа 0.5
+2021-08-16 17:36:46.775492 Mikhail Ignatenko /menu
+2021-08-16 17:36:46.776528 Mikhail Ignatenko menu
+2021-08-16 17:36:47.667224 Mikhail Ignatenko remove time cost
+2021-08-16 17:36:49.454172 Mikhail Ignatenko fab_num:/project/all/:---
