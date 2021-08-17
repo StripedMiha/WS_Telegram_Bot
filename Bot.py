@@ -39,6 +39,7 @@ class OrderMenu(StatesGroup):
     wait_for_email = State()
     waiting_for_time_comment = State()
     wait_for_offer = State()
+    wait_news = State()
 
 
 def register_handlers_time_cost(dp: Dispatcher):
@@ -46,6 +47,7 @@ def register_handlers_time_cost(dp: Dispatcher):
     dp.register_message_handler(wait_offer, state=OrderMenu.wait_for_offer)
     dp.register_message_handler(wait_email, state=OrderMenu.wait_for_email)
     dp.register_message_handler(wait_hours, state=OrderMenu.waiting_for_time_comment)
+    dp.register_message_handler(news_to_users, state=OrderMenu.wait_news)
 
 
 async def main():
@@ -223,7 +225,6 @@ async def select_list(call: types.callback_query, callback_data: dict):
             answer = f'Пользователь {name} удалён из списка пользователей.'
         else:
             answer = f'Пользователь {name} удалён из чёрного списка.'
-
         log_in(name, 'del from', selected_list)
         change_list(id_of, selected_list)
         await call.message.edit_text(answer)
@@ -658,7 +659,7 @@ async def search_subtasks_via_search(call: types.CallbackQuery):
     await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(subtasks_buttons, 2))
 
 
-@dp.callback_query_handler()
+@dp.callback_query_handler(lambda callback: (callback['data'].split(':')[1]).startswith('/project/'))
 async def search_task_via_search(call: types.CallbackQuery):
     log_in(call.from_user.full_name, call['data'])
     if 'project' in call['data'].split(':')[1]:
@@ -685,6 +686,7 @@ async def search_task_via_search(call: types.CallbackQuery):
             answer = 'Успешно удалено' if status == 'ok' else 'Не успех'
             print(call.from_user.full_name, answer)
             await call.message.edit_text(answer)
+    print(call['data'])
     return
 
 
@@ -740,6 +742,23 @@ async def wait_hours(message: types.Message, state: FSMContext):
     answer2 = '<b>Время</b> - ' + str(time) + 'ч\n<b>Проделанная работа</b> - ' + ', '.join(comment)
     await message.answer(answer2)
     await state.finish()
+
+
+@dp.message_handler(commands='news')
+async def wait_for_news(message: types.Message):
+    await message.answer('Введите новость:')
+    await OrderMenu.wait_news.set()
+    return
+
+
+async def news_to_users(message: types.Message, state: FSMContext):
+    if not check_admin(message.from_user.id):
+        return None
+    users = read_json('users').keys()
+    for i in users:
+        bot.send_message(i, 'test')
+    await state.finish()
+    await message.answer('Отправлено')
 
 
 # проверка запуска

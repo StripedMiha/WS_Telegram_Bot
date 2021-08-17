@@ -116,3 +116,70 @@
 2021-08-16 17:36:46.776528 Mikhail Ignatenko menu
 2021-08-16 17:36:47.667224 Mikhail Ignatenko remove time cost
 2021-08-16 17:36:49.454172 Mikhail Ignatenko fab_num:/project/all/:---
+2021-08-16 18:09:28.756116 Mikhail Ignatenko /menu
+2021-08-16 18:09:28.757148 Mikhail Ignatenko menu
+2021-08-16 18:11:15.031361 Mikhail Ignatenko cancel
+2021-08-16 18:17:27.308937 Mikhail Ignatenko cancel
+2021-08-16 18:17:46.139148 Mikhail Ignatenko fab_num:582760668
+2021-08-16 18:18:10.609965 Mikhail Ignatenko cancel
+2021-08-16 18:18:26.308985 Mikhail Ignatenko cancel
+2021-08-16 18:18:30.237476 Mikhail Ignatenko fab_num:432113264
+2021-08-16 18:18:47.947583 Mikhail Ignatenko fab_num:582760668
+2021-08-16 18:18:49.625300 Mikhail Ignatenko cancel
+2021-08-16 18:18:59.605651 Mikhail Ignatenko fab_num:236463188
+2021-08-16 18:19:28.537391 Mikhail Ignatenko cancel
+2021-08-16 18:19:30.466683 Mikhail Ignatenko fab_num:users
+2021-08-16 18:20:02.862054 Mikhail Ignatenko cancel
+2021-08-16 18:20:06.235470 Mikhail Ignatenko fab_num:236463188
+2021-08-16 18:22:35.822124 Mikhail Ignatenko fab_num:236463188
+2021-08-16 18:22:37.848583 Mikhail Ignatenko cancel
+2021-08-16 18:23:56.956974 Mikhail Ignatenko cancel
+2021-08-16 18:23:59.821137 Mikhail Ignatenko cancel
+2021-08-17 08:53:15.062249 Mikhail Ignatenko fab_num:238780509
+2021-08-17 08:54:06.807252 Mikhail Ignatenko fab_num:238780509
+2021-08-17 08:55:29.412829 Mikhail Ignatenko cancel
+2021-08-17 08:55:36.418324 Mikhail Ignatenko /menu
+2021-08-17 08:55:36.419322 Mikhail Ignatenko menu
+2021-08-17 08:55:41.595126 Mikhail Ignatenko daily report
+2021-08-17 08:55:43.473339 Mikhail Ignatenko /menu
+2021-08-17 08:55:43.473339 Mikhail Ignatenko menu
+2021-08-17 08:55:44.439417 Mikhail Ignatenko remove time cost
+2021-08-17 08:55:47.355177 Mikhail Ignatenko fab_num:/project/cancel/:---
+2021-08-17 08:59:05.964261 Mikhail Ignatenko /menu
+2021-08-17 08:59:05.964261 Mikhail Ignatenko menu
+2021-08-17 08:59:06.921493 Mikhail Ignatenko remove time cost
+2021-08-17 08:59:08.511762 Mikhail Ignatenko fab_num:/project/cancel/:---
+2021-08-17 08:59:23.256169 Mikhail Ignatenko /menu
+2021-08-17 08:59:23.257168 Mikhail Ignatenko menu
+2021-08-17 08:59:24.296772 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-17 08:59:25.195647 Mikhail Ignatenko fab_num:via search
+2021-08-17 08:59:26.639610 Mikhail Ignatenko fab_num:id_243605
+2021-08-17 08:59:29.107544 Mikhail Ignatenko fab_num:task_id_8297507
+2021-08-17 08:59:30.553223 Mikhail Ignatenko fab_num:task_id_9835842
+2021-08-17 08:59:41.505424 Mikhail Ignatenko 10! Отладка бота
+2021-08-17 08:59:41.662677 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Отладка бота 2
+2021-08-17 08:59:42.664640 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Отладка бота 2
+2021-08-17 08:59:43.667949 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Отладка бота 2
+2021-08-17 08:59:44.663781 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Отладка бота 2
+2021-08-17 08:59:45.664290 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Отладка бота 2.0
+2021-08-17 08:59:47.479851 Mikhail Ignatenko /menu
+2021-08-17 08:59:47.480846 Mikhail Ignatenko menu
+2021-08-17 08:59:49.651469 Mikhail Ignatenko daily report
+2021-08-17 08:59:51.648193 Mikhail Ignatenko /menu
+2021-08-17 08:59:51.648193 Mikhail Ignatenko menu
+2021-08-17 08:59:52.644254 Mikhail Ignatenko remove time cost
+2021-08-17 08:59:54.182757 Mikhail Ignatenko fab_num:/project/243605/8297507/9835842/:6275571
+2021-08-17 08:59:56.129364 Mikhail Ignatenko /menu
+2021-08-17 08:59:56.129364 Mikhail Ignatenko menu
+2021-08-17 08:59:57.204069 Mikhail Ignatenko daily report
+2021-08-17 09:00:00.603626 Mikhail Ignatenko /menu
+2021-08-17 09:00:00.604623 Mikhail Ignatenko menu
+2021-08-17 09:00:01.661434 Mikhail Ignatenko remove time cost
+2021-08-17 09:00:03.833173 Mikhail Ignatenko fab_num:/project/cancel/:---
+2021-08-17 09:00:04.877135 Mikhail Ignatenko /menu
+2021-08-17 09:00:04.877135 Mikhail Ignatenko menu
+2021-08-17 09:00:06.448573 Mikhail Ignatenko remove time cost
+2021-08-17 09:00:07.488075 Mikhail Ignatenko fab_num:/project/all/:---
+2021-08-17 09:00:52.552070 Kate None del from users
+2021-08-17 09:01:15.994314 Kate None del from black
+2021-08-17 09:01:34.261610 Mikhail Ignatenko cancel
