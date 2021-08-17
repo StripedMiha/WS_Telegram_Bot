@@ -746,6 +746,8 @@ async def wait_hours(message: types.Message, state: FSMContext):
 
 @dp.message_handler(commands='news')
 async def wait_for_news(message: types.Message):
+    if check_admin(message.from_user.id) is None:
+        return None
     await message.answer('Введите новость:')
     await OrderMenu.wait_news.set()
     return
@@ -763,6 +765,21 @@ async def news_to_users(message: types.Message, state: FSMContext):
         await bot.send_message(int(i), text)
     await state.finish()
     await message.answer('Отправлено')
+
+
+@dp.message_handler(commands='log')
+async def log_for_admin(message: types.Message):
+    log_in(message.from_user.full_name, message.text)
+    if not check_admin(message.from_user.id):
+        return None
+    count = int(message.text.split(' ')[1])
+    text = ''
+    with open('users_messages.txt', 'r', encoding='utf-8') as f:
+        text = f.readlines()[-count:]
+    answer = ''
+    for i in text:
+        answer += i
+    await bot.send_message(chat_id=message.from_user.id, text=answer)
 
 
 # проверка запуска
