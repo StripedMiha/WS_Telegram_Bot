@@ -116,3 +116,87 @@
 2021-08-16 17:36:46.776528 Mikhail Ignatenko menu
 2021-08-16 17:36:47.667224 Mikhail Ignatenko remove time cost
 2021-08-16 17:36:49.454172 Mikhail Ignatenko fab_num:/project/all/:---
+2021-08-16 17:53:33.412220 Mikhail Ignatenko /menu
+2021-08-16 17:53:33.413216 Mikhail Ignatenko menu
+2021-08-16 17:53:35.701143 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-16 17:53:37.238713 Mikhail Ignatenko fab_num:via search
+2021-08-16 17:53:38.011565 Mikhail Ignatenko fab_num:id_241710
+2021-08-16 17:53:39.243781 Mikhail Ignatenko fab_num:task_id_9365145
+2021-08-16 17:53:44.969084 Mikhail Ignatenko отмена
+2021-08-16 18:09:17.524761 Mikhail Ignatenko /menu
+2021-08-16 18:09:17.524761 Mikhail Ignatenko menu
+2021-08-16 18:25:31.990966 Mikhail Ignatenko cancel
+2021-08-16 18:25:36.890273 Mikhail Ignatenko /menu
+2021-08-16 18:25:36.890273 Mikhail Ignatenko menu
+2021-08-16 18:25:38.176427 Mikhail Ignatenko cancel
+2021-08-16 18:59:59.798418 Даниил Затерюкин about me
+2021-08-16 19:00:07.087588 Даниил Затерюкин /menu
+2021-08-16 19:00:07.087588 Даниил Затерюкин menu
+2021-08-16 19:00:10.247010 Даниил Затерюкин add book
+2021-08-16 19:00:12.404241 Даниил Затерюкин /menu
+2021-08-16 19:00:12.405238 Даниил Затерюкин menu
+2021-08-16 19:00:14.019267 Даниил Затерюкин daily report
+2021-08-16 19:00:20.051112 Даниил Затерюкин /menu
+2021-08-16 19:00:20.051112 Даниил Затерюкин menu
+2021-08-16 19:00:23.956810 Даниил Затерюкин add book
+2021-08-16 19:00:25.416930 Даниил Затерюкин /menu
+2021-08-16 19:00:25.416930 Даниил Затерюкин menu
+2021-08-16 19:00:28.021011 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-16 19:00:29.980995 Даниил Затерюкин fab_num:via bookmarks
+2021-08-16 19:00:31.589941 Даниил Затерюкин /menu
+2021-08-16 19:00:31.589941 Даниил Затерюкин menu
+2021-08-16 19:00:35.007561 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-16 19:00:36.281771 Даниил Затерюкин fab_num:via search
+2021-08-16 19:00:39.526518 Даниил Затерюкин fab_num:id_243605
+2021-08-16 19:01:44.204673 Даниил Затерюкин fab_num:task_id_9573828
+2021-08-16 19:02:52.405386 Даниил Затерюкин 8! развертывание mysql сервера в контейнеры на сервере !развертывание mysql сервера в контейнеры на сервере !развертывание mysql сервера в контейнеры на сервере !развертывание mysql сервера в контейнеры на сервере
+2021-08-16 19:02:52.582452 Даниил Затерюкин add comments /project/243605/9573828/ d.zateryukin@smde.ru развертывание mysql сервера в контейнеры на сервере 2.0
+2021-08-16 19:02:53.584154 Даниил Затерюкин add comments /project/243605/9573828/ d.zateryukin@smde.ru развертывание mysql сервера в контейнеры на сервере 2.0
+2021-08-16 19:02:54.585439 Даниил Затерюкин add comments /project/243605/9573828/ d.zateryukin@smde.ru развертывание mysql сервера в контейнеры на сервере 2.0
+2021-08-16 19:02:55.583782 Даниил Затерюкин add comments /project/243605/9573828/ d.zateryukin@smde.ru развертывание mysql сервера в контейнеры на сервере 2.0
+2021-08-16 19:03:14.940708 Даниил Затерюкин /menu
+2021-08-16 19:03:14.941666 Даниил Затерюкин menu
+2021-08-16 19:03:17.028545 Даниил Затерюкин daily report
+2021-08-16 19:53:23.351474 Mikhail Ignatenko /menu 50
+2021-08-16 19:53:23.352471 Mikhail Ignatenko menu
+2021-08-16 19:53:27.980207 Mikhail Ignatenko cancel
+2021-08-16 19:56:23.973568 Mikhail Ignatenko /menu
+2021-08-16 19:56:23.973568 Mikhail Ignatenko menu
+2021-08-16 19:56:25.355491 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-16 19:56:41.664573 Mikhail Ignatenko fab_num:via search
+2021-08-16 19:56:45.561461 Mikhail Ignatenko fab_num:id_257358
+2021-08-16 19:56:49.020115 Mikhail Ignatenko fab_num:task_id_9794652
+2021-08-16 19:58:31.573309 Mikhail Ignatenko 1! Доработка конструкции и логотипов
+0.5! Согласование размеров и места логотипов
+2021-08-16 19:58:31.747338 Mikhail Ignatenko add comments /project/257358/9794652/ m.ignatenko@smde.ru Доработка конструкции и логотипов 1.0
+2021-08-16 19:58:32.750204 Mikhail Ignatenko add comments /project/257358/9794652/ m.ignatenko@smde.ru Согласование размеров и места логотипов 0.5
+2021-08-16 19:58:40.793751 Mikhail Ignatenko /menu
+2021-08-16 19:58:40.794740 Mikhail Ignatenko menu
+2021-08-16 19:58:42.266749 Mikhail Ignatenko daily report
+2021-08-16 19:58:50.190735 Mikhail Ignatenko /menu
+2021-08-16 19:58:50.190735 Mikhail Ignatenko menu
+2021-08-16 19:58:51.678991 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-16 19:58:53.386142 Mikhail Ignatenko fab_num:via search
+2021-08-16 19:58:55.900254 Mikhail Ignatenko fab_num:id_243605
+2021-08-16 19:59:17.530838 Mikhail Ignatenko fab_num:task_id_8297507
+2021-08-16 19:59:21.369336 Mikhail Ignatenko fab_num:task_id_9835842
+2021-08-16 19:59:55.944021 Mikhail Ignatenko 6.5! Написание и отладка бота
+2021-08-16 19:59:56.123069 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Написание и отладка бота 2
+2021-08-16 19:59:57.123245 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Написание и отладка бота 2
+2021-08-16 19:59:58.126221 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Написание и отладка бота 2
+2021-08-16 19:59:59.125651 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Написание и отладка бота 0.5
+2021-08-16 20:00:02.661139 Mikhail Ignatenko /menu
+2021-08-16 20:00:02.662175 Mikhail Ignatenko menu
+2021-08-16 20:00:04.617566 Mikhail Ignatenko remove time cost
+2021-08-16 20:00:10.493099 Mikhail Ignatenko fab_num:/project/cancel/:---
+2021-08-16 20:02:16.443604 Mikhail Ignatenko /menu
+2021-08-16 20:02:16.444564 Mikhail Ignatenko menu
+2021-08-16 20:02:18.458438 Mikhail Ignatenko daily report
+2021-08-16 22:00:27.022907 Даниил Затерюкин /menu
+2021-08-16 22:00:27.023905 Даниил Затерюкин menu
+2021-08-16 22:00:45.440251 Даниил Затерюкин about me
+2021-08-16 22:01:01.694056 Даниил Затерюкин /menu
+2021-08-16 22:01:01.694056 Даниил Затерюкин menu
+2021-08-16 22:01:09.420505 Даниил Затерюкин /menu
+2021-08-16 22:01:09.421502 Даниил Затерюкин menu
+2021-08-16 22:01:11.975413 Даниил Затерюкин daily report
