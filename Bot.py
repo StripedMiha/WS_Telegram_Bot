@@ -752,11 +752,15 @@ async def wait_for_news(message: types.Message):
 
 
 async def news_to_users(message: types.Message, state: FSMContext):
+    log_in(message.from_user.full_name, 'send news')
     if not check_admin(message.from_user.id):
         return None
-    users = read_json('users').keys()
-    for i in users:
-        bot.send_message(i, 'test')
+    users = read_json('users')
+    for i in users.keys():
+        name = users.get(i).get('first_name') + ' ' + users.get(i).get('last_name')
+        news = message.text
+        text = f'{name}, Это новости бота 🙃\n\n{news}'
+        await bot.send_message(int(i), text)
     await state.finish()
     await message.answer('Отправлено')
 

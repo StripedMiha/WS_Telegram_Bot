@@ -267,3 +267,15 @@
 2021-08-17 09:00:52.552070 Kate None del from users
 2021-08-17 09:01:15.994314 Kate None del from black
 2021-08-17 09:01:34.261610 Mikhail Ignatenko cancel
+2021-08-17 09:38:51.836942 Mikhail Ignatenko /menu
+2021-08-17 09:38:51.837940 Mikhail Ignatenko menu
+2021-08-17 09:38:52.868235 Mikhail Ignatenko daily report
+2021-08-17 09:39:00.546144 Mikhail Ignatenko /menu
+2021-08-17 09:39:00.547181 Mikhail Ignatenko menu
+2021-08-17 09:39:06.147267 Mikhail Ignatenko remove time cost
+2021-08-17 09:39:07.406496 Mikhail Ignatenko fab_num:/project/all/:---
+2021-08-17 09:40:31.991709 Polina Ignatenko del from users
+2021-08-17 09:40:37.401156 Д Г del from users
+2021-08-17 09:40:43.572146 Виталий Старков del from users
+2021-08-17 09:40:48.334687 Viktor Chernikov del from users
+2021-08-17 09:40:54.158765 Михаил Полосатый del from users
