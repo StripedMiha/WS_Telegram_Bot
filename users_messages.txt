@@ -1107,3 +1107,13 @@
 2021-08-18 14:48:36.222055 Mikhail Ignatenko /menu
 2021-08-18 14:48:36.223052 Mikhail Ignatenko menu
 2021-08-18 14:48:37.862054 Mikhail Ignatenko cancel
+2021-08-18 17:01:37.052205 Mikhail Ignatenko /menu
+2021-08-18 17:01:37.054201 Mikhail Ignatenko menu
+2021-08-18 17:01:38.620791 Mikhail Ignatenko cancel
+2021-08-18 17:02:58.784307 Mikhail Ignatenko /menu
+2021-08-18 17:02:58.784307 Mikhail Ignatenko menu
+2021-08-18 17:03:00.296257 Mikhail Ignatenko cancel
+2021-08-18 17:04:39.083318 Mikhail Ignatenko 300617281 /help
+2021-08-18 17:04:42.272838 Mikhail Ignatenko /menu
+2021-08-18 17:04:42.273837 Mikhail Ignatenko menu
+2021-08-18 17:04:43.565670 Mikhail Ignatenko cancel
