@@ -207,7 +207,22 @@ def add_cost(page, user_email, comment, time):
     print(req)
     return req.get('status')
 
+
+def get_task_info(page):
+    action = 'get_task'
+    hash_key = hashlib.md5(page.encode(ENCOD) + action.encode(ENCOD) + API_KEY.encode(ENCOD))
+    attributes_requests = {
+        'SMDE_URL': SMDE_URL,
+        'action': action,
+        'hash': hash_key.hexdigest(),
+        'page': page
+    }
+    query = '{SMDE_URL}action={action}&page={page}&hash={hash}'.format(**attributes_requests)
+    req = requests.get(query).json()
+    return req
+
 # pprint(get_tasks('/project/246875/'))
 # get_subtasks('/project/243605/8297507/')
 # pprint(search_tasks('/project/243605/8290051/8349103/'), width=160)
 # get_subtasks('/project/243605/8297507/7604753/')
+# get_task_info('/project/241710/9365145/')

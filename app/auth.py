@@ -62,21 +62,54 @@ def check_admin(input_data):
     return True if (user_dict.get(str(input_data))).get('status') == 'admin' else False
 
 
-def check_mail(input_data):
+def check_mail(input_data, type_of_data='email'):
     user_dict = read_json('users')
     user_data = user_dict.get(str(input_data))
-    user_email = user_data.get('email')
-    if user_email is None:
+    user_data = user_data.get(type_of_data)
+    if user_data is None:
         return None
     else:
-        return user_email
+        return user_data
 
 
 def edit_mail(user_id, new_mail):
     user_dict = read_json('users')
     user_dict[str(user_id)]['email'] = new_mail
     write_json('users', user_dict)
-    pass
+
+
+def add_bookmark(user_id, data: dict):
+    user_dict = read_json('users')
+    if user_dict[str(user_id)].get('bookmarks') is None:
+        user_dict[str(user_id)]['bookmarks'] = [data]
+    elif data in user_dict[str(user_id)]['bookmarks']:
+        return False
+    else:
+        user_dict[str(user_id)]['bookmarks'].append(data)
+    write_json('users', user_dict)
+    return True
+
+
+def remove_bookmark(user_id, page):
+    user_dict = read_json('users')
+    user_book: list
+    user_book = user_dict.get(str(user_id)).get('bookmarks')
+    book_to_del: dict
+    for i in user_book:
+        if str(page) == i.get('path'):
+            book_to_del = i
+            break
+    user_book.remove(book_to_del)
+    user_dict[str(user_id)]['bookmarks'] = user_book
+    write_json('users', user_dict)
+
+
+def get_list_bookmarks(user_id):
+    user_dict = read_json('users')
+    if user_dict.get(str(user_id)).get('bookmarks') is None:
+        return None
+    else:
+        return user_dict.get(str(user_id)).get('bookmarks')
 
 
 # получение короткого словаря пользователей

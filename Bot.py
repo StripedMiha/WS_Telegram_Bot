@@ -18,7 +18,8 @@ from app.handlers.drinks import available_bottle_drinks_sizes, available_glasses
 from app.handlers.drinks import available_bottle_alcohol_drinks_names, available_glasses_alcohol_drinks_names
 from app.handlers.drinks import available_bottle_alcohol_free_drinks_names, available_glasses_alcohol_free_drinks_names
 from app.auth import *
-from ws_api import get_all_project_for_user, get_tasks, search_tasks, get_format_today_costs, remove_cost, add_cost
+from ws_api import get_all_project_for_user, get_tasks, search_tasks, get_format_today_costs, remove_cost, add_cost,\
+    get_task_info
 from app.fun import register_handlers_fun
 
 from pprint import pprint
@@ -340,6 +341,7 @@ async def cmd_numbers(message: types.Message):
 
 # Словарь для считывания инлайн кнопок
 callback_fd = CallbackData("fab_num", "action")
+# callback_task = CallbackData("fab_task", "action", "page", "id")
 
 
 # Формирование инлайн клавиатуры отменой
@@ -458,19 +460,12 @@ async def drinks_start(message: types.Message):
 # Регстрация команд, отображаемых в интерефейсе Телеграм
 async def set_commands(bot: Bot):
     commands = [
-        # BotCommand(command="/drinks", description="Заказать напитки"),
-        # BotCommand(command="/food", description="Заказать блюда"),
-        # # BotCommand(command="/cancel", description="Отменить текущее действие"),
-        # BotCommand(command="/help", description="Показать список команд"),
-        # BotCommand(command="/random", description="Рандомное число от 0 до 10"),
-        # BotCommand(command="/numbers", description="Выбрать число"),
         BotCommand(command="/menu", description="Взаимодействие с ботом"),
 
     ]
     await bot.set_my_commands(commands)
 
 
-# @dp.message_handler(commands="menu")
 async def menu(message: types.Message):
     log_in(message.from_user.full_name, message.text)
     log_in(message.from_user.full_name, 'menu')
@@ -479,40 +474,32 @@ async def menu(message: types.Message):
             return None
         await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
         return None
-    # buttons = {
-    #     'about me': 'Обо мне',
-    #     'add time cost': 'Внести часы',
-    #     'add book': 'Добавить закладку',
-    #     'daily report': 'Отчёт за сегодня',
-    #     'remove time cost': 'Удалить сегодняшнюю трудоёмкость'
-    # }
     user_mail = check_mail(message.from_user.id)
-    # buttons = {}
     if user_mail is None:
         buttons = {'about me': 'Обо мне',
                    'set email': 'Установить почту'}
     else:
-        buttons = {'about me': 'Обо мне',
-                   'add time cost': 'Внести часы',
-                   'add book': 'Добавить закладку',
-                   'daily report': 'Отчёт за сегодня',
+        buttons = {'daily report': 'Отчёт за сегодня',
+                   'search task': 'Найти задачу',
                    'remove time cost': 'Удалить трудоёмкость',
+                   'remove book': 'Удалить закладку',
+                   'about me': 'Обо мне',
                    'change email': 'Изменить почту',
                    'offers': 'Предложение/отзыв о боте'}
     await message.answer('Доступные действия:', reply_markup=get_keyboard(buttons, 2))
 
 
-callback_task = CallbackData("fab_num", "page", "id")
-pages = []
+callback_remove = CallbackData("fab_task", "page", "id", "action")
+callback_search_task = CallbackData("fab_task", "page", "id", "action")
 
 
-@dp.callback_query_handler(callback_fd.filter(action=['set email', 'change email', 'about me', 'add book',
+@dp.callback_query_handler(callback_fd.filter(action=['set email', 'change email', 'about me', 'remove book',
                                                       'daily report', 'remove time cost', 'offers']))
 async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     action = callback_data.get('action')
     log_in(call.from_user.full_name, action)
     if action == 'set email' or action == 'change email':
-        await call.message.edit_text('Введите почту:\n'
+        await call.message.edit_text('Введите вашу корпоративную почту:\n'
                                      'Введите "Отмена" для отмены ввода')
         await OrderMenu.wait_for_email.set()
     elif action == 'about me':
@@ -534,24 +521,42 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
     elif action == 'remove time cost':
         comment = get_format_today_costs(check_mail(str(call.from_user.id)), True)
         buttons = []
-        global pages
         for i in comment:
-            pages.append(i.get('page'))
             buttons.append(types.InlineKeyboardButton(text=(i.get('time_cost') + i.get('comment') +
                                                             ' ' + i.get('task_name')),
-                                                      callback_data=callback_task.new(id=i.get('comment_id'),
-                                                                                      page=i.get('page'))))
+                                                      callback_data=callback_remove.new(id=i.get('comment_id'),
+                                                                                        page=i.get('page'),
+                                                                                        action="remove_one")))
         buttons.append(types.InlineKeyboardButton(text='Отмена',
-                                                  callback_data=callback_task.new(page="/project/cancel/", id='---')))
+                                                  callback_data=callback_remove.new(page="---",
+                                                                                    id="---",
+                                                                                    action="cancel")))
         buttons.append(types.InlineKeyboardButton(text='Удалить все',
-                                                  callback_data=callback_task.new(page="/project/all/", id='---')))
+                                                  callback_data=callback_remove.new(page="---",
+                                                                                    id="---",
+                                                                                    action="remove_all")))
         keyboard = types.InlineKeyboardMarkup(row_width=1)
         keyboard.add(*buttons)
-        await call.message.edit_text('Выберите трудоёмкость, которую хоитие удалить:', reply_markup=keyboard)
+        await call.message.edit_text('Выберите трудоёмкость, которую хотите удалить:', reply_markup=keyboard)
     elif action == 'offers':
         await call.message.edit_text('Наберите ваше предложение/замечание и отправьте:\n'
                                      'Наберите "Отмена" для отмены.')
         await OrderMenu.wait_for_offer.set()
+    elif action == 'remove book':
+        user_book = read_json('users').get(str(call.from_user.id)).get('bookmarks')
+        buttons = []
+        for i in user_book:
+            buttons.append(types.InlineKeyboardButton(text=i.get('project_name') + ' // ' + i.get('task_name'),
+                                                      callback_data=callback_remove.new(id='---',
+                                                                                        page=i.get('path'),
+                                                                                        action="remove_bookmark")))
+        buttons.append(types.InlineKeyboardButton(text='Отмена',
+                                                  callback_data=callback_remove.new(page="---",
+                                                                                    id="---",
+                                                                                    action="cancel")))
+        keyboard = types.InlineKeyboardMarkup(row_width=1)
+        keyboard.add(*buttons)
+        await call.message.edit_text('Выберите закладку, которую хотите удалить:', reply_markup=keyboard)
     else:
         await call.message.edit_text('Пока ниработает :с')
     await call.answer()
@@ -590,7 +595,7 @@ async def wait_offer(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-@dp.callback_query_handler(callback_fd.filter(action=['add time cost']))
+@dp.callback_query_handler(callback_fd.filter(action=['search task']))
 async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
     log_in(call.from_user.full_name, check_mail(str(call.from_user.id)), '- add time cost')
     buttons = {'via search': 'Через поиск', 'via bookmarks': 'Через закладки'}
@@ -610,8 +615,26 @@ async def search_project_via_search(call: types.CallbackQuery, callback_data: di
 @dp.callback_query_handler(callback_fd.filter(action=['via bookmarks']))
 async def search_project_via_bookmarks(call: types.CallbackQuery, callback_data: dict):
     log_in(call.from_user.full_name, call['data'])
-    await call.message.edit_text('Пока ниработаит :С')
-    pass
+    list_book = get_list_bookmarks(call.from_user.id)
+    if list_book is None:
+        await call.message.edit_text('У вас нет закладок.\n Добавить закладки можно через кнопку "Найти задачу"')
+        return
+    else:
+        pprint(list_book)
+        buttons = []
+        for i in list_book:
+            buttons.append(types.InlineKeyboardButton(text=i.get('project_name') + ' // ' + i.get('task_name'),
+                                                      callback_data=callback_remove.new(page=i.get('path'),
+                                                                                        id="---",
+                                                                                        action="add_costs")))
+        buttons.append(types.InlineKeyboardButton(text='Отмена',
+                                                  callback_data=callback_remove.new(page="---",
+                                                                                    id="---",
+                                                                                    action="cancel")))
+        keyboard = types.InlineKeyboardMarkup(row_width=1)
+        keyboard.add(*buttons)
+        await call.message.edit_text('Выберите задачу:', reply_markup=keyboard)
+    return
 
 
 @dp.callback_query_handler(lambda callback: callback['data'].split(':')[1].startswith('id_'))
@@ -624,6 +647,29 @@ async def search_tasks_via_search(call: types.CallbackQuery):
     await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(tasks, 2))
 
 
+INPUT_COSTS = """
+Введите часы и описание деятельности:
+Можно ввести в одну строку, можно в несколько(но в одном сообщении).
+В начале указываете количество часов, следом через '!' можно перечислить один или несколько комментариев.
+Можно ввести больше двух часов. Алгоритм сам разделит по два часа. Пробелы между '!' не важны
+
+Для отмены введите '<i>отмена</i>'
+Для более подробного описания введите '<i>Ничего не понял</i>'
+Для добавления задачи в закладки введите '<i>Добавить закладку</i>'
+"""
+# "Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> !"
+# " <i>Сборка печатного прототипа</i>"
+# "\n\n"
+# "Пример№2:\n<i>0.5</i>! <i>Печать деталей корпуса</i> \n"
+# "<i>2.5</i>! <i>Сборка печатного прототипа</i>\n\n"
+# "В первом примере в бот разделит указанное количество часов на количество задач,"
+# "в данном случае в WS улетит две записи по полтора часа.\n"
+# "Во втором примере в WS улетит 3 записи:\n"
+# "Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся "
+# "на две записи: на запись с двумя часами и запись с получасом."
+# """
+
+
 @dp.callback_query_handler(lambda callback: (callback['data'].split(':')[1]).startswith('task_id_'))
 async def search_subtasks_via_search(call: types.CallbackQuery):
     log_in(call.from_user.full_name, call['data'])
@@ -632,23 +678,7 @@ async def search_subtasks_via_search(call: types.CallbackQuery):
     path = user_data[call.from_user.id].get('path')
     tasks = search_tasks(path)
     if tasks.get(task_id) is None or tasks.get(task_id).get('child') is None:
-        await call.message.edit_text("Введите часы и описание деятельности:\n"
-                                     "Можно ввести в одну строку, можно в несколько(но в одном сообщении).\n"
-                                     "В начале указываете количество часов, следом через '!' можно перечислить один "
-                                     "или несколько комментариев.\n"      
-                                     "Можно ввести больше двух часов. Алгоритм сам разделит по два часа."
-                                     " Пробелы между '!' не важны\n"
-                                     "Для отмены введите 'отмена'\n\n"
-                                     "Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> !"
-                                     " <i>Сборка печатного прототипа</i>"
-                                     "\n\n"
-                                     "Пример№2:\n<i>0.5</i>! <i>Печать деталей корпуса</i> \n"
-                                     "<i>2.5</i>! <i>Сборка печатного прототипа</i>\n\n"
-                                     "В первом примере в бот разделит указанное количество часов на количество задач,"
-                                     "в данном случае в WS улетит две записи по полтора часа.\n"
-                                     "Во втором примере в WS улетит 3 записи:\n"
-                                     "Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся "
-                                     "на две записи: на запись с двумя часами и запись с получасом.")
+        await call.message.edit_text(INPUT_COSTS)
         await OrderMenu.waiting_for_time_comment.set()
         return 0
     subtask = tasks.get(task_id)
@@ -659,35 +689,86 @@ async def search_subtasks_via_search(call: types.CallbackQuery):
     await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(subtasks_buttons, 2))
 
 
-@dp.callback_query_handler(lambda callback: (callback['data'].split(':')[1]).startswith('/project/'))
-async def search_task_via_search(call: types.CallbackQuery):
+@dp.callback_query_handler(callback_remove.filter(action=["add_costs"]))
+async def add_costs_via_bookmarks(call: types.CallbackQuery, callback_data: dict):
+    user_data[call.from_user.id] = {'path': callback_data['page']}
+    await call.message.edit_text(INPUT_COSTS)
+    await OrderMenu.waiting_for_time_comment.set()
+    return
+
+
+@dp.callback_query_handler(callback_remove.filter(action="remove_bookmark"))
+async def remove_user_bookmark(call: types.CallbackQuery, callback_data: dict):
     log_in(call.from_user.full_name, call['data'])
-    if 'project' in call['data'].split(':')[1]:
-        # Удаление трудомкости
-        if 'cancel' in call['data'].split(':')[1]:
-            await call.message.edit_text('Отмена выбора')
-            return
-        if 'all' in call['data'].split(':')[1]:
-            comments = get_format_today_costs(check_mail(str(call.from_user.id)), True)
-            pprint(comments)
-            print(type(comments))
-            await call.message.edit_text('Будет удалено ' + str(len(comments)) + ' записей')
-            for comment in comments:
-                page = comment.get('page')
-                comment_id = comment.get('comment_id')
-                status = remove_cost(page, comment_id)
-                answer = 'Успешно удалено' if status == 'ok' else 'Не успех'
-                print(call.from_user.full_name, answer)
-                await call.message.answer(answer)
-        else:
-            calldata = call['data'].split(':')
-            page, comment_id = calldata[1], calldata[2]
+    page = callback_data['page']
+    remove_bookmark(call.from_user.id, page)
+    await call.message.edit_text('Закладка удалена')
+
+
+@dp.callback_query_handler(callback_remove.filter(action=["remove_one", "remove_all", "cancel"]))
+async def remove_comments(call: types.CallbackQuery, callback_data: dict):
+    log_in(call.from_user.full_name, call['data'])
+    action = callback_data['action']
+    if action == "cancel":
+        await call.message.edit_text("Выбор отменён")
+        return
+    elif action == "remove_all":
+        comments = get_format_today_costs(check_mail(str(call.from_user.id)), True)
+        await call.message.edit_text('Будет удалено ' + str(len(comments)) + ' записей')
+        for comment in comments:
+            page = comment.get('page')
+            comment_id = comment.get('comment_id')
             status = remove_cost(page, comment_id)
             answer = 'Успешно удалено' if status == 'ok' else 'Не успех'
-            print(call.from_user.full_name, answer)
-            await call.message.edit_text(answer)
-    print(call['data'])
+            log_in(call.from_user.full_name, answer)
+            await call.message.answer(answer)
+    elif action == "remove_one":
+        page, comment_id = callback_data["page"], callback_data["id"]
+        status = remove_cost(page, comment_id)
+        answer = 'Успешно удалено' if status == 'ok' else 'Не успех'
+        log_in(call.from_user.full_name, answer)
+        await call.message.edit_text(answer)
     return
+
+
+async def add_costs(text, id_user):
+    path = user_data[id_user]['path']
+    email = check_mail(str(id_user))
+    full_name = check_mail(id_user, 'first_name') + ' ' + check_mail(id_user, 'last_name')
+    for string in text.split('\n'):
+        time_str = string.split('!')[0]
+        time = float(time_str.replace(',', '.') if ',' in time_str else time_str)
+        comment = [i.strip(' ') for i in string.split('!')[1:]]  # Удаление пробелов в начале и концекаждой задачи
+        if '' in comment:
+            comment.remove('')
+        for i in comment:
+            comment_time = time/len(comment)
+            if comment_time > 2:
+                q_time = comment_time
+                while q_time > 2:
+                    q_time -= 2
+                    status = add_cost(path, email, i, 2)
+                    if status == 'ok':
+                        log_in(full_name, 'add comments', path, email, i, 2)
+                        answer = 'Успешно внесено'
+                    else:
+                        answer = 'Не успех'
+                    await bot.send_message(int(id_user), answer)
+                status = add_cost(path, email, i, q_time)
+                if status == 'ok':
+                    log_in(full_name, 'add comments', path, email, i, q_time)
+                    answer = 'Успешно внесено'
+                else:
+                    answer = 'Не успех'
+                await bot.send_message(int(id_user), answer)
+            else:
+                status = add_cost(path, email, i, comment_time)
+                if status == 'ok':
+                    log_in(full_name, 'add comments', path, email, i, comment_time)
+                    answer = 'Успешно внесено'
+                else:
+                    answer = 'Не успех'
+                await bot.send_message(int(id_user), answer)
 
 
 async def wait_hours(message: types.Message, state: FSMContext):
@@ -697,55 +778,50 @@ async def wait_hours(message: types.Message, state: FSMContext):
         await message.answer('Отмена ввода')
         await state.finish()
         return
-    if '!' not in text:
-        await message.answer("Используйте шаблон:\n"
-                             "<i>число</i>! <i>деятельность</i>!....! <i>деятельность</i>")
-        return
-    for string in text.split('\n'):
-        time_str = string.split('!')[0]
-        time = float(time_str.replace(',', '.') if ',' in time_str else time_str)
-        comment = [i.strip(' ') for i in string.split('!')[1:]]  # Удаление пробелов в начале и концекаждой задачи
-        if '' in comment:
-            comment.remove('')
+    if 'добавить закладку' in text.lower():
         path = user_data[message.from_user.id]['path']
-        email = check_mail(str(message.from_user.id))
-        for i in comment:
-            comment_time = time/len(comment)
-            if comment_time > 2:
-                q_time = comment_time
-                while q_time > 2:
-                    delta = q_time
-                    q_time -= 2
-                    delta = delta - q_time
-                    status = add_cost(path, email, i, 2)
-                    if status == 'ok':
-                        log_in(message.from_user.full_name, 'add comments', path, email, i, '2')
-                        answer = 'Успешно внесено'
-                    else:
-                        answer = 'Не успех'
-                    await message.answer(answer)
-                status = add_cost(path, email, i, q_time)
-                if status == 'ok':
-                    log_in(message.from_user.full_name, 'add comments', path, email, i, q_time)
-                    answer = 'Успешно внесено'
-                else:
-                    answer = 'Не успех'
-                await message.answer(answer)
+        info = get_task_info(path)
+        if info.get('status') == 'ok':
+            info = info.get('data')
+            data = {
+                'project_name': info.get('project').get('name'),
+                'task_name': info.get('name'),
+                'path': path
+            }
+            status = add_bookmark(message.from_user.id, data)
+            if status:
+                log_in(message.from_user.id, 'bookmark added')
+                await bot.send_message(message.from_user.id, "Закладка добавлена")
             else:
-                status = add_cost(path, email, i, comment_time)
-                if status == 'ok':
-                    log_in(message.from_user.full_name, 'add comments', path, email, i, comment_time)
-                    answer = 'Успешно внесено'
-                else:
-                    answer = 'Не успех'
-                await message.answer(answer)
-    answer2 = '<b>Время</b> - ' + str(time) + 'ч\n<b>Проделанная работа</b> - ' + ', '.join(comment)
-    await message.answer(answer2)
+                log_in(message.from_user.id, 'bookmark not added')
+                await bot.send_message(message.from_user.id, "Такая закладка уже есть. Отмена")
+        else:
+            await message.answer('Ошибка бота/сервера\n'
+                                 'Оставьте отзыв боту о возникшей ошибке\n'
+                                 ':с')
+        await state.finish()
+        return
+    if 'ничего не понял' in text.lower() or '!' not in text:
+        await message.answer("Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> !"
+                             " <i>Сборка печатного прототипа</i>"
+                             "\n\n"
+                             "Пример№2:\n<i>0.5</i>! <i>Печать деталей корпуса</i> \n"
+                             "<i>2.5</i>! <i>Сборка печатного прототипа</i>\n\n"
+                             "В первом примере в бот разделит указанное количество часов на количество задач,"
+                             "в данном случае в WS улетит две записи по полтора часа.\n"
+                             "Во втором примере в WS улетит 3 записи:\n"
+                             "Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся "
+                             "на две записи: на запись с двумя часами и запись с получасом.")
+        return
+    await add_costs(text, message.from_user.id)
+    # answer2 = '<b>Время</b> - ' + str(time) + 'ч\n<b>Проделанная работа</b> - ' + ', '.join(comment)
+    # await message.answer(answer2)
     await state.finish()
 
 
 @dp.message_handler(commands='news')
 async def wait_for_news(message: types.Message):
+    log_in(message.from_user.id, '')
     if check_admin(message.from_user.id) is None:
         return None
     await message.answer('Введите новость:')
