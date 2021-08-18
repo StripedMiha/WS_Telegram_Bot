@@ -976,3 +976,12 @@
 2021-08-18 11:41:20.138157 Mikhail Ignatenko menu
 2021-08-18 11:41:21.233407 Mikhail Ignatenko remove book
 2021-08-18 11:41:28.215820 Mikhail Ignatenko fab_task:---:---:cancel
+2021-08-18 11:49:25.912834 Mikhail Ignatenko /menu
+2021-08-18 11:49:25.912834 Mikhail Ignatenko menu
+2021-08-18 11:49:28.420173 Mikhail Ignatenko daily report
+2021-08-18 11:49:32.991762 Mikhail Ignatenko /menu
+2021-08-18 11:49:32.991762 Mikhail Ignatenko menu
+2021-08-18 11:49:34.346700 Mikhail Ignatenko remove book
+2021-08-18 11:49:35.820859 Mikhail Ignatenko fab_task:/project/252580/8733898/:---:remove_bookmark
+2021-08-18 11:50:11.014858 Mikhail Ignatenko /menu
+2021-08-18 11:50:11.015854 Mikhail Ignatenko menu
