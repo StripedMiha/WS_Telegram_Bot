@@ -564,7 +564,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
 
 async def wait_email(message: types.Message, state: FSMContext):
     log_in(message.from_user.full_name, message.text)
-    if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru', message.text):
+    if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru|[a-z]\d@s-t.studio', message.text):
         edit_mail(message.from_user.id, message.text)
         answer = message.from_user.full_name + ', вы установили почту: ' + check_mail(message.from_user.id)
         await message.answer(answer)
