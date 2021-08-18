@@ -291,3 +291,46 @@
 2021-08-17 10:27:22.194992 Mikhail Ignatenko /log 5
 2021-08-17 10:27:26.239441 Mikhail Ignatenko /log 20
 2021-08-17 10:27:33.474664 Mikhail Ignatenko /log 40
+2021-08-17 10:43:08.649979 Mikhail Ignatenko /menu
+2021-08-17 10:43:08.650939 Mikhail Ignatenko menu
+2021-08-17 10:43:10.407151 Mikhail Ignatenko cancel
+2021-08-17 10:43:11.671474 Mikhail Ignatenko /menu
+2021-08-17 10:43:11.672469 Mikhail Ignatenko menu
+2021-08-17 10:43:12.699295 Mikhail Ignatenko remove time cost
+2021-08-17 10:43:14.227355 Mikhail Ignatenko fab_num:/project/cancel/:---
+2021-08-17 12:54:57.185409 Mikhail Ignatenko /menu
+2021-08-17 12:54:57.187364 Mikhail Ignatenko menu
+2021-08-17 12:55:03.602538 Mikhail Ignatenko remove time cost
+2021-08-17 12:55:05.538549 Mikhail Ignatenko /menu
+2021-08-17 12:55:05.538549 Mikhail Ignatenko menu
+2021-08-17 12:55:06.708300 Mikhail Ignatenko remove time cost
+2021-08-17 12:55:08.559444 Mikhail Ignatenko fab_num:/project/cancel/:---
+2021-08-17 12:55:09.549207 Mikhail Ignatenko fab_num:/project/cancel/:---
+2021-08-17 12:55:17.775186 Mikhail Ignatenko /log 20
+2021-08-17 12:55:26.950017 Mikhail Ignatenko /log 4
+2021-08-17 22:45:30.131627 Mikhail Ignatenko /log 20
+2021-08-18 08:45:15.076584 Mikhail Ignatenko /menu
+2021-08-18 08:45:15.077542 Mikhail Ignatenko menu
+2021-08-18 08:45:17.300604 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-18 08:45:18.923754 Mikhail Ignatenko fab_num:via search
+2021-08-18 08:45:21.936449 Mikhail Ignatenko fab_num:id_257358
+2021-08-18 08:45:23.247614 Mikhail Ignatenko fab_num:task_id_9794652
+2021-08-18 08:45:47.121800 Mikhail Ignatenko 0.5! Переработка и перемещение логотипов
+2021-08-18 08:45:47.279513 Mikhail Ignatenko add comments /project/257358/9794652/ m.ignatenko@smde.ru Переработка и перемещение логотипов 0.5
+2021-08-18 08:45:49.526144 Mikhail Ignatenko /menu
+2021-08-18 08:45:49.527140 Mikhail Ignatenko menu
+2021-08-18 08:45:56.114393 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-18 08:45:57.524917 Mikhail Ignatenko fab_num:via search
+2021-08-18 08:46:04.029345 Mikhail Ignatenko fab_num:id_243605
+2021-08-18 08:46:08.556858 Mikhail Ignatenko fab_num:task_id_8297507
+2021-08-18 08:46:10.644078 Mikhail Ignatenko fab_num:task_id_9835842
+2021-08-18 08:46:58.381948 Mikhail Ignatenko 3! переработка вызова кнопок удаления трудоёмкостей
+4,5! Написание функционала закладок
+2021-08-18 08:46:58.553912 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru переработка вызова кнопок удаления трудоёмкостей 2
+2021-08-18 08:46:59.555037 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru переработка вызова кнопок удаления трудоёмкостей 1.0
+2021-08-18 08:47:00.553349 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Написание функционала закладок 2
+2021-08-18 08:47:01.554672 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Написание функционала закладок 2
+2021-08-18 08:47:02.554020 Mikhail Ignatenko add comments /project/243605/8297507/9835842/ m.ignatenko@smde.ru Написание функционала закладок 0.5
+2021-08-18 08:47:17.573365 Mikhail Ignatenko /menu
+2021-08-18 08:47:17.574326 Mikhail Ignatenko menu
+2021-08-18 08:47:18.600502 Mikhail Ignatenko daily report
