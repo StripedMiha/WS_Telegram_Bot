@@ -791,7 +791,7 @@ async def wait_hours(message: types.Message, state: FSMContext):
             }
             status = add_bookmark(message.from_user.id, data)
             if status:
-                log_in(message.from_user.id, 'bookmark added')
+                log_in(message.from_user.full_name, 'bookmark added')
                 await bot.send_message(message.from_user.id, "Закладка добавлена")
             else:
                 log_in(message.from_user.id, 'bookmark not added')
