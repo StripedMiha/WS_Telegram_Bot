@@ -985,3 +985,119 @@
 2021-08-18 11:49:35.820859 Mikhail Ignatenko fab_task:/project/252580/8733898/:---:remove_bookmark
 2021-08-18 11:50:11.014858 Mikhail Ignatenko /menu
 2021-08-18 11:50:11.015854 Mikhail Ignatenko menu
+2021-08-18 11:55:23.234107 Mikhail Ignatenko cancel
+2021-08-18 11:55:26.146445 Mikhail Ignatenko 300617281 /help
+2021-08-18 11:55:35.706370 Mikhail Ignatenko /menu
+2021-08-18 11:55:35.707365 Mikhail Ignatenko menu
+2021-08-18 11:55:37.292529 Mikhail Ignatenko cancel
+2021-08-18 11:55:46.719263 300617281 
+2021-08-18 11:58:25.280626 Mikhail Ignatenko send news
+2021-08-18 11:59:38.960282 Mikhail Ignatenko /menu
+2021-08-18 11:59:38.961247 Mikhail Ignatenko menu
+2021-08-18 11:59:41.877152 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-18 11:59:46.626162 Mikhail Ignatenko cancel
+2021-08-18 11:59:48.133283 Mikhail Ignatenko /menu
+2021-08-18 11:59:48.134279 Mikhail Ignatenko menu
+2021-08-18 11:59:48.784516 Даниил Затерюкин /menu
+2021-08-18 11:59:48.784516 Даниил Затерюкин menu
+2021-08-18 11:59:50.469382 Mikhail Ignatenko remove time cost
+2021-08-18 11:59:52.420932 Mikhail Ignatenko fab_task:---:---:cancel
+2021-08-18 11:59:53.437911 Mikhail Ignatenko /menu
+2021-08-18 11:59:53.438908 Mikhail Ignatenko menu
+2021-08-18 11:59:54.345865 Mikhail Ignatenko remove book
+2021-08-18 11:59:57.620054 Mikhail Ignatenko fab_task:---:---:cancel
+2021-08-18 11:59:58.554043 Mikhail Ignatenko /menu
+2021-08-18 11:59:58.555079 Mikhail Ignatenko menu
+2021-08-18 11:59:59.579637 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-18 12:00:00.819350 Mikhail Ignatenko fab_num:via bookmarks
+2021-08-18 12:00:04.946090 Mikhail Ignatenko fab_task:---:---:cancel
+2021-08-18 12:00:05.761666 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-18 12:00:09.059206 Даниил Затерюкин fab_num:via search
+2021-08-18 12:00:12.189698 Даниил Затерюкин fab_num:id_257283
+2021-08-18 12:00:16.282873 Даниил Затерюкин fab_num:task_id_9739941
+2021-08-18 12:00:44.289108 Даниил Затерюкин Добавить закладку
+2021-08-18 12:00:44.472643 795776789 bookmark added
+2021-08-18 12:00:51.788436 Даниил Затерюкин /menu
+2021-08-18 12:00:51.789435 Даниил Затерюкин menu
+2021-08-18 12:00:58.270869 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-18 12:01:00.088546 Даниил Затерюкин fab_num:via bookmarks
+2021-08-18 12:01:03.199298 Даниил Затерюкин fab_task:---:---:cancel
+2021-08-18 12:01:05.082705 Даниил Затерюкин /menu
+2021-08-18 12:01:05.083668 Даниил Затерюкин menu
+2021-08-18 12:01:12.437262 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-18 12:01:14.376407 Даниил Затерюкин fab_num:via search
+2021-08-18 12:01:17.242315 Даниил Затерюкин fab_num:id_243605
+2021-08-18 12:02:35.755231 Даниил Затерюкин fab_num:task_id_9573828
+2021-08-18 12:02:45.137662 Даниил Затерюкин Добавить закладку
+2021-08-18 12:02:45.328489 795776789 bookmark added
+2021-08-18 12:02:49.406788 Даниил Затерюкин /menu
+2021-08-18 12:02:49.407780 Даниил Затерюкин menu
+2021-08-18 12:02:51.567028 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-18 12:02:53.821593 Даниил Затерюкин fab_num:via bookmarks
+2021-08-18 12:02:59.807809 Даниил Затерюкин fab_task:---:---:cancel
+2021-08-18 12:03:02.183009 Даниил Затерюкин /menu
+2021-08-18 12:03:02.184014 Даниил Затерюкин menu
+2021-08-18 12:03:06.485049 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-18 12:03:07.587941 Даниил Затерюкин fab_num:via bookmarks
+2021-08-18 12:03:15.341686 Даниил Затерюкин fab_task:---:---:cancel
+2021-08-18 12:03:21.073466 Mikhail Ignatenko /menu
+2021-08-18 12:03:21.074463 Mikhail Ignatenko menu
+2021-08-18 12:03:22.607798 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-18 12:03:24.409403 Mikhail Ignatenko fab_num:via bookmarks
+2021-08-18 12:03:37.679186 Mikhail Ignatenko fab_task:---:---:cancel
+2021-08-18 13:04:22.577848 Даниил Затерюкин /menu
+2021-08-18 13:04:22.578851 Даниил Затерюкин menu
+2021-08-18 13:04:34.455197 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-18 13:04:36.662955 Даниил Затерюкин fab_num:via bookmarks
+2021-08-18 13:04:38.814740 Даниил Затерюкин fab_task:---:---:cancel
+2021-08-18 13:04:43.944996 Даниил Затерюкин /menu
+2021-08-18 13:04:43.945957 Даниил Затерюкин menu
+2021-08-18 13:04:46.257766 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-18 13:04:49.488281 Даниил Затерюкин fab_num:via search
+2021-08-18 13:04:54.691499 Даниил Затерюкин fab_num:id_243605
+2021-08-18 13:05:30.024131 Даниил Затерюкин fab_num:task_id_9561738
+2021-08-18 13:05:40.905309 Даниил Затерюкин Добавить закладку
+2021-08-18 13:05:41.086619 795776789 bookmark added
+2021-08-18 13:05:47.405781 Даниил Затерюкин /menu
+2021-08-18 13:05:47.406816 Даниил Затерюкин menu
+2021-08-18 13:05:55.043965 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-18 13:06:00.589839 Даниил Затерюкин cancel
+2021-08-18 13:06:03.945416 Даниил Затерюкин /menu
+2021-08-18 13:06:03.946414 Даниил Затерюкин menu
+2021-08-18 13:06:09.188478 Mikhail Ignatenko /log 20
+2021-08-18 13:06:19.579217 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-18 13:06:21.571406 Даниил Затерюкин fab_num:via bookmarks
+2021-08-18 13:23:15.951618 Mikhail Ignatenko /menu
+2021-08-18 13:23:15.952616 Mikhail Ignatenko menu
+2021-08-18 13:23:17.027236 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-18 13:23:18.463120 Mikhail Ignatenko fab_num:via search
+2021-08-18 13:31:12.860407 Mikhail Ignatenko cancel
+2021-08-18 13:31:13.985815 Mikhail Ignatenko /menu
+2021-08-18 13:31:13.986843 Mikhail Ignatenko menu
+2021-08-18 13:31:15.443712 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-18 13:31:16.288946 Mikhail Ignatenko fab_num:via bookmarks
+2021-08-18 13:31:44.751255 Mikhail Ignatenko fab_num:via bookmarks
+2021-08-18 13:31:48.701069 Mikhail Ignatenko cancel
+2021-08-18 13:32:11.726501 Mikhail Ignatenko /menu
+2021-08-18 13:32:11.727500 Mikhail Ignatenko menu
+2021-08-18 13:32:12.780974 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-18 13:32:13.582394 Mikhail Ignatenko fab_num:via bookmarks
+2021-08-18 13:32:27.591819 Mikhail Ignatenko fab_task:---:---:cancel
+2021-08-18 13:32:28.682139 Mikhail Ignatenko /menu
+2021-08-18 13:32:28.682139 Mikhail Ignatenko menu
+2021-08-18 13:32:30.203784 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-18 13:32:31.390514 Mikhail Ignatenko fab_num:via bookmarks
+2021-08-18 13:32:42.923858 Mikhail Ignatenko fab_task:---:---:cancel
+2021-08-18 13:32:50.444503 Mikhail Ignatenko /menu
+2021-08-18 13:32:50.444503 Mikhail Ignatenko menu
+2021-08-18 13:32:51.991131 Mikhail Ignatenko daily report
+2021-08-18 13:32:53.841218 Mikhail Ignatenko /menu
+2021-08-18 13:32:53.841218 Mikhail Ignatenko menu
+2021-08-18 13:32:54.703357 Mikhail Ignatenko m.ignatenko@smde.ru - add time cost
+2021-08-18 13:32:55.621665 Mikhail Ignatenko fab_num:via search
+2021-08-18 13:33:38.397787 Mikhail Ignatenko cancel
+2021-08-18 13:34:19.023126 Даниил Затерюкин /menu
+2021-08-18 13:34:19.024131 Даниил Затерюкин menu
+2021-08-18 13:34:22.144443 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
+2021-08-18 13:34:23.498505 Даниил Затерюкин fab_num:via bookmarks
+2021-08-18 13:34:29.341426 Даниил Затерюкин fab_task:---:---:cancel

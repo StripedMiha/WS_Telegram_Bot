@@ -107,9 +107,9 @@ async def cmd_test1(message: types.Message):
         f'/menu - меню взаимодействия с WS  через бота',
         f'Перечень действий меню с описанием:',
         f'<b>Обо мне</b> - выводит информацию о вас: Имя, почта и статус',
-        f'<b>Внеси часы</b> - открывает подменю выбора способа поиска проекта и задачи. '
+        f'<b>Найти задачу</b> - открывает подменю выбора способа поиска проекта и задачи для внесения часов или добавления задачи в закладки. '
         f'Через поиск по всем доступным вам проектам или через поиск по закладкам, которые вы оставили ранее',
-        f'<b>Изменить закладки</b> - добавление новых или удаление старых закладок',
+        f'<b>Удалить закладку</b> - удаление закладок',
         f'<b>Отчёт за сегодня</b> - выводит отчёт по вашим введённым за сегодня трудоёмкостям',
         f'<b>Удалить трудоёмкость</b> - удалить одну из сегодняшних трудоёмкостей, введёных по ошибке',
         f'<b>Изменить почту</b> - изменить почту',
@@ -490,7 +490,6 @@ async def menu(message: types.Message):
 
 
 callback_remove = CallbackData("fab_task", "page", "id", "action")
-callback_search_task = CallbackData("fab_task", "page", "id", "action")
 
 
 @dp.callback_query_handler(callback_fd.filter(action=['set email', 'change email', 'about me', 'remove book',
@@ -620,10 +619,12 @@ async def search_project_via_bookmarks(call: types.CallbackQuery, callback_data:
         await call.message.edit_text('У вас нет закладок.\n Добавить закладки можно через кнопку "Найти задачу"')
         return
     else:
-        pprint(list_book)
         buttons = []
         for i in list_book:
-            buttons.append(types.InlineKeyboardButton(text=i.get('project_name') + ' // ' + i.get('task_name'),
+            prj_name = i.get('project_name')
+            if len(prj_name.split(' ')) > 2:
+                prj_name = ' '.join(prj_name.split(' ')[:2])
+            buttons.append(types.InlineKeyboardButton(text=prj_name + ' // ' + i.get('task_name'),
                                                       callback_data=callback_remove.new(page=i.get('path'),
                                                                                         id="---",
                                                                                         action="add_costs")))
