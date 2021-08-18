@@ -1101,3 +1101,9 @@
 2021-08-18 13:34:22.144443 Даниил Затерюкин d.zateryukin@smde.ru - add time cost
 2021-08-18 13:34:23.498505 Даниил Затерюкин fab_num:via bookmarks
 2021-08-18 13:34:29.341426 Даниил Затерюкин fab_task:---:---:cancel
+2021-08-18 14:48:33.776903 Mikhail Ignatenko /menu
+2021-08-18 14:48:33.776903 Mikhail Ignatenko menu
+2021-08-18 14:48:34.891761 Mikhail Ignatenko cancel
+2021-08-18 14:48:36.222055 Mikhail Ignatenko /menu
+2021-08-18 14:48:36.223052 Mikhail Ignatenko menu
+2021-08-18 14:48:37.862054 Mikhail Ignatenko cancel
