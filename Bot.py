@@ -143,6 +143,7 @@ def get_keyboard_admin(list_data, width=1):
 # meme_version /start
 @dp.message_handler(commands="start")
 async def cmd_test1(message: types.Message):
+    log_in(message.from_user.id, message.from_user.full_name, message.text)
     if message.chat.type != 'private':
         log_in(message.from_user.full_name, 'не прав')
         return None
@@ -153,7 +154,11 @@ async def cmd_test1(message: types.Message):
             return None
         await message.answer('Заявка ушла админу. Ждите.')
         global new_user_list
-        new_user_list = [message.from_user.id, message.from_user.first_name, message.from_user.last_name,
+        if message.from_user.last_name is None:
+            last_name = 'None'
+        else:
+            last_name = message.from_user.last_name
+        new_user_list = [message.from_user.id, message.from_user.first_name, last_name,
                          message.chat.type]
         user_dict = read_json('wait')
         user_dict[message.from_user.id] = ''
@@ -468,7 +473,6 @@ async def set_commands(bot: Bot):
 
 async def menu(message: types.Message):
     log_in(message.from_user.full_name, message.text)
-    log_in(message.from_user.full_name, 'menu')
     if not check_user(message.from_user.id):
         if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
             return None
@@ -483,8 +487,8 @@ async def menu(message: types.Message):
                    'search task': 'Найти задачу',
                    'remove time cost': 'Удалить трудоёмкость',
                    'remove book': 'Удалить закладку',
-                   'about me': 'Обо мне',
-                   'change email': 'Изменить почту',
+                   'about me': 'О вас',
+                   #  'change email': 'Изменить почту',
                    'offers': 'Предложение/отзыв о боте'}
     await message.answer('Доступные действия:', reply_markup=get_keyboard(buttons, 2))
 
