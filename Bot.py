@@ -18,7 +18,7 @@ from app.handlers.drinks import available_bottle_drinks_sizes, available_glasses
 from app.handlers.drinks import available_bottle_alcohol_drinks_names, available_glasses_alcohol_drinks_names
 from app.handlers.drinks import available_bottle_alcohol_free_drinks_names, available_glasses_alcohol_free_drinks_names
 from app.auth import *
-from ws_api import get_all_project_for_user, get_tasks, search_tasks, get_format_today_costs, remove_cost, add_cost,\
+from ws_api import get_all_project_for_user, get_tasks, search_tasks, get_format_today_costs, remove_cost, add_cost, \
     get_task_info
 from app.fun import register_handlers_fun
 
@@ -119,11 +119,7 @@ async def cmd_test1(message: types.Message):
     await message.answer(answer)
 
 
-new_user_list = []
-callback_ad = CallbackData("fab_num", "action")
-
-
-# selected_list = ''
+callback_ad = CallbackData("fab_num", "id_user", "action", "full_name")
 
 
 def get_keyboard_admin(list_data, width=1):
@@ -153,19 +149,29 @@ async def cmd_test1(message: types.Message):
         if check_user(message.from_user.id, 'wait'):
             return None
         await message.answer('Заявка ушла админу. Ждите.')
-        global new_user_list
         if message.from_user.last_name is None:
-            last_name = 'None'
+            last_name = 'Snow'
         else:
             last_name = message.from_user.last_name
-        new_user_list = [message.from_user.id, message.from_user.first_name, last_name,
+        new_user_data = [message.from_user.id, message.from_user.first_name, last_name,
                          message.chat.type]
-        user_dict = read_json('wait')
-        user_dict[message.from_user.id] = ''
-        write_json('wait', user_dict)
-        await bot.send_message(300617281, f"Этот перец пишет мне: {message.from_user.first_name}\n"
-                                          f"Пишет вот что: {message.text}",
-                               reply_markup=get_keyboard_admin(['Добавить пользователя', 'Игнорировать пользователя']))
+        new_user(new_user_data)
+        buttons = [types.InlineKeyboardButton(text='Добавить пользователя',
+                                              callback_data=callback_ad.new(
+                                                  action='add_user',
+                                                  id_user=message.from_user.id,
+                                                  full_name=message.from_user.full_name
+                                              )),
+                   types.InlineKeyboardButton(text='Игнорировать пользователя',
+                                              callback_data=callback_ad.new(
+                                                  action='ignore_user',
+                                                  id_user=message.from_user.id,
+                                                  full_name=message.from_user.full_name
+                                              ))]
+        keyboard = types.InlineKeyboardMarkup(row_width=1)
+        keyboard.add(*buttons)
+        await bot.send_message(300617281, f"Этот перец пишет мне: {message.from_user.full_name}\n"
+                                          f"Пишет вот что: {message.text}", reply_markup=keyboard)
         return None
     answer = [f"Наталья, морская пехота",
               f"Стартуем, <i>{message.from_user.first_name}!</i>",
@@ -174,179 +180,107 @@ async def cmd_test1(message: types.Message):
     await message.answer_photo('https://pbs.twimg.com/media/Dui9iFPXQAEIHR5.jpg', caption='\n'.join(answer))
 
 
-@dp.callback_query_handler(callback_ad.filter(action=['Добавить пользователя', 'Игнорировать пользователя']))
+@dp.callback_query_handler(callback_ad.filter(action=['add_user', 'ignore_user']))
 async def user_decide(call: types.CallbackQuery, callback_data: dict):
     action = callback_data['action']
-    if action == "Добавить пользователя":
-        new_user(new_user_list)
+    full_name = callback_data['full_name']
+    if action == "add_user":
+        change_list(callback_data['id_user'], 'wait', 'user')
         await call.answer(text='Пользователь добавлен', show_alert=True)
         await call.answer()
-        await call.message.edit_text('Пользователь {} {} добавлен'.format(new_user_list[1], new_user_list[2]))
-        await bot.send_message(new_user_list[0], 'Доступ разрешён.')
+        await call.message.edit_text(f"Пользователь {full_name} добавлен")
+        await bot.send_message(callback_data['id_user'], 'Доступ разрешён.')
         answer = [f"Наталья, морская пехота",
-                  f"Стартуем, <i>{new_user_list[1]}!</i>",
+                  f"Стартуем, <i>{full_name.split(' ')[0]}!</i>",
                   f"Введи /help чтобы получить список команд"
                   ]
-        await bot.send_photo(new_user_list[0], 'https://pbs.twimg.com/media/Dui9iFPXQAEIHR5.jpg',
+        await bot.send_photo(callback_data['id_user'], 'https://pbs.twimg.com/media/Dui9iFPXQAEIHR5.jpg',
                              caption='\n'.join(answer))
-        new_user_list.clear()
-    elif action == "Игнорировать пользователя":
-        black_user(new_user_list)
+    elif action == "ignore_user":
+        change_list(callback_data['id_user'], 'wait', 'black')
         await call.answer(text='Пользователь добавлен в чёрный список', show_alert=True)
         await call.message.edit_text(
-            'Пользователь {} {} добавлен в чёрный список'.format(new_user_list[1], new_user_list[2]))
-        await bot.send_message(new_user_list[0], 'Вас добавили в чёрный список')
+            f'Пользователь {full_name} добавлен в чёрный список')
+        await bot.send_message(callback_data['id_user'], 'Вас добавили в чёрный список')
+
+
+@dp.callback_query_handler(callback_ad.filter(action='cancel'))
+async def ad_cancel(call: types.CallbackQuery):
+    await call.message.edit_text('Выбор отменён')
+    await call.answer()
 
 
 @dp.message_handler(commands="change_status")
 async def status_changer(message: types.Message):
     if not check_admin(message.from_user.id):
         return None
-    await message.answer('Выбери список для поиска пользователя, которому хочешь изменить статус',
-                         reply_markup=get_keyboard_admin(['users', 'black']))
-
-
-@dp.callback_query_handler(callback_ad.filter(action=['users', 'black']))
-async def select_list(call: types.callback_query, callback_data: dict):
-    if not check_admin(call['from']['id']):
-        await call.message.edit_text('Нет доступа')
-        await call.answer()
-        return None
-    global selected_list
-    selected_list = callback_data.get('action')
-    await call.message.edit_text('Выберите пользователя:',
-                                 reply_markup=get_keyboard_admin(get_list(selected_list), 2))
-
-    @dp.callback_query_handler(callback_ad.filter(action=[i for i in get_list(selected_list).keys()]))
-    async def select_user(call: types.callback_query, callback_data: dict):
-        if not check_admin(call['from']['id']):
-            await call.message.edit_text('Нет доступа')
-            await call.answer()
-            return None
-        id_of = callback_data.get('action')
-        users = read_json(selected_list)
-        user = users[id_of]
-        name = user['first_name'] + ' ' + user['last_name']
-        if selected_list == 'users':
-            answer = f'Пользователь {name} удалён из списка пользователей.'
-        else:
-            answer = f'Пользователь {name} удалён из чёрного списка.'
-        log_in(name, 'del from', selected_list)
-        change_list(id_of, selected_list)
-        await call.message.edit_text(answer)
-        await call.answer()
-
-
-# Выбор обеда с клавиатуры
-@dp.message_handler(commands="dinner")
-async def get_dinner(message: types.Message):
-    if not check_user(message.from_user.id):
-        if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
-            return None
-        await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
-        return None
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    buttons = ["С пюрешкой", "С макарошками"]
+    buttons = [types.InlineKeyboardButton(text='Пользователи',
+                                          callback_data=callback_ad.new(
+                                              action='list_user',
+                                              id_user='   ',
+                                              full_name='   '
+                                          )),
+               types.InlineKeyboardButton(text='Заблокированные',
+                                          callback_data=callback_ad.new(
+                                              action='list_black',
+                                              id_user='  ',
+                                              full_name='  '
+                                          )),
+               types.InlineKeyboardButton(text='Отмена',
+                                          callback_data=callback_ad.new(
+                                              action='cancel',
+                                              id_user='  ',
+                                              full_name='  '
+                                          ))]
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
     keyboard.add(*buttons)
-    await message.answer("Как подавать котлеты?", reply_markup=keyboard)
-
-    @dp.message_handler(lambda message: message.text == "С макарошками")
-    async def with_pasta(message: types.Message):
-        await message.answer_photo(
-            'https://otvet.imgsmail.ru/download/214880555_ab5a400b4f358b8003dcdd86d4186d58_800.jpg',
-            reply_markup=types.ReplyKeyboardRemove())
-
-    # Обработка ответа выбора обеда
-    @dp.message_handler(lambda message: message.text == "С пюрешкой")
-    async def with_puree(message: types.Message):
-        await message.answer("Ням-ням", reply_markup=types.ReplyKeyboardRemove())
+    await message.answer('Выбери список для поиска пользователя, которому хочешь изменить статус',
+                         reply_markup=keyboard)
 
 
-# # Ввод комманды рандомного числа и вывод клавиатура с кнопкой
-# @dp.message_handler(commands="random")
-# async def cmd_random(message: types.Message):
-#     if not check_user(message.from_user.id):
-#         if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
-#             return None
-#         await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
-#         return None
-#     keyboard = types.InlineKeyboardMarkup()
-#     keyboard.add(types.InlineKeyboardButton(text='Нажми меня', callback_data="random_value"))
-#     await message.answer("Нажмите на кнопку, чтобы бот отправил число от 1 до 10", reply_markup=keyboard)
-#
-#     # Вывод рандомного числа
-#     @dp.callback_query_handler(text="random_value")
-#     async def send_random_value(call: types.CallbackQuery):
-#         rnd_num = randint(1, 10)
-#         await call.message.answer(str(rnd_num))
-#         # await call.answer(text=f"Случайное число - {rnd_num}.", show_alert=True)
-#         await call.answer()
+@dp.callback_query_handler(callback_ad.filter(action=['list_user', 'list_black']))
+async def select_list(call: types.callback_query, callback_data: dict):
+    selected_list = callback_data['action'].split('_')[1]
+    users = get_list(selected_list)
+    buttons = []
+    for i, j in users.items():
+        buttons.append(types.InlineKeyboardButton(text=j,
+                                                  callback_data=callback_ad.new(
+                                                      action=selected_list,
+                                                      id_user=i,
+                                                      full_name=j
+                                                  )))
+    buttons.append(types.InlineKeyboardButton(text='Отмена',
+                                              callback_data=callback_ad.new(
+                                                  action='cancel',
+                                                  id_user='  ',
+                                                  full_name='  '
+                                              )))
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    keyboard.add(*buttons)
+    await call.message.edit_text('Выберите пользователя:',
+                                 reply_markup=keyboard)
 
 
-# Запуск выбора цифры
-@dp.message_handler(commands="numbers")
-async def cmd_numbers(message: types.Message):
-    if not check_user(message.from_user.id):
-        if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
-            return None
-        await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
-        return None
-    # словарь для считывания инлайн кнопок
-    callback_numbers = CallbackData("fab_num", "action")
-
-    # Генерация клавиатуры для выбора цирфы
-    def get_keyboard_numbers():
-        buttons = [
-            types.InlineKeyboardButton(text="-1", callback_data=callback_numbers.new(action="decrement")),
-            types.InlineKeyboardButton(text="random", callback_data=callback_numbers.new(action="random")),
-            types.InlineKeyboardButton(text="+1", callback_data=callback_numbers.new(action="increment")),
-            types.InlineKeyboardButton(text="Подтвердить", callback_data=callback_numbers.new(action="finish")),
-        ]
-        buttons.append(types.InlineKeyboardButton(text="Отмена", callback_data=callback_numbers.new(action="отмена")))
-        keyboard = types.InlineKeyboardMarkup(row_width=3)
-        keyboard.add(*buttons)
-        return keyboard
-
-    # Обновление цифры в клавиатуре при выборе цифры
-    async def update_num_text(message: types.Message, new_value: int):
-        with suppress(MessageNotModified):
-            await message.edit_text(f"Укажите число: {new_value}", reply_markup=get_keyboard_numbers())
-
-    user_data[message.from_user.id] = 0
-    await message.answer("Укажите число: 0", reply_markup=get_keyboard_numbers())
-
-    # Выбор цифры
-    @dp.callback_query_handler(callback_numbers.filter(action=["increment", "decrement", "random", "отмена"]))
-    async def callbacks_num_change(call: types.CallbackQuery, callback_data: dict):
-        user_value = user_data.get(call.from_user.id, 0)
-        action = callback_data["action"]
-        if action == "отмена":
-            await call.message.edit_text(f"Выбор числа отменён.")
-            await call.answer()
-        if action == "increment":
-            user_data[call.from_user.id] = user_value + 1
-            await update_num_text(call.message, user_value + 1)
-        elif action == "decrement":
-            user_data[call.from_user.id] = user_value - 1
-            await update_num_text(call.message, user_value - 1)
-        elif action == "random":
-            ran_num = randint(-10, 10)
-            print(ran_num)
-            user_data[call.from_user.id] = ran_num
-            await update_num_text(call.message, ran_num)
-        await call.answer()
-
-    # Вывод выбранной цифры
-    @dp.callback_query_handler(callback_numbers.filter(action=["finish"]))
-    async def callbacks_num_finish(call: types.CallbackQuery):
-        user_value = user_data.get(call.from_user.id, 0)
-        await call.message.edit_text(f"Итого: {user_value}")
-        await call.answer()
+@dp.callback_query_handler(callback_ad.filter(action=['user', 'black']))
+async def select_user(call: types.callback_query, callback_data: dict):
+    selected_list = callback_data.get('action')
+    id_of = callback_data.get('id_user')
+    name = callback_data['full_name']
+    if selected_list == 'user':
+        answer = f'Пользователь {name} удалён из списка пользователей.'
+        another_list = 'black'
+    else:
+        answer = f'Пользователь {name} удалён из чёрного списка.'
+        another_list = 'user'
+    log_in(name, 'del from', selected_list)
+    change_list(id_of, selected_list, another_list)
+    await call.message.edit_text(answer)
+    await call.answer()
 
 
 # Словарь для считывания инлайн кнопок
 callback_fd = CallbackData("fab_num", "action")
-# callback_task = CallbackData("fab_task", "action", "page", "id")
 
 
 # Формирование инлайн клавиатуры отменой
@@ -370,96 +304,6 @@ async def chose_cancel(call: types.CallbackQuery):
     log_in(call.from_user.full_name, 'cancel')
     await call.message.edit_text("Выбор отменён.")
     await call.answer()
-
-
-# Словарь данных пользователя
-fd_dict = {"Chosen_food": "",
-           "Chosen_size_food": "",
-           "Chosen_type_drink": "",
-           "Chosen_drink": "",
-           "Chosen_size_drink": "",
-           }
-
-
-# Начало /food
-@dp.message_handler(commands="food")
-async def food_start(message: types.Message):
-    if not check_user(message.from_user.id):
-        if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
-            return None
-        await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
-        return None
-    if message.from_user.id not in user_data.keys():
-        user_data[message.from_user.id] = fd_dict
-    await message.answer("Выберите блюдо:", reply_markup=get_keyboard(available_food_names))
-
-    # Выбор еды
-    @dp.callback_query_handler(callback_fd.filter(action=available_food_names))
-    async def food_food_chosen(call: types.CallbackQuery, callback_data: dict):
-        user_data[call.from_user.id]["Chosen_food"] = callback_data["action"]
-        await call.message.edit_text("Выберите размер блюда:", reply_markup=get_keyboard(available_food_sizes))
-
-    # Выбор размеров порции еды
-    @dp.callback_query_handler(callback_fd.filter(action=available_food_sizes))
-    async def food_size_chosen(call: types.CallbackQuery, callback_data: dict):
-        user_data[call.from_user.id]["Chosen_size_food"] = callback_data["action"]
-        await call.message.edit_text(f"{call.from_user.first_name}, вы заказали"
-                                     f" {user_data[call.from_user.id]['Chosen_food']}"
-                                     f" порцию {user_data[call.from_user.id]['Chosen_size_food']}.\n"
-                                     f"Поробуйте теперь заказать напитки: /drinks")
-
-
-# Начало выбора напитка
-@dp.message_handler(commands="drinks")
-async def drinks_start(message: types.Message):
-    if not check_user(message.from_user.id):
-        if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
-            return None
-        await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
-        return None
-    if message.from_user.id not in user_data.keys():
-        user_data[message.from_user.id] = fd_dict
-    await message.answer("Выберите тип напитка:", reply_markup=get_keyboard(["Алкогольный", "Безалкогольный"], 2))
-
-    # Выбор типа напитка
-    @dp.callback_query_handler(callback_fd.filter(action=["Алкогольный", "Безалкогольный"]))
-    async def drinks_type_chosen(call: types.CallbackQuery, callback_data: dict):
-        user_data[call.from_user.id]["Chosen_type_drink"] = callback_data["action"]
-        union_data = []
-        if callback_data["action"] == "Алкогольный":
-            union_data = available_bottle_alcohol_drinks_names + available_glasses_alcohol_drinks_names
-        elif callback_data["action"] == "Безалкогольный":
-            union_data = available_bottle_alcohol_free_drinks_names + available_glasses_alcohol_free_drinks_names
-        await call.message.edit_text(f"Выберите напиток:", reply_markup=get_keyboard(union_data, 3))
-
-    # Выбор напитка
-    @dp.callback_query_handler(callback_fd.filter(action=drinks))
-    async def drinks_chosen(call: types.CallbackQuery, callback_data: dict):
-        user_data[call.from_user.id]["Chosen_drink"] = callback_data["action"]
-        union_data = []
-        if callback_data["action"] in available_glasses_alcohol_drinks_names \
-                or callback_data["action"] in available_glasses_alcohol_free_drinks_names:
-            union_data = available_glasses_drinks_sizes
-        elif callback_data["action"] in available_bottle_alcohol_drinks_names \
-                or callback_data["action"] in available_bottle_alcohol_free_drinks_names:
-            union_data = available_bottle_drinks_sizes
-        await call.message.edit_text(f"Выберите размер порции:", reply_markup=get_keyboard(union_data, 2))
-
-    # Выбор обьёмов напитка
-    @dp.callback_query_handler(callback_fd.filter(action=sizes))
-    async def drinks_size_chosen(call: types.CallbackQuery, callback_data: dict):
-        user_data[call.from_user.id]["Chosen_size_drink"] = callback_data["action"]
-        answer = f"{call.from_user.first_name}, вы заказали {user_data[call.from_user.id]['Chosen_drink']}" \
-                 f" в количестве {user_data[call.from_user.id]['Chosen_size_drink']}."
-        if user_data[call.from_user.id]['Chosen_type_drink'] == "Алкогольный":
-            answer += f"\nБудьте осторожны, алкоголь вредит вашему здоровью!!!"
-        if user_data[call.from_user.id]['Chosen_drink'] == 'Энергетик' \
-                and user_data[call.from_user.id]['Chosen_size_drink'] != '1 бутылку':
-            answer += f"\nБудьте крайне осторожны, есть вероятность увидеть время"
-        if str(call.from_user.id) == str(432113264) and \
-                user_data[call.from_user.id]['Chosen_drink'] == "Гейская пинаколада":
-            answer += f"\nВитя, это тебе!"
-        await call.message.edit_text(answer)
 
 
 # Регстрация команд, отображаемых в интерефейсе Телеграм
@@ -506,7 +350,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
                                      'Введите "Отмена" для отмены ввода')
         await OrderMenu.wait_for_email.set()
     elif action == 'about me':
-        user_dict = read_json('users').get(str(call.from_user.id))
+        user_dict = read_json('user').get(str(call.from_user.id))
         status = 'Администратор' if check_admin(str(call.from_user.id)) else 'Пользователь'
         answer = f"Ваше имя - {user_dict['first_name']} {user_dict['last_name']}\n" + \
                  f"Ваша почта - {user_dict.get('email')}\n" + \
@@ -546,7 +390,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
                                      'Наберите "Отмена" для отмены.')
         await OrderMenu.wait_for_offer.set()
     elif action == 'remove book':
-        user_book = read_json('users').get(str(call.from_user.id)).get('bookmarks')
+        user_book = read_json('user').get(str(call.from_user.id)).get('bookmarks')
         buttons = []
         for i in user_book:
             buttons.append(types.InlineKeyboardButton(text=i.get('project_name') + ' // ' + i.get('task_name'),
@@ -608,7 +452,7 @@ async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
 @dp.callback_query_handler(callback_fd.filter(action=['via search']))
 async def search_project_via_search(call: types.CallbackQuery, callback_data: dict):
     log_in(call.from_user.full_name, call['data'])
-    user_email = read_json('users').get(str(call.from_user.id)).get('email')
+    user_email = read_json('user').get(str(call.from_user.id)).get('email')
     if user_email is not None:
         user_projects = get_all_project_for_user(user_email)
     user_data[call.from_user.id] = {'path': '/project/'}
@@ -661,9 +505,8 @@ INPUT_COSTS = """
 Для отмены введите '<i>отмена</i>'
 Для более подробного описания введите '<i>Ничего не понял</i>'
 Для добавления задачи в закладки введите '<i>Добавить закладку</i>'
+Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> ! <i>Сборка печатного прототипа</i>
 """
-# "Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> !"
-# " <i>Сборка печатного прототипа</i>"
 # "\n\n"
 # "Пример№2:\n<i>0.5</i>! <i>Печать деталей корпуса</i> \n"
 # "<i>2.5</i>! <i>Сборка печатного прототипа</i>\n\n"
@@ -748,7 +591,7 @@ async def add_costs(text, id_user):
         if '' in comment:
             comment.remove('')
         for i in comment:
-            comment_time = time/len(comment)
+            comment_time = time / len(comment)
             if comment_time > 2:
                 q_time = comment_time
                 while q_time > 2:
@@ -839,7 +682,7 @@ async def news_to_users(message: types.Message, state: FSMContext):
     log_in(message.from_user.full_name, 'send news')
     if not check_admin(message.from_user.id):
         return None
-    users = read_json('users')
+    users = read_json('user')
     for i in users.keys():
         name = users.get(i).get('first_name') + ' ' + users.get(i).get('last_name')
         news = message.text
