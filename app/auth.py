@@ -64,6 +64,9 @@ def check_mail(input_data, type_of_data='email'):
     user_dict = read_json('user')
     user_data = user_dict.get(str(input_data))
     user_data = user_data.get(type_of_data)
+    if type_of_data == 'date' and user_data is None:
+            edit_data(input_data, 'today', 'date')
+            user_data = 'today'
     if user_data is None:
         return None
     else:
