@@ -696,6 +696,7 @@ async def search_subtasks_via_search(call: types.CallbackQuery):
 
 @dp.callback_query_handler(callback_remove.filter(action=["add_costs"]))
 async def add_costs_via_bookmarks(call: types.CallbackQuery, callback_data: dict):
+    log_in(call.from_user.full_name, call['data'])
     user_data[call.from_user.id] = {'path': callback_data['page']}
     await call.message.edit_text(INPUT_COSTS)
     await OrderMenu.waiting_for_time_comment.set()
