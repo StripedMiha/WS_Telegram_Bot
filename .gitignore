@@ -134,3 +134,6 @@ app/list_black.json
 .config/bot.ini
 *.ini
 users_messages.txt
+/app/list_waiting.json
+/app/list_users.json
+/app/list_black.json
