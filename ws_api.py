@@ -94,19 +94,22 @@ def search_tasks(page, filter='active'):
     return out
 
 
-def get_today_costs(email):
+def get_today_costs(email, date):
     action = 'get_costs'
     hash_key = hashlib.md5(action.encode(ENCOD) + API_KEY.encode(ENCOD))
-    date_today = reformat_date(datetime.date.today())
+    if date == 'today':
+        date_check = reformat_date(datetime.date.today())
+    else:
+        date_check = date
 
     attributes_requests = {
         'SMDE_URL': SMDE_URL,
         'action': action,
         'hash': hash_key.hexdigest(),
-        'date': date_today
+        'date': date_check
         # 'filter': filter
     }
-    query = '{SMDE_URL}action={action}&show_subtasks=2&hash={hash}&datestart={date}'.format(
+    query = '{SMDE_URL}action={action}&show_subtasks=2&hash={hash}&datestart={date}&dateend={date}'.format(
         **attributes_requests)
     req = requests.get(query).json().get('data')
     # pprint(req)
@@ -117,8 +120,8 @@ def get_today_costs(email):
     return user_list_costs
 
 
-def get_format_today_costs(user_email, with_id=False):
-    data = get_today_costs(user_email)
+def get_format_today_costs(user_email, with_id=False, date='today'):
+    data = get_today_costs(user_email, date)
     answer = ''
     all_comment = []
     total_time = [0, 0]
@@ -148,7 +151,7 @@ def get_format_today_costs(user_email, with_id=False):
         all_comment.append(this_comment)
         text = f"Проект: {this_comment['project_name']}\n" \
                f"Задача: {this_comment['task_name']}\n" \
-               f"Потрачено {this_comment['time_cost']}на {this_comment['comment']}\n\n"
+               f"Потрачено: {this_comment['time_cost']}на {this_comment['comment']}\n\n"
         answer += text
         total_time = [total_time[0] + hours, total_time[1] + minutes]
     # pprint(all_comment)
@@ -166,7 +169,11 @@ def get_format_today_costs(user_email, with_id=False):
         total_time_str += f'{total_time[0]} {word} '
     if total_time[1] > 0:
         total_time_str += f'{total_time[1]} минут '
-    answer += f'Общее время за сегодня: {total_time_str}'
+    if date == 'today':
+        date = 'сегодня'
+    else:
+        date = date
+    answer += f"Общее время за {date}: {total_time_str}"
     if total_time[0] + total_time[1] == 0:
         return None
     return answer
@@ -188,9 +195,13 @@ def remove_cost(page, cost_id):
     return req.get('status')
 
 
-def add_cost(page, user_email, comment, time):
+def add_cost(page, user_email, comment, time, date='today'):
     action = 'add_costs'
     hash_key = hashlib.md5(page.encode(ENCOD) + action.encode(ENCOD) + API_KEY.encode(ENCOD))
+    if date == 'today':
+        date_add = reformat_date(datetime.date.today())
+    else:
+        date_add = date
 
     attributes_requests = {
         'SMDE_URL': SMDE_URL,
@@ -198,11 +209,12 @@ def add_cost(page, user_email, comment, time):
         'hash': hash_key.hexdigest(),
         'email': user_email,
         'page': page,
-        'comment':comment,
-        'time':time
+        'comment': comment,
+        'time': time,
+        'date': date_add
     }
     query = '{SMDE_URL}action={action}&page={page}&email_user_from={email}&time={time}' \
-            '&comment={comment}&hash={hash}'.format(**attributes_requests)
+            '&date={date}&comment={comment}&hash={hash}'.format(**attributes_requests)
     req = requests.get(query).json()
     print(req)
     return req.get('status')

@@ -13,10 +13,6 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
 
 from app.config_reader import load_config
-from app.handlers.food import available_food_names, available_food_sizes
-from app.handlers.drinks import available_bottle_drinks_sizes, available_glasses_drinks_sizes
-from app.handlers.drinks import available_bottle_alcohol_drinks_names, available_glasses_alcohol_drinks_names
-from app.handlers.drinks import available_bottle_alcohol_free_drinks_names, available_glasses_alcohol_free_drinks_names
 from app.auth import *
 from ws_api import get_all_project_for_user, get_tasks, search_tasks, get_format_today_costs, remove_cost, add_cost, \
     get_task_info
@@ -26,9 +22,6 @@ from pprint import pprint
 from contextlib import suppress
 from random import randint
 
-drinks = available_glasses_alcohol_free_drinks_names + available_glasses_alcohol_drinks_names \
-         + available_bottle_alcohol_free_drinks_names + available_bottle_alcohol_drinks_names
-sizes = available_bottle_drinks_sizes + available_glasses_drinks_sizes
 
 config = load_config("config/bot.ini")
 # token = '1909941584:AAHRt33_hZPH9XzGRbQpAyqGzh9sbwEWZtQ'
@@ -41,12 +34,14 @@ class OrderMenu(StatesGroup):
     waiting_for_time_comment = State()
     wait_for_offer = State()
     wait_news = State()
+    wait_for_date = State()
 
 
 def register_handlers_time_cost(dp: Dispatcher):
     dp.register_message_handler(menu, commands="menu", state="*")
     dp.register_message_handler(wait_offer, state=OrderMenu.wait_for_offer)
     dp.register_message_handler(wait_email, state=OrderMenu.wait_for_email)
+    dp.register_message_handler(wait_date, state=OrderMenu.wait_for_date)
     dp.register_message_handler(wait_hours, state=OrderMenu.waiting_for_time_comment)
     dp.register_message_handler(news_to_users, state=OrderMenu.wait_news)
 
@@ -327,12 +322,17 @@ async def menu(message: types.Message):
         buttons = {'about me': 'Обо мне',
                    'set email': 'Установить почту'}
     else:
-        buttons = {'daily report': 'Отчёт за сегодня',
+        if check_mail(message.from_user.id, 'date') == 'today':
+            date = 'сегодня'
+        else:
+            date = check_mail(message.from_user.id, 'date')
+        buttons = {'daily report': f"Отчёт за {date}",
                    'search task': 'Найти задачу',
                    'remove time cost': 'Удалить трудоёмкость',
                    'remove book': 'Удалить закладку',
+                   'change date': 'Изменить дату',
+                   'change email': 'Изменить почту',
                    'about me': 'О вас',
-                   #  'change email': 'Изменить почту',
                    'offers': 'Предложение/отзыв о боте'}
     await message.answer('Доступные действия:', reply_markup=get_keyboard(buttons, 2))
 
@@ -341,11 +341,11 @@ callback_remove = CallbackData("fab_task", "page", "id", "action")
 
 
 @dp.callback_query_handler(callback_fd.filter(action=['set email', 'change email', 'about me', 'remove book',
-                                                      'daily report', 'remove time cost', 'offers']))
+                                                      'daily report', 'remove time cost', 'offers', 'change date']))
 async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     action = callback_data.get('action')
     log_in(call.from_user.full_name, action)
-    if action == 'set email' or action == 'change email':
+    if action == 'set email': #  or action == 'change email':
         await call.message.edit_text('Введите вашу корпоративную почту:\n'
                                      'Введите "Отмена" для отмены ввода')
         await OrderMenu.wait_for_email.set()
@@ -354,19 +354,24 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
         status = 'Администратор' if check_admin(str(call.from_user.id)) else 'Пользователь'
         answer = f"Ваше имя - {user_dict['first_name']} {user_dict['last_name']}\n" + \
                  f"Ваша почта - {user_dict.get('email')}\n" + \
-                 f"Ваш статус - {status}"
+                 f"Ваш статус - {status}\n" + \
+                 f"Указанная дата - {check_mail(call.from_user.id, 'date')}"
         await call.message.edit_text(answer)
     elif action == 'daily report':
-        answer = get_format_today_costs(check_mail(call.from_user.id))
+        answer = get_format_today_costs(check_mail(call.from_user.id), date=check_mail(call.from_user.id, 'date'))
         if answer is None:
-            await call.message.edit_text('Вы не внесли трудоёмкости за сегодня.\n'
+            await call.message.edit_text(f"Вы не внесли трудоёмкости за {check_mail(call.from_user.id, 'date')}.\n"
                                          'Не навлекай на себя гнев Ксении. \n'
                                          'Будь умничкой - внеси часы.')
             return
-        await call.message.edit_text('<b>Отчёт за сегодня:</b>\n\n')
+        if check_mail(call.from_user.id, 'date') == 'today':
+            date = 'сегодня'
+        else:
+            date = check_mail(call.from_user.id, 'date')
+        await call.message.edit_text(f"<b>Отчёт за {date}:</b>\n\n")
         await call.message.answer(answer)
     elif action == 'remove time cost':
-        comment = get_format_today_costs(check_mail(str(call.from_user.id)), True)
+        comment = get_format_today_costs(check_mail(str(call.from_user.id)), True, check_mail(call.from_user.id, 'date'))
         buttons = []
         for i in comment:
             buttons.append(types.InlineKeyboardButton(text=(i.get('time_cost') + i.get('comment') +
@@ -404,19 +409,47 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
         keyboard = types.InlineKeyboardMarkup(row_width=1)
         keyboard.add(*buttons)
         await call.message.edit_text('Выберите закладку, которую хотите удалить:', reply_markup=keyboard)
+    elif action == 'change date':
+        answer = "Введите дату в формате ДД.ММ.ГГГГ:\n" \
+                 "Введите 'сегодня' или 'today', чтобы бот взаимодействовал с днём который будет на тот" \
+                 " момент сегодняшним 🤪\n" \
+                 "Введите 'отмена' для отмены изменения даты"
+        await call.message.edit_text(answer)
+        await OrderMenu.wait_for_date.set()
     else:
         await call.message.edit_text('Пока ниработает :с')
     await call.answer()
     return None
 
 
+async def wait_date(message: types.Message, state: FSMContext):
+    log_in(message.from_user.full_name, 'Вводит дату:', message.text)
+    if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
+        await message.answer('Отменён ввод почты.\n')
+        log_in(message.from_user.full_name, 'cancel input email')
+        await state.finish()
+    elif message.text.lower() == 'сегодня' or message.text.lower() == 'today':
+        edit_data(message.from_user.id, 'today', 'date')
+        await message.answer('Теперь бот будет записывать на текущий день')
+    elif re.match(r'(((0[1-9])|([1-2][0-9])|(3[0-1]))\.((0[1-9])|(1[0-2]))\.20[2-9][0-9])', message.text):
+        date = message.text.strip(' ')
+        edit_data(message.from_user.id, date, 'date')
+        await message.answer(f'Установлена дата: {date}')
+    else:
+        await message.answer('Дата введена в неверном формате.')
+        return
+    await state.finish()
+    return
+
+
+
 async def wait_email(message: types.Message, state: FSMContext):
     log_in(message.from_user.full_name, message.text)
     if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru|[a-z]\d@s-t.studio', message.text):
-        edit_mail(message.from_user.id, message.text)
+        edit_data(message.from_user.id, message.text, 'email')
         answer = message.from_user.full_name + ', вы установили почту: ' + check_mail(message.from_user.id)
         await message.answer(answer)
-    elif message.text.lower() == 'отмена':
+    elif message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
         await message.answer('Отменён ввод почты.\n')
         log_in(message.from_user.full_name, 'cancel input email')
         await state.finish()
@@ -429,7 +462,7 @@ async def wait_email(message: types.Message, state: FSMContext):
 
 
 async def wait_offer(message: types.Message, state: FSMContext):
-    if message.text.lower() == 'отмена':
+    if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
         log_in(message.from_user.full_name, 'cancel input offer')
         await message.answer('Отменён ввод.\n')
         await state.finish()
@@ -526,6 +559,7 @@ async def search_subtasks_via_search(call: types.CallbackQuery):
     path = user_data[call.from_user.id].get('path')
     tasks = search_tasks(path)
     if tasks.get(task_id) is None or tasks.get(task_id).get('child') is None:
+        # pprint(call['data']) # todo имя проекта и задачи в сообщении
         await call.message.edit_text(INPUT_COSTS)
         await OrderMenu.waiting_for_time_comment.set()
         return 0
@@ -541,6 +575,7 @@ async def search_subtasks_via_search(call: types.CallbackQuery):
 async def add_costs_via_bookmarks(call: types.CallbackQuery, callback_data: dict):
     log_in(call.from_user.full_name, call['data'])
     user_data[call.from_user.id] = {'path': callback_data['page']}
+    # pprint(callback_data)  # todo имя проекта и задачи в сообщении
     await call.message.edit_text(INPUT_COSTS)
     await OrderMenu.waiting_for_time_comment.set()
     return
@@ -562,7 +597,8 @@ async def remove_comments(call: types.CallbackQuery, callback_data: dict):
         await call.message.edit_text("Выбор отменён")
         return
     elif action == "remove_all":
-        comments = get_format_today_costs(check_mail(str(call.from_user.id)), True)
+        comments = get_format_today_costs(check_mail(str(call.from_user.id)), True,
+                                          check_mail(str(call.from_user.id), 'date'))
         await call.message.edit_text('Будет удалено ' + str(len(comments)) + ' записей')
         for comment in comments:
             page = comment.get('page')
@@ -596,24 +632,24 @@ async def add_costs(text, id_user):
                 q_time = comment_time
                 while q_time > 2:
                     q_time -= 2
-                    status = add_cost(path, email, i, 2)
+                    status = add_cost(path, email, i, 2, check_mail(id_user, 'date'))
                     if status == 'ok':
-                        log_in(full_name, 'add comments', path, email, i, 2)
+                        log_in(full_name, 'add comments', path, email, i, 2, check_mail(id_user, 'date'))
                         answer = 'Успешно внесено'
                     else:
                         answer = 'Не успех'
                     await bot.send_message(int(id_user), answer)
-                status = add_cost(path, email, i, q_time)
+                status = add_cost(path, email, i, q_time, check_mail(id_user, 'date'))
                 if status == 'ok':
-                    log_in(full_name, 'add comments', path, email, i, q_time)
+                    log_in(full_name, 'add comments', path, email, i, q_time, check_mail(id_user, 'date'))
                     answer = 'Успешно внесено'
                 else:
                     answer = 'Не успех'
                 await bot.send_message(int(id_user), answer)
             else:
-                status = add_cost(path, email, i, comment_time)
+                status = add_cost(path, email, i, comment_time, check_mail(id_user, 'date'))
                 if status == 'ok':
-                    log_in(full_name, 'add comments', path, email, i, comment_time)
+                    log_in(full_name, 'add comments', path, email, i, comment_time, check_mail(id_user, 'date'))
                     answer = 'Успешно внесено'
                 else:
                     answer = 'Не успех'

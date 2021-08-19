@@ -1,5 +1,6 @@
 import json
 import os
+from pprint import pprint
 
 
 dir_name = (os.path.dirname(__file__))
@@ -69,9 +70,9 @@ def check_mail(input_data, type_of_data='email'):
         return user_data
 
 
-def edit_mail(user_id, new_mail):
+def edit_data(user_id, new_data, type_data):
     user_dict = read_json('user')
-    user_dict[str(user_id)]['email'] = new_mail
+    user_dict[str(user_id)][type_data] = new_data
     write_json('user', user_dict)
 
 
