@@ -39,8 +39,12 @@ def get_all_project_for_user(email, filter='active'):
         if email in list_email:
             project_id = i.get('id')
             name = i.get('name')
-            user_project[('id_'+str(project_id))] = name
+            user_project[str(project_id)] = name
+    pprint(user_project)
     return user_project
+
+
+# get_all_project_for_user('m.ignatenko@smde.ru')
 
 
 def get_tasks(page, filter='active'):
@@ -56,14 +60,15 @@ def get_tasks(page, filter='active'):
     if filter is None:
         query = '{SMDE_URL}action={action}&page={page}&hash={hash}'.format(**attributes_requests)
     else:
-        query = '{SMDE_URL}action={action}&page={page}&hash={hash}&filter={filter}'.format(**attributes_requests)
+        query = '{SMDE_URL}action={action}&page={page}&show_subtasks=2&hash={hash}&filter={filter}'.format(**attributes_requests)
     req = requests.get(query)
     tasks = req.json().get('data')
+    pprint(tasks)
     project_task = {}
     for i in tasks:
         task_id = i.get('id')
         task_name = i.get('name')
-        project_task[('task_id_'+str(task_id))] = task_name
+        project_task[(str(task_id))] = task_name
     return project_task
 
 
@@ -80,6 +85,7 @@ def search_tasks(page, filter='active'):
     query = '{SMDE_URL}action={action}&page={page}&show_subtasks=2&hash={hash}&filter={filter}'.format(**attributes_requests)
     req = requests.get(query)
     tasks = req.json().get('data')
+    # pprint(tasks)
     out = {}
     for i in tasks:
         out[i['id']] = {'name': i['name']}
@@ -92,6 +98,11 @@ def search_tasks(page, filter='active'):
                         out[i['id']]['child'][k['id']] = {'name': k['name']}
 
     return out
+
+
+pprint(search_tasks('/project/256242/'))
+# pprint(search_tasks('/project/256242/9432492/'))
+# pprint(search_tasks('/project/256242/9432492/9432762/'))
 
 
 def get_today_costs(email, date):
@@ -220,7 +231,7 @@ def add_cost(page, user_email, comment, time, date='today'):
     return req.get('status')
 
 
-def get_task_info(page):
+async def get_task_info(page):
     action = 'get_task'
     hash_key = hashlib.md5(page.encode(ENCOD) + action.encode(ENCOD) + API_KEY.encode(ENCOD))
     attributes_requests = {
@@ -231,6 +242,7 @@ def get_task_info(page):
     }
     query = '{SMDE_URL}action={action}&page={page}&hash={hash}'.format(**attributes_requests)
     req = requests.get(query).json()
+    print('test')
     return req
 
 # pprint(get_tasks('/project/246875/'))

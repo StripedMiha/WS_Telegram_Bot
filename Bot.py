@@ -22,7 +22,6 @@ from pprint import pprint
 from contextlib import suppress
 from random import randint
 
-
 config = load_config("config/bot.ini")
 # token = '1909941584:AAHRt33_hZPH9XzGRbQpAyqGzh9sbwEWZtQ'
 bot = Bot(token=config.tg_bot.token, parse_mode=types.ParseMode.HTML)
@@ -200,8 +199,9 @@ async def user_decide(call: types.CallbackQuery, callback_data: dict):
 
 
 @dp.callback_query_handler(callback_ad.filter(action='cancel'))
-async def ad_cancel(call: types.CallbackQuery):
+async def ad_cancel(call: types.CallbackQuery, state: FSMContext):
     await call.message.edit_text('Выбор отменён')
+    await state.finish
     await call.answer()
 
 
@@ -345,7 +345,7 @@ callback_remove = CallbackData("fab_task", "page", "id", "action")
 async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     action = callback_data.get('action')
     log_in(call.from_user.full_name, action)
-    if action == 'set email': #  or action == 'change email':
+    if action == 'set email':  # or action == 'change email':
         await call.message.edit_text('Введите вашу корпоративную почту:\n'
                                      'Введите "Отмена" для отмены ввода')
         await OrderMenu.wait_for_email.set()
@@ -371,7 +371,8 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
         await call.message.edit_text(f"<b>Отчёт за {date}:</b>\n\n")
         await call.message.answer(answer)
     elif action == 'remove time cost':
-        comment = get_format_today_costs(check_mail(str(call.from_user.id)), True, check_mail(call.from_user.id, 'date'))
+        comment = get_format_today_costs(check_mail(str(call.from_user.id)), True,
+                                         check_mail(call.from_user.id, 'date'))
         buttons = []
         for i in comment:
             buttons.append(types.InlineKeyboardButton(text=(i.get('time_cost') + i.get('comment') +
@@ -442,7 +443,6 @@ async def wait_date(message: types.Message, state: FSMContext):
     return
 
 
-
 async def wait_email(message: types.Message, state: FSMContext):
     log_in(message.from_user.full_name, message.text)
     if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru|[a-z]\d@s-t.studio', message.text):
@@ -481,6 +481,8 @@ async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
     buttons = {'via search': 'Через поиск', 'via bookmarks': 'Через закладки'}
     await call.message.edit_text('Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
 
+callback_search = CallbackData('fab_search', 'action', 'path')
+
 
 @dp.callback_query_handler(callback_fd.filter(action=['via search']))
 async def search_project_via_search(call: types.CallbackQuery, callback_data: dict):
@@ -488,8 +490,25 @@ async def search_project_via_search(call: types.CallbackQuery, callback_data: di
     user_email = read_json('user').get(str(call.from_user.id)).get('email')
     if user_email is not None:
         user_projects = get_all_project_for_user(user_email)
-    user_data[call.from_user.id] = {'path': '/project/'}
-    await call.message.edit_text('Выберите проект', reply_markup=get_keyboard(user_projects, 2))
+    # user_data[call.from_user.id] = {'path': '/project/'}
+    buttons = []
+    for i, j in user_projects.items():
+        buttons.append(types.InlineKeyboardButton(text=j,
+                                                  callback_data=callback_search.new(action='search_task',
+                                                                                    path=f'/project/{i}/',
+                                                                                    )))
+    buttons.append(types.InlineKeyboardButton(text='Отмена', callback_data=callback_search.new(action='cancel',
+                                                                                        path=' ')))
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    keyboard.add(*buttons)
+    await call.message.edit_text('Выберите проект', reply_markup=keyboard)
+
+
+@dp.callback_query_handler(callback_search.filter(action="cancel"))
+async def remove_comments(call: types.CallbackQuery, callback_data: dict):
+    log_in(call.from_user.full_name, call['data'])
+    await call.message.edit_text("Выбор отменён")
+    return
 
 
 @dp.callback_query_handler(callback_fd.filter(action=['via bookmarks']))
@@ -507,7 +526,7 @@ async def search_project_via_bookmarks(call: types.CallbackQuery, callback_data:
                 prj_name = ' '.join(prj_name.split(' ')[:2])
             buttons.append(types.InlineKeyboardButton(text=prj_name + ' // ' + i.get('task_name'),
                                                       callback_data=callback_remove.new(page=i.get('path'),
-                                                                                        id="---",
+                                                                                        id='---',
                                                                                         action="add_costs")))
         buttons.append(types.InlineKeyboardButton(text='Отмена',
                                                   callback_data=callback_remove.new(page="---",
@@ -519,14 +538,25 @@ async def search_project_via_bookmarks(call: types.CallbackQuery, callback_data:
     return
 
 
-@dp.callback_query_handler(lambda callback: callback['data'].split(':')[1].startswith('id_'))
-async def search_tasks_via_search(call: types.CallbackQuery):
+@dp.callback_query_handler(callback_search.filter(action='search_task'))
+async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict):
     log_in(call.from_user.full_name, call['data'])
-    project_id = call['data'].split(':')[1].split('_')[-1]
-    user_data[call.from_user.id]['path'] += project_id + '/'
-    path = user_data[call.from_user.id].get('path')
-    tasks = get_tasks(path)
-    await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(tasks, 2))
+    path = callback_data['path']
+    tasks = search_tasks(path)
+    # pprint(tasks)
+    print(path)
+    buttons = []
+    for i, j in tasks.items():
+        buttons.append(types.InlineKeyboardButton(text=j.get('name'),
+                                                  callback_data=callback_search.new(action='search_subtask',
+                                                                                    path=f'{path}{i}/')))
+    buttons.append(types.InlineKeyboardButton(text='Отмена',
+                                              callback_data=callback_search.new(action='cancel', path=' ')))
+    keyboard = types.InlineKeyboardMarkup(row_width=3)
+    keyboard.add(*buttons)
+    await call.message.edit_text('Выберите задачу', reply_markup=keyboard)
+
+    # await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(tasks, 2))
 
 
 INPUT_COSTS = """
@@ -540,6 +570,8 @@ INPUT_COSTS = """
 Для добавления задачи в закладки введите '<i>Добавить закладку</i>'
 Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> ! <i>Сборка печатного прототипа</i>
 """
+
+
 # "\n\n"
 # "Пример№2:\n<i>0.5</i>! <i>Печать деталей корпуса</i> \n"
 # "<i>2.5</i>! <i>Сборка печатного прототипа</i>\n\n"
@@ -551,32 +583,52 @@ INPUT_COSTS = """
 # """
 
 
-@dp.callback_query_handler(lambda callback: (callback['data'].split(':')[1]).startswith('task_id_'))
-async def search_subtasks_via_search(call: types.CallbackQuery):
+@dp.callback_query_handler(callback_search.filter(action='search_subtask'))
+async def search_subtasks_via_search(call: types.CallbackQuery, callback_data: dict):
+    pprint(callback_data)
     log_in(call.from_user.full_name, call['data'])
-    task_id = call['data'].split(':')[1].split('_')[-1]
-    user_data[call.from_user.id]['path'] += task_id + '/'
-    path = user_data[call.from_user.id].get('path')
-    tasks = search_tasks(path)
-    if tasks.get(task_id) is None or tasks.get(task_id).get('child') is None:
-        # pprint(call['data']) # todo имя проекта и задачи в сообщении
-        await call.message.edit_text(INPUT_COSTS)
+    path = callback_data['path']
+    task_info = await get_task_info(path)
+    id = path.split('/')[-2]
+    project_tasks = search_tasks(path)
+    if project_tasks.get(id).get('child') is None:
+        task_name = task_info['data']['project']['name'] + ' // ' + task_info['data']['name'] + '\n'
+        date = 'Установленная дата - ' + check_mail(call.from_user.id, 'date') + '\n'
+        answer = task_name + date + INPUT_COSTS
+        await call.message.edit_text(answer)
         await OrderMenu.waiting_for_time_comment.set()
-        return 0
-    subtask = tasks.get(task_id)
-    subtasks = subtask.get('child')
-    subtasks_buttons = {}
-    for i, j in subtasks.items():
-        subtasks_buttons['task_id_' + i] = j.get('name')
-    await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(subtasks_buttons, 2))
+        return
+
+    # task_id = call['data'].split(':')[1].split('_')[-1]
+    # user_data[call.from_user.id]['path'] += task_id + '/'
+    # path = user_data[call.from_user.id].get('path')
+    # # pprint(path)
+    # tasks = search_tasks(path)
+    # # pprint(tasks)
+    # if tasks.get(task_id) is None or tasks.get(task_id).get('child') is None:
+    #     task_info = get_task_info(path)
+    #     task_name = task_info['data']['project']['name'] + ' // ' + task_info['data']['name'] + '\n'
+    #     date = 'Установленная дата - ' + check_mail(call.from_user.id, 'date') + '\n'
+    #     answer = task_name + date + INPUT_COSTS
+    #     await call.message.edit_text(answer)
+    #     await OrderMenu.waiting_for_time_comment.set()
+    #     return 0
+    # subtask = tasks.get(task_id)
+    # subtasks = subtask.get('child')
+    # subtasks_buttons = {}
+    # for i, j in subtasks.items():
+    #     subtasks_buttons['task_id_' + i] = j.get('name')
+    # await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(subtasks_buttons, 2))
 
 
 @dp.callback_query_handler(callback_remove.filter(action=["add_costs"]))
 async def add_costs_via_bookmarks(call: types.CallbackQuery, callback_data: dict):
     log_in(call.from_user.full_name, call['data'])
-    user_data[call.from_user.id] = {'path': callback_data['page']}
-    # pprint(callback_data)  # todo имя проекта и задачи в сообщении
-    await call.message.edit_text(INPUT_COSTS)
+    task_info = get_task_info(callback_data['page'])
+    task_name = task_info['data']['project']['name'] + ' // ' + task_info['data']['name'] + '\n'
+    date = 'Установленная дата - ' + check_mail(call.from_user.id, 'date') + '\n'
+    answer = task_name + date + INPUT_COSTS  # todo имя проекта и задачи в сообщении\
+    await call.message.edit_text(answer)
     await OrderMenu.waiting_for_time_comment.set()
     return
 
@@ -659,7 +711,7 @@ async def add_costs(text, id_user):
 async def wait_hours(message: types.Message, state: FSMContext):
     log_in(message.from_user.full_name, message.text)
     text = message.text
-    if 'отмена' in text.lower():
+    if 'отмена' in text.lower() or 'cancel' in text.lower():
         await message.answer('Отмена ввода')
         await state.finish()
         return
@@ -706,7 +758,7 @@ async def wait_hours(message: types.Message, state: FSMContext):
 
 @dp.message_handler(commands='news')
 async def wait_for_news(message: types.Message):
-    log_in(message.from_user.id, '')
+    log_in(message.from_user.full_name, 'send news')
     if check_admin(message.from_user.id) is None:
         return None
     await message.answer('Введите новость:')
