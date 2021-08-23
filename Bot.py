@@ -15,7 +15,7 @@ from aiogram.dispatcher import FSMContext
 from app.config_reader import load_config
 from app.auth import *
 from ws_api import get_all_project_for_user, get_tasks, search_tasks, get_format_today_costs, remove_cost, add_cost, \
-    get_task_info
+    get_task_info, check_task_name
 from app.fun import register_handlers_fun
 
 from pprint import pprint
@@ -543,8 +543,6 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
     log_in(call.from_user.full_name, call['data'])
     path = callback_data['path']
     tasks = search_tasks(path)
-    # pprint(tasks)
-    print(path)
     buttons = []
     for i, j in tasks.items():
         buttons.append(types.InlineKeyboardButton(text=j.get('name'),
@@ -555,8 +553,6 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
     keyboard = types.InlineKeyboardMarkup(row_width=3)
     keyboard.add(*buttons)
     await call.message.edit_text('Выберите задачу', reply_markup=keyboard)
-
-    # await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(tasks, 2))
 
 
 INPUT_COSTS = """
@@ -570,8 +566,6 @@ INPUT_COSTS = """
 Для добавления задачи в закладки введите '<i>Добавить закладку</i>'
 Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> ! <i>Сборка печатного прототипа</i>
 """
-
-
 # "\n\n"
 # "Пример№2:\n<i>0.5</i>! <i>Печать деталей корпуса</i> \n"
 # "<i>2.5</i>! <i>Сборка печатного прототипа</i>\n\n"
@@ -584,47 +578,36 @@ INPUT_COSTS = """
 
 
 @dp.callback_query_handler(callback_search.filter(action='search_subtask'))
-async def search_subtasks_via_search(call: types.CallbackQuery, callback_data: dict):
-    pprint(callback_data)
+async def search_subtasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     log_in(call.from_user.full_name, call['data'])
     path = callback_data['path']
-    task_info = await get_task_info(path)
     id = path.split('/')[-2]
     project_tasks = search_tasks(path)
-    if project_tasks.get(id).get('child') is None:
-        task_name = task_info['data']['project']['name'] + ' // ' + task_info['data']['name'] + '\n'
+    if project_tasks.get(id) is None or project_tasks.get(id).get('child') is None:
+        await state.update_data(path=callback_data['path'])
+        name = check_task_name(path)
         date = 'Установленная дата - ' + check_mail(call.from_user.id, 'date') + '\n'
-        answer = task_name + date + INPUT_COSTS
+        answer = name + date + INPUT_COSTS
         await call.message.edit_text(answer)
         await OrderMenu.waiting_for_time_comment.set()
         return
-
-    # task_id = call['data'].split(':')[1].split('_')[-1]
-    # user_data[call.from_user.id]['path'] += task_id + '/'
-    # path = user_data[call.from_user.id].get('path')
-    # # pprint(path)
-    # tasks = search_tasks(path)
-    # # pprint(tasks)
-    # if tasks.get(task_id) is None or tasks.get(task_id).get('child') is None:
-    #     task_info = get_task_info(path)
-    #     task_name = task_info['data']['project']['name'] + ' // ' + task_info['data']['name'] + '\n'
-    #     date = 'Установленная дата - ' + check_mail(call.from_user.id, 'date') + '\n'
-    #     answer = task_name + date + INPUT_COSTS
-    #     await call.message.edit_text(answer)
-    #     await OrderMenu.waiting_for_time_comment.set()
-    #     return 0
-    # subtask = tasks.get(task_id)
-    # subtasks = subtask.get('child')
-    # subtasks_buttons = {}
-    # for i, j in subtasks.items():
-    #     subtasks_buttons['task_id_' + i] = j.get('name')
-    # await call.message.edit_text('Выберите задачу:', reply_markup=get_keyboard(subtasks_buttons, 2))
+    buttons = []
+    for i, j in project_tasks.get(id).get('child').items():
+        buttons.append(types.InlineKeyboardButton(text=j.get('name'),
+                                                  callback_data=callback_search.new(action='search_subtask',
+                                                                                    path=f'{path}{i}/')))
+    buttons.append(types.InlineKeyboardButton(text='Отмена',
+                                              callback_data=callback_search.new(action='cancel', path=' ')))
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+    keyboard.add(*buttons)
+    await call.message.edit_text('Выберите подзадачу', reply_markup=keyboard)
 
 
 @dp.callback_query_handler(callback_remove.filter(action=["add_costs"]))
-async def add_costs_via_bookmarks(call: types.CallbackQuery, callback_data: dict):
+async def add_costs_via_bookmarks(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     log_in(call.from_user.full_name, call['data'])
     task_info = get_task_info(callback_data['page'])
+    await state.update_data(path=task_info.get('data').get('page'))
     task_name = task_info['data']['project']['name'] + ' // ' + task_info['data']['name'] + '\n'
     date = 'Установленная дата - ' + check_mail(call.from_user.id, 'date') + '\n'
     answer = task_name + date + INPUT_COSTS  # todo имя проекта и задачи в сообщении\
@@ -668,8 +651,7 @@ async def remove_comments(call: types.CallbackQuery, callback_data: dict):
     return
 
 
-async def add_costs(text, id_user):
-    path = user_data[id_user]['path']
+async def add_costs(text, id_user, path):
     email = check_mail(str(id_user))
     full_name = check_mail(id_user, 'first_name') + ' ' + check_mail(id_user, 'last_name')
     for string in text.split('\n'):
@@ -706,6 +688,8 @@ async def add_costs(text, id_user):
                 else:
                     answer = 'Не успех'
                 await bot.send_message(int(id_user), answer)
+        answer2 = '<b>Время</b> - ' + str(time) + 'ч\n<b>Проделанная работа</b> - ' + ', '.join(comment)
+        await bot.send_message(int(id_user), answer2)
 
 
 async def wait_hours(message: types.Message, state: FSMContext):
@@ -750,9 +734,8 @@ async def wait_hours(message: types.Message, state: FSMContext):
                              "Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся "
                              "на две записи: на запись с двумя часами и запись с получасом.")
         return
-    await add_costs(text, message.from_user.id)
-    # answer2 = '<b>Время</b> - ' + str(time) + 'ч\n<b>Проделанная работа</b> - ' + ', '.join(comment)
-    # await message.answer(answer2)
+    data = await state.get_data()
+    await add_costs(text, message.from_user.id, data['path'])
     await state.finish()
 
 

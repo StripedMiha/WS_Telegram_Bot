@@ -1,13 +1,27 @@
 from api_keys import SMDE_URL, api_token_worksection
+# from app.auth import read_json, write_json
 from pprint import pprint
 
 import hashlib
 import requests
 import datetime
+import json
+import os
 
 
+dir_name = (os.path.dirname(__file__))
 ENCOD = 'utf-8'
 API_KEY = api_token_worksection
+
+
+def read_json():
+    with open(os.path.join(dir_name, 'tasks_name.json'), "r", encoding='utf-8') as file_data:
+        return json.load(file_data)
+
+
+def write_json(content):
+    with open(os.path.join(dir_name, 'tasks_name.json'), "w", encoding='utf-8') as file_data:
+        json.dump(content, file_data, ensure_ascii=False)
 
 
 def reformat_date(date):
@@ -16,6 +30,16 @@ def reformat_date(date):
     split_date.reverse()
     format_date = '.'.join(split_date)
     return format_date
+
+
+def check_task_name(path):
+    data = read_json()
+    if path not in data.keys():
+        task_info = get_task_info(path)
+        task_name = task_info['data']['project']['name'] + ' // ' + task_info['data']['name'] + '\n'
+        data[path] = task_name
+        write_json(data)
+    return data[path]
 
 
 def get_all_project_for_user(email, filter='active'):
@@ -40,7 +64,6 @@ def get_all_project_for_user(email, filter='active'):
             project_id = i.get('id')
             name = i.get('name')
             user_project[str(project_id)] = name
-    pprint(user_project)
     return user_project
 
 
@@ -63,7 +86,7 @@ def get_tasks(page, filter='active'):
         query = '{SMDE_URL}action={action}&page={page}&show_subtasks=2&hash={hash}&filter={filter}'.format(**attributes_requests)
     req = requests.get(query)
     tasks = req.json().get('data')
-    pprint(tasks)
+    # pprint(tasks)
     project_task = {}
     for i in tasks:
         task_id = i.get('id')
@@ -100,7 +123,7 @@ def search_tasks(page, filter='active'):
     return out
 
 
-pprint(search_tasks('/project/256242/'))
+# pprint(search_tasks('/project/256242/'))
 # pprint(search_tasks('/project/256242/9432492/'))
 # pprint(search_tasks('/project/256242/9432492/9432762/'))
 
@@ -227,11 +250,11 @@ def add_cost(page, user_email, comment, time, date='today'):
     query = '{SMDE_URL}action={action}&page={page}&email_user_from={email}&time={time}' \
             '&date={date}&comment={comment}&hash={hash}'.format(**attributes_requests)
     req = requests.get(query).json()
-    print(req)
+    # print(req)
     return req.get('status')
 
 
-async def get_task_info(page):
+def get_task_info(page):
     action = 'get_task'
     hash_key = hashlib.md5(page.encode(ENCOD) + action.encode(ENCOD) + API_KEY.encode(ENCOD))
     attributes_requests = {
@@ -242,7 +265,8 @@ async def get_task_info(page):
     }
     query = '{SMDE_URL}action={action}&page={page}&hash={hash}'.format(**attributes_requests)
     req = requests.get(query).json()
-    print('test')
+    # print('test')
+    # pprint(req)
     return req
 
 # pprint(get_tasks('/project/246875/'))
