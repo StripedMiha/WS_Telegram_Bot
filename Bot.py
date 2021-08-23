@@ -550,7 +550,7 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
                                                                                     path=f'{path}{i}/')))
     buttons.append(types.InlineKeyboardButton(text='Отмена',
                                               callback_data=callback_search.new(action='cancel', path=' ')))
-    keyboard = types.InlineKeyboardMarkup(row_width=3)
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
     keyboard.add(*buttons)
     await call.message.edit_text('Выберите задачу', reply_markup=keyboard)
 
@@ -694,13 +694,14 @@ async def add_costs(text, id_user, path):
 
 async def wait_hours(message: types.Message, state: FSMContext):
     log_in(message.from_user.full_name, message.text)
+    data = await state.get_data()
     text = message.text
     if 'отмена' in text.lower() or 'cancel' in text.lower():
         await message.answer('Отмена ввода')
         await state.finish()
         return
     if 'добавить закладку' in text.lower():
-        path = user_data[message.from_user.id]['path']
+        path = data['path']
         info = get_task_info(path)
         if info.get('status') == 'ok':
             info = info.get('data')
@@ -734,7 +735,6 @@ async def wait_hours(message: types.Message, state: FSMContext):
                              "Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся "
                              "на две записи: на запись с двумя часами и запись с получасом.")
         return
-    data = await state.get_data()
     await add_costs(text, message.from_user.id, data['path'])
     await state.finish()
 
