@@ -328,7 +328,7 @@ async def menu(message: types.Message):
             date = check_mail(message.from_user.id, 'date')
         buttons = {'daily report': f"📃 Отчёт за {date}",
                    'search task': '🔍 Найти задачу',
-                   'remove time cost': '❌🕓 Удалить трудоёмкость',
+                   'remove time cost': '❌🕓 Удалить трудочасы',
                    'remove book': '❌🧷 Удалить закладку',
                    'change date': '🔄📅 Изменить дату',
                    'change email': '🔄📧 Изменить почту',
@@ -426,8 +426,8 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
 async def wait_date(message: types.Message, state: FSMContext):
     log_in(message.from_user.full_name, 'Вводит дату:', message.text)
     if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
-        await message.answer('Отменён ввод почты.\n')
-        log_in(message.from_user.full_name, 'cancel input email')
+        await message.answer('Отменён ввод даты.\n')
+        log_in(message.from_user.full_name, 'cancel input date')
         await state.finish()
     elif message.text.lower() == 'сегодня' or message.text.lower() == 'today':
         edit_data(message.from_user.id, 'today', 'date')
