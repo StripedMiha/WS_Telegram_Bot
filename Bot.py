@@ -326,14 +326,14 @@ async def menu(message: types.Message):
             date = 'сегодня'
         else:
             date = check_mail(message.from_user.id, 'date')
-        buttons = {'daily report': f"Отчёт за {date}",
-                   'search task': 'Найти задачу',
-                   'remove time cost': 'Удалить трудоёмкость',
-                   'remove book': 'Удалить закладку',
-                   'change date': 'Изменить дату',
-                   'change email': 'Изменить почту',
-                   'about me': 'О вас',
-                   'offers': 'Предложение/отзыв о боте'}
+        buttons = {'daily report': f"Отчёт за {date} 📃",
+                   'search task': 'Найти задачу 🔍',
+                   'remove time cost': 'Удалить запись ❌🕓',
+                   'remove book': 'Удалить закладку ❌🧷',
+                   'change date': 'Изменить дату 🔄📅',
+                   'change email': 'Изменить почту 🔄📧',
+                   'about me': 'О вас ℹ️',
+                   'offers': 'Предложение/отзыв 💬'}
     await message.answer('Доступные действия:', reply_markup=get_keyboard(buttons, 2))
 
 
@@ -478,7 +478,7 @@ async def wait_offer(message: types.Message, state: FSMContext):
 @dp.callback_query_handler(callback_fd.filter(action=['search task']))
 async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
     log_in(call.from_user.full_name, check_mail(str(call.from_user.id)), '- add time cost')
-    buttons = {'via search': 'Через поиск', 'via bookmarks': 'Через закладки'}
+    buttons = {'via search': 'Через поиск', 'via bookmarks': 'Через закладки ❤️'}
     await call.message.edit_text('Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
 
 callback_search = CallbackData('fab_search', 'action', 'path')
