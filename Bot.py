@@ -656,6 +656,18 @@ async def add_costs(text, id_user, path):
     full_name = check_mail(id_user, 'first_name') + ' ' + check_mail(id_user, 'last_name')
     for string in text.split('\n'):
         time_str = string.split('!')[0]
+        if ':' in time_str:
+            min = int(time_str.split(':')[1])
+            hours = int(time_str.split(':')[0])
+            if min >= 60:
+                hours += min // 60
+                min = min % 60
+                print(min)
+            min10 = int(min * 100 / 60)
+            if min < 6:
+                time_str = str(hours) + '.0' + str(min10)
+            else:
+                time_str = str(hours) + '.' + str(min10)
         time = float(time_str.replace(',', '.') if ',' in time_str else time_str)
         comment = [i.strip(' ') for i in string.split('!')[1:]]  # Удаление пробелов в начале и концекаждой задачи
         if '' in comment:
@@ -724,7 +736,9 @@ async def wait_hours(message: types.Message, state: FSMContext):
         await state.finish()
         return
     if 'ничего не понял' in text.lower() or '!' not in text:
-        await message.answer("Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> !"
+        await message.answer("Дробную и целую часть часа можно разделить '.', ','"
+                             "Если использовать ':', то будет взято точно указанное количество минут"
+                             "Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> !"
                              " <i>Сборка печатного прототипа</i>"
                              "\n\n"
                              "Пример№2:\n<i>0.5</i>! <i>Печать деталей корпуса</i> \n"
@@ -747,6 +761,31 @@ async def wait_for_news(message: types.Message):
     await message.answer('Введите новость:')
     await OrderMenu.wait_news.set()
     return
+
+
+# Выбор обеда с клавиатуры
+@dp.message_handler(commands="dinner")
+async def get_dinner(message: types.Message):
+    if not check_user(message.from_user.id):
+        if check_user(message.from_user.id, 'black') and check_user(message.from_user.id, 'wait'):
+            return None
+        await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
+        return None
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    buttons = ["С пюрешкой", "С макарошками"]
+    keyboard.add(*buttons)
+    await message.answer("Как подавать котлеты?", reply_markup=keyboard)
+
+    @dp.message_handler(lambda message: message.text == "С макарошками")
+    async def with_pasta(message: types.Message):
+        await message.answer_photo(
+            'https://otvet.imgsmail.ru/download/214880555_ab5a400b4f358b8003dcdd86d4186d58_800.jpg',
+            reply_markup=types.ReplyKeyboardRemove())
+
+    # Обработка ответа выбора обеда
+    @dp.message_handler(lambda message: message.text == "С пюрешкой")
+    async def with_puree(message: types.Message):
+        await message.answer("Ням-ням", reply_markup=types.ReplyKeyboardRemove())
 
 
 async def news_to_users(message: types.Message, state: FSMContext):
