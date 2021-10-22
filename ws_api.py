@@ -133,6 +133,9 @@ def get_today_costs(email, date):
     hash_key = hashlib.md5(action.encode(ENCOD) + API_KEY.encode(ENCOD))
     if date == 'today':
         date_check = reformat_date(datetime.date.today())
+    elif date == 'yesterday':
+        timedelta = datetime.timedelta(days=1)
+        date_check = reformat_date(datetime.date.today() - timedelta)
     else:
         date_check = date
 

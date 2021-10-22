@@ -15,7 +15,7 @@ from aiogram.dispatcher import FSMContext
 from app.config_reader import load_config
 from app.auth import *
 from ws_api import get_all_project_for_user, get_tasks, search_tasks, get_format_today_costs, remove_cost, add_cost, \
-    get_task_info, check_task_name
+    get_task_info, check_task_name, reformat_date
 from app.fun import register_handlers_fun
 
 from pprint import pprint
@@ -414,6 +414,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
         answer = "Введите дату в формате ДД.ММ.ГГГГ:\n" \
                  "Введите 'сегодня' или 'today', чтобы бот взаимодействовал с днём который будет на тот" \
                  " момент сегодняшним 🤪\n" \
+                 "Введите 'вчера' или 'yesterday' для установления вчерашней даты\n"\
                  "Введите 'отмена' для отмены изменения даты"
         await call.message.edit_text(answer)
         await OrderMenu.wait_for_date.set()
@@ -432,6 +433,11 @@ async def wait_date(message: types.Message, state: FSMContext):
     elif message.text.lower() == 'сегодня' or message.text.lower() == 'today':
         edit_data(message.from_user.id, 'today', 'date')
         await message.answer('Теперь бот будет записывать на текущий день')
+    elif message.text.lower() == 'вчера' or message.text.lower() == 'yesterday':
+        timedelta = datetime.timedelta(days=1)
+        date = reformat_date(datetime.date.today() - timedelta)
+        edit_data(message.from_user.id, date, 'date')
+        await message.answer('Установлена вчерашняя дата')
     elif re.match(r'(((0[1-9])|([1-2][0-9])|(3[0-1]))\.((0[1-9])|(1[0-2]))\.20[2-9][0-9])', message.text):
         date = message.text.strip(' ')
         edit_data(message.from_user.id, date, 'date')
