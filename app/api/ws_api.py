@@ -1,5 +1,4 @@
 from api_keys import SMDE_URL, api_token_worksection
-# from app.auth import read_json, write_json
 from pprint import pprint
 
 import hashlib
@@ -8,6 +7,8 @@ import datetime
 import json
 import os
 
+from app.db_access import check_comment
+
 
 dir_name = (os.path.dirname(__file__))
 ENCOD = 'utf-8'
@@ -15,12 +16,12 @@ API_KEY = api_token_worksection
 
 
 def read_json():
-    with open(os.path.join(dir_name, 'tasks_name.json'), "r", encoding='utf-8') as file_data:
+    with open(os.path.join(dir_name, '../../tasks_name.json'), "r", encoding='utf-8') as file_data:
         return json.load(file_data)
 
 
 def write_json(content):
-    with open(os.path.join(dir_name, 'tasks_name.json'), "w", encoding='utf-8') as file_data:
+    with open(os.path.join(dir_name, '../../tasks_name.json'), "w", encoding='utf-8') as file_data:
         json.dump(content, file_data, ensure_ascii=False)
 
 
@@ -42,7 +43,7 @@ def check_task_name(path):
     return data[path]
 
 
-def get_all_project_for_user(email, filter='active'):
+async def get_all_project_for_user(email, filter='active'):
     action = 'get_projects'
     hash_key = hashlib.md5(action.encode(ENCOD)+API_KEY.encode(ENCOD))
 
@@ -57,13 +58,13 @@ def get_all_project_for_user(email, filter='active'):
     else:
         req = requests.get('{SMDE_URL}action={action}&filter={filter}&hash={hash}&extra=users'.format(**attributes_requests))
     projects = req.json().get('data')
-    user_project = {}
+    user_project = []
     for i in projects:
         list_email = [j.get('email') for j in i.get('users')]
         if email in list_email:
             project_id = i.get('id')
             name = i.get('name')
-            user_project[str(project_id)] = name
+            user_project.append([name, str(project_id)])
     return user_project
 
 
@@ -108,7 +109,6 @@ def search_tasks(page, filter='active'):
     query = '{SMDE_URL}action={action}&page={page}&show_subtasks=2&hash={hash}&filter={filter}'.format(**attributes_requests)
     req = requests.get(query)
     tasks = req.json().get('data')
-    # pprint(tasks)
     out = {}
     for i in tasks:
         out[i['id']] = {'name': i['name']}
@@ -119,26 +119,32 @@ def search_tasks(page, filter='active'):
                 if j.get('child') is not None:
                     for k in j['child']:
                         out[i['id']]['child'][k['id']] = {'name': k['name']}
-
     return out
 
+    # for i in tasks:
+    #     out[i['id']] = None
+    #     if i.get('child') is not None:
+    #         for j in i['child']:
+    #             out[j['id']] = i['id']
+    #             if j.get('child') is not None:
+    #                 for k in j['child']:
+    #                     out[k['id']] = j['id']
 
-# pprint(search_tasks('/project/256242/'))
-# pprint(search_tasks('/project/256242/9432492/'))
-# pprint(search_tasks('/project/256242/9432492/9432762/'))
 
 
-def get_today_costs(email, date):
+
+
+
+async def get_day_costs_from_ws(date):
     action = 'get_costs'
     hash_key = hashlib.md5(action.encode(ENCOD) + API_KEY.encode(ENCOD))
-    if date == 'today':
+    if date == 'today' or date == 'сегодня':
         date_check = reformat_date(datetime.date.today())
     elif date == 'yesterday':
         timedelta = datetime.timedelta(days=1)
         date_check = reformat_date(datetime.date.today() - timedelta)
     else:
         date_check = date
-
     attributes_requests = {
         'SMDE_URL': SMDE_URL,
         'action': action,
@@ -149,16 +155,12 @@ def get_today_costs(email, date):
     query = '{SMDE_URL}action={action}&show_subtasks=2&hash={hash}&datestart={date}&dateend={date}'.format(
         **attributes_requests)
     req = requests.get(query).json().get('data')
-    # pprint(req)
     user_list_costs = []
-    for i in req:
-        if i.get('user_from').get('email') == email:
-            user_list_costs.append(i)
-    return user_list_costs
+    return req
 
 
 def get_format_today_costs(user_email, with_id=False, date='today'):
-    data = get_today_costs(user_email, date)
+    data = get_day_costs_from_ws(user_email, date)
     answer = ''
     all_comment = []
     total_time = [0, 0]
@@ -216,7 +218,7 @@ def get_format_today_costs(user_email, with_id=False, date='today'):
     return answer
 
 
-def remove_cost(page, cost_id):
+def remove_cost_ws(page: str, cost_id: int) -> dict:
     action = 'delete_costs'
     hash_key = hashlib.md5(page.encode(ENCOD) + action.encode(ENCOD) + API_KEY.encode(ENCOD))
 
@@ -228,8 +230,8 @@ def remove_cost(page, cost_id):
         'page': page
     }
     query = '{SMDE_URL}action={action}&page={page}&id={id}&hash={hash}'.format(**attributes_requests)
-    req = requests.get(query).json()
-    return req.get('status')
+    req: dict = requests.get(query).json()
+    return req
 
 
 def add_cost(page, user_email, comment, time, date='today'):
@@ -254,7 +256,7 @@ def add_cost(page, user_email, comment, time, date='today'):
             '&date={date}&comment={comment}&hash={hash}'.format(**attributes_requests)
     req = requests.get(query).json()
     # print(req)
-    return req.get('status')
+    return req
 
 
 def get_task_info(page):
@@ -272,8 +274,7 @@ def get_task_info(page):
     # pprint(req)
     return req
 
-# pprint(get_tasks('/project/246875/'))
-# get_subtasks('/project/243605/8297507/')
-# pprint(search_tasks('/project/243605/8290051/8349103/'), width=160)
-# get_subtasks('/project/243605/8297507/7604753/')
-# get_task_info('/project/241710/9365145/')
+
+if __name__ == '__main__':
+    t = search_tasks('/project/256242/')
+    pprint(t)

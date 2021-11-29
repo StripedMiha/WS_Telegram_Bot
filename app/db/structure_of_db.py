@@ -1,11 +1,11 @@
 import sqlalchemy
-import psycopg2
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import MetaData, Table, String, Integer, Column, Text, DateTime, Date, Boolean, Numeric, SmallInteger
-from sqlalchemy import UniqueConstraint, ForeignKeyConstraint, PrimaryKeyConstraint, ForeignKey, CheckConstraint, \
-    values, insert, select, create_engine
 
-from datetime import datetime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean  # , Table, DateTime, Numeric
+from sqlalchemy import ForeignKey  # , UniqueConstraint, ForeignKeyConstraint, PrimaryKeyConstraint, CheckConstraint, \
+#   values, insert, select, create_engine
+
+
 engine = sqlalchemy.create_engine("postgresql+psycopg2://postgres:Mig120300SQL@localhost/tele_ws",
                                   echo=True, pool_size=6, max_overflow=10, encoding='latin1')
 
@@ -28,7 +28,9 @@ class Task(Base):
     project_id = Column(String(15), ForeignKey('projects.project_id'), nullable=False)
     task_name = Column(Text())
     task_ws_id = Column(String(15), nullable=False)
-    
+    parent_id = Column(Integer())
+    status = Column(String(10), default='active')
+
     
 class Bookmark(Base):
     __tablename__ = 'bookmarks'
@@ -62,6 +64,7 @@ class Comment(Base):
     time = Column(String(10))
     comment_text = Column(Text())
     date = Column(Date())
+    via_bot = Column(Boolean)
 
 
 Base.metadata.create_all(engine)

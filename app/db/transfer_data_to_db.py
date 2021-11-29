@@ -10,11 +10,11 @@ import psycopg2
 from sqlalchemy.orm import Session
 from sqlalchemy import MetaData
 from structure_of_db import Task, Project, Bookmark, User, UserBookmark, Comment
-
+from api_keys import SMDE_URL, api_token_worksection
 from pprint import pprint
 
-SMDE_URL = "https://smirnovdesign.worksection.com/api/admin/v2/?"
-API_KEY = "3c1008f1152607296116fe6f7f9b2778"
+
+API_KEY = api_token_worksection
 ENCOD = 'utf-8'
 PROJECT_NAME_TEMPLATE = '[a-z]{3,5}-\d{3}([a-z]\d\d)?'
 
@@ -23,25 +23,6 @@ engine = sqlalchemy.create_engine("postgresql+psycopg2://postgres:Mig120300SQL@l
                                   echo=False, pool_size=6, max_overflow=10, encoding='latin1')
 metadata = MetaData()
 session = Session(bind=engine)
-
-
-def insert_users():
-
-    with open('list_users.json', 'r', encoding='utf-8') as file_in:
-        text: dict = json.load(file_in)
-
-    for key, value in text.items():
-        print(key)
-        pprint(value)
-        print('--------------------------------------------------')
-        user = User(user_id=value['id_user'],
-                    email=value['email'],
-                    first_name=value['first_name'],
-                    last_name=value['last_name'],
-                    status=value['status'],
-                    date_of_input=value['date']
-                    )
-        # session.add(user)
 
 
 def get_task_info(page):
@@ -108,7 +89,8 @@ def get_booked_task():
                     print('task_id -', q[2])
                     print(1111)
                     book_name = project_name[0] + ' | ' + task_name.strip(' ') \
-                        if project_name else q[1] + ' | ' + task_name.strip(' ')
+                        if project_name else (
+                            'Общие задачи' if 'Общие задачи' in q[1] else q[1] + ' | ' + task_name.strip(' '))
                     pprint(book_name)
                     print(type(book_name))
                     bookmark = Bookmark(
