@@ -133,3 +133,5 @@ app/list_waiting.json
 app/list_black.json
 config/bot.ini
 users_messages.txt
+task_name.json
+tasks_name.json
