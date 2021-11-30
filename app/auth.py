@@ -1,153 +1,106 @@
-import json
-import os
-from pprint import pprint
+import datetime
+# from pprint import pprint
+
+import sqlalchemy
+from sqlalchemy.orm import Session
+from typing import Union
+
+from app.db.structure_of_db import User
 
 
-dir_name = (os.path.dirname(__file__))
-lists_json = {
-    'user': "list_users.json",
-    'black': "list_black.json",
-    'wait': "list_waiting.json"
-}
+class TUser:
+
+    def __init__(self, user_id: int, first_name: str = '', last_name: Union[str, None] = ''):
+        q: Union[User, None] = self.__get_user_from_db(user_id)
+        if q is None:
+            self.user_id = user_id
+            self.first_name = first_name
+            self.last_name = last_name
+            self.full_name = self.first_name + ' ' + self.last_name
+            self.__email = None
+            self.__date_of_input = 'today'
+            self.__status = 'wait'
+
+        else:
+            self.user_id = q.user_id
+            self.first_name = q.first_name
+            self.last_name = q.last_name
+            self.full_name = self.first_name + ' ' + self.last_name
+            self.__email = q.email
+            self.__date_of_input = q.date_of_input
+            self.__status = q.status
+        self.admin = self.__is_admin()
+        self.has_access = self.__has_access()
+        self.blocked = self.__is_blocked
+
+    def __is_admin(self):
+        return True if self.__status == 'admin' else False
+
+    def __has_access(self):
+        return True if self.__status == 'user' or self.__status == 'admin' else False
+
+    def __is_blocked(self):
+        return True if self.__status == 'black' else False
+
+    @staticmethod
+    def __get_user_from_db(user_id):
+        session = _get_session()
+        q: Union[None, User] = session.query(User).filter(User.user_id == user_id).first()
+        return q
+
+    @classmethod
+    def get_users_list(cls):
+        session = _get_session()
+        q: list[User] = session.query(User).all()  # .user_id, User.first_name, User.last_name, User.__status
+        return q
+
+    @classmethod
+    def get_admin_id(cls):
+        session = _get_session()
+        q: int = session.query(User.user_id).filter(User.status == 'admin').first()[0]
+        return q
+
+    def change_status(self, new_status: str):
+        session = _get_session()
+        update_row: User = session.query(User).get(self.user_id)
+        update_row.status = new_status
+        session.add(update_row)
+        session.commit()
+        self.__status = new_status
+
+    def change_mail(self, new_mail: str):
+        session = _get_session()
+        update_row: User = session.query(User).get(self.user_id)
+        update_row.email = new_mail
+        session.add(update_row)
+        session.commit()
+        self.__email = new_mail
+
+    def change_date(self, new_date: str):
+        if new_date == 'yesterday':
+            timedelta = datetime.timedelta(days=1)
+            split_date = ((str(datetime.date.today() - timedelta)).split('-'))
+            split_date.reverse()
+            new_date = '.'.join(split_date)
+        session = _get_session()
+        update_row: User = session.query(User).get(self.user_id)
+        update_row.date_of_input = new_date
+        session.add(update_row)
+        session.commit()
+        self.__date_of_input = new_date
+
+    def get_email(self):
+        return self.__email
+
+    def get_date(self):
+        return self.__date_of_input
+
+    def get_status(self):
+        return self.__status
 
 
-def read_json(file: str):
-    with open(os.path.join(dir_name, lists_json[file]), "r", encoding='utf-8') as file_data:
-        return json.load(file_data)
-
-
-def write_json(file: str, content):
-    with open(os.path.join(dir_name, lists_json[file]), "w", encoding='utf-8') as file_data:
-        json.dump(content, file_data, ensure_ascii=False)
-
-
-def new_user(input_data: list):
-    id_user, f_name, l_name, type_chat = input_data[0], input_data[1], input_data[2], input_data[3]
-    user_dict = read_json('wait')
-    user = {'id_user': id_user,
-            'first_name': f_name,
-            'last_name': l_name,
-            'status': 'wait'}
-    if type_chat == 'private':
-        user['private_chat_id'] = id_user
-    user_dict[id_user] = user
-    write_json('wait', user_dict)
-
-
-def black_user(input_data: list):
-    id_user, f_name, l_name, type_chat = input_data[0], input_data[1], input_data[2], input_data[3]
-    user_dict = read_json('black')
-    user = {'id_user': id_user,
-            'first_name': f_name,
-            'last_name': l_name,
-            'status': 'black'}
-    if type_chat == 'private':
-        user['private_chat_id'] = id_user
-    user_dict[id_user] = user
-    write_json('black', user_dict)
-
-
-def check_user(input_data, list_of='user'):
-    user_dict = read_json(list_of)
-    return True if str(input_data) in user_dict.keys() else False
-
-
-# проверка админ ли пользователь
-def check_admin(input_data):
-    user_dict = read_json('user')
-    if user_dict.get(str(input_data)) is None:
-        return False
-    return True if (user_dict.get(str(input_data))).get('status') == 'admin' else False
-
-
-def check_mail(input_data, type_of_data='email'):
-    user_dict = read_json('user')
-    user_data = user_dict.get(str(input_data))
-    user_data = user_data.get(type_of_data)
-    if type_of_data == 'date' and user_data is None:
-            edit_data(input_data, 'today', 'date')
-            user_data = 'today'
-    if user_data is None:
-        return None
-    else:
-        return user_data
-
-
-def edit_data(user_id, new_data, type_data):
-    user_dict = read_json('user')
-    user_dict[str(user_id)][type_data] = new_data
-    write_json('user', user_dict)
-
-
-def add_bookmark(user_id, data: dict):
-    user_dict = read_json('user')
-    if user_dict[str(user_id)].get('bookmarks') is None:
-        user_dict[str(user_id)]['bookmarks'] = [data]
-    elif data in user_dict[str(user_id)]['bookmarks']:
-        return False
-    else:
-        user_dict[str(user_id)]['bookmarks'].append(data)
-    write_json('user', user_dict)
-    return True
-
-
-def remove_bookmark(user_id, page):
-    user_dict = read_json('user')
-    user_book: list
-    user_book = user_dict.get(str(user_id)).get('bookmarks')
-    book_to_del: dict
-    for i in user_book:
-        if str(page) == i.get('path'):
-            book_to_del = i
-            break
-    user_book.remove(book_to_del)
-    user_dict[str(user_id)]['bookmarks'] = user_book
-    write_json('user', user_dict)
-
-
-def get_list_bookmarks(user_id):
-    user_dict = read_json('user')
-    if user_dict.get(str(user_id)).get('bookmarks') is None:
-        return None
-    else:
-        return user_dict.get(str(user_id)).get('bookmarks')
-
-
-# получение короткого словаря пользователей
-def get_list(select_list):
-    user_dict = read_json(select_list)
-    get_dict = {}
-    for i, j in user_dict.items():
-        get_dict[i] = (j['first_name'] + ' ' + j['last_name'])
-    return get_dict
-
-
-# Перемещение пользователя из списка в список
-def change_list(user_id, list_from, list_to):
-    user_dict = read_json(list_from)
-    if user_dict[str(user_id)]['status'] == 'admin':
-        print('писюн')
-        return None
-    user = user_dict.get(user_id)
-    del user_dict[user_id]
-    write_json(list_from, user_dict)
-    user['status'] = list_to
-    another_dict = read_json(list_to)
-    another_dict[user_id] = user
-    write_json(list_to, another_dict)
-
-
-def add_admin():
-    user = {'id_user': '300617281',
-            'first_name': 'Mikhail',
-            'last_name': 'Ignatenko',
-            'private_chat_id': '300617281',
-            'status': 'admin'}
-    user_dict = {"300617281": user}
-    write_json('user', user_dict)
-    return None
-
-
-# print(check_mail(300617281))
-# edit_mail(300617281, 'm.ignatenko@smde.ru')
-# print(check_mail(300617281))
+def _get_session():
+    engine = sqlalchemy.create_engine("postgresql+psycopg2://postgres:Mig120300SQL@localhost/tele_ws",
+                                      echo=False, pool_size=6, max_overflow=10, encoding='latin1')
+    session = Session(bind=engine)
+    return session

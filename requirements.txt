@@ -1,2 +1,4 @@
 aiogram==2.14.3
 requests
+sqlalchemy
+psycopg2
