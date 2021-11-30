@@ -1,26 +1,14 @@
-from api_keys import SMDE_URL, api_token_worksection
+from app.config_reader import load_config
 from pprint import pprint
 
 import hashlib
 import requests
 import datetime
-import json
-import os
 
-
-dir_name = (os.path.dirname(__file__))
-ENCOD = 'utf-8'
-API_KEY = api_token_worksection
-
-
-def read_json():
-    with open(os.path.join(dir_name, '../../tasks_name.json'), "r", encoding='utf-8') as file_data:
-        return json.load(file_data)
-
-
-def write_json(content):
-    with open(os.path.join(dir_name, '../../tasks_name.json'), "w", encoding='utf-8') as file_data:
-        json.dump(content, file_data, ensure_ascii=False)
+config = load_config("config/ws.ini")
+ENCOD = config["ws_token"]["ENCOD"]
+API_KEY = config["ws_token"]["api_token_worksection"]
+SMDE_URL = config["ws_token"]["SMDE_URL"]
 
 
 def reformat_date(date):
@@ -31,17 +19,7 @@ def reformat_date(date):
     return format_date
 
 
-def check_task_name(path):
-    data = read_json()
-    if path not in data.keys():
-        task_info = get_task_info(path)
-        task_name = task_info['data']['project']['name'] + ' // ' + task_info['data']['name'] + '\n'
-        data[path] = task_name
-        write_json(data)
-    return data[path]
-
-
-async def get_all_project_for_user(email, filter='active'):
+async def get_all_project_for_user(email, status_filter='active'):
     action = 'get_projects'
     hash_key = hashlib.md5(action.encode(ENCOD)+API_KEY.encode(ENCOD))
 
@@ -49,12 +27,14 @@ async def get_all_project_for_user(email, filter='active'):
         'SMDE_URL': SMDE_URL,
         'action': action,
         'hash': hash_key.hexdigest(),
-        'filter': filter
+        'filter': status_filter
     }
-    if filter is None:
-        req = requests.get('{SMDE_URL}action={action}&hash={hash}&extra=users'.format(**attributes_requests))
+    if status_filter is None:
+        req = requests.get(
+            '{SMDE_URL}action={action}&hash={hash}&extra=users'.format(**attributes_requests))
     else:
-        req = requests.get('{SMDE_URL}action={action}&filter={filter}&hash={hash}&extra=users'.format(**attributes_requests))
+        req = requests.get(
+            '{SMDE_URL}action={action}&filter={filter}&hash={hash}&extra=users'.format(**attributes_requests))
     projects = req.json().get('data')
     user_project = []
     for i in projects:
@@ -66,10 +46,7 @@ async def get_all_project_for_user(email, filter='active'):
     return user_project
 
 
-# get_all_project_for_user('m.ignatenko@smde.ru')
-
-
-def get_tasks(page, filter='active'):
+def search_tasks(page, status_filter='active'):
     action = 'get_tasks'
     hash_key = hashlib.md5(page.encode(ENCOD)+action.encode(ENCOD)+API_KEY.encode(ENCOD))
     attributes_requests = {
@@ -77,34 +54,10 @@ def get_tasks(page, filter='active'):
         'action': action,
         'hash': hash_key.hexdigest(),
         'page': page,
-        'filter': filter
+        'filter': status_filter
     }
-    if filter is None:
-        query = '{SMDE_URL}action={action}&page={page}&hash={hash}'.format(**attributes_requests)
-    else:
-        query = '{SMDE_URL}action={action}&page={page}&show_subtasks=2&hash={hash}&filter={filter}'.format(**attributes_requests)
-    req = requests.get(query)
-    tasks = req.json().get('data')
-    # pprint(tasks)
-    project_task = {}
-    for i in tasks:
-        task_id = i.get('id')
-        task_name = i.get('name')
-        project_task[(str(task_id))] = task_name
-    return project_task
-
-
-def search_tasks(page, filter='active'):
-    action = 'get_tasks'
-    hash_key = hashlib.md5(page.encode(ENCOD)+action.encode(ENCOD)+API_KEY.encode(ENCOD))
-    attributes_requests = {
-        'SMDE_URL': SMDE_URL,
-        'action': action,
-        'hash': hash_key.hexdigest(),
-        'page': page,
-        'filter': filter
-    }
-    query = '{SMDE_URL}action={action}&page={page}&show_subtasks=2&hash={hash}&filter={filter}'.format(**attributes_requests)
+    query = '{SMDE_URL}action={action}&page={page}&show_subtasks=2&hash={hash}&filter={filter}'\
+        .format(**attributes_requests)
     req = requests.get(query)
     tasks = req.json().get('data')
     out = {}
@@ -118,19 +71,6 @@ def search_tasks(page, filter='active'):
                     for k in j['child']:
                         out[i['id']]['child'][k['id']] = {'name': k['name']}
     return out
-
-    # for i in tasks:
-    #     out[i['id']] = None
-    #     if i.get('child') is not None:
-    #         for j in i['child']:
-    #             out[j['id']] = i['id']
-    #             if j.get('child') is not None:
-    #                 for k in j['child']:
-    #                     out[k['id']] = j['id']
-
-
-
-
 
 
 async def get_day_costs_from_ws(date):
@@ -148,72 +88,11 @@ async def get_day_costs_from_ws(date):
         'action': action,
         'hash': hash_key.hexdigest(),
         'date': date_check
-        # 'filter': filter
     }
     query = '{SMDE_URL}action={action}&show_subtasks=2&hash={hash}&datestart={date}&dateend={date}'.format(
         **attributes_requests)
     req = requests.get(query).json().get('data')
-    user_list_costs = []
     return req
-
-
-def get_format_today_costs(user_email, with_id=False, date='today'):
-    data = get_day_costs_from_ws(user_email, date)
-    answer = ''
-    all_comment = []
-    total_time = [0, 0]
-    for i in data:
-        # pprint(i)
-        time = i.get('time')
-        hours = int(time.split(':')[0])
-        minutes = int(time.split(':')[1])
-        time_str = ''
-        if hours > 0:
-            if hours == 1:
-                word = 'час'
-            elif 2 <= hours <= 4:
-                word = 'часа'
-            else:
-                word = 'часов'
-            time_str += f'{hours} {word} '
-        if minutes > 0:
-            time_str += f'{minutes} минут '
-        this_comment = {'comment': i.get('comment'),
-                        'task_name': i.get('task').get('name'),
-                        'project_name': i.get('task').get('project').get('name'),
-                        'time_cost': time_str,
-                        'page': i.get('task').get('page'),
-                        'comment_id': i.get('id')
-                        }
-        all_comment.append(this_comment)
-        text = f"Проект: {this_comment['project_name']}\n" \
-               f"Задача: {this_comment['task_name']}\n" \
-               f"Потрачено: {this_comment['time_cost']}на {this_comment['comment']}\n\n"
-        answer += text
-        total_time = [total_time[0] + hours, total_time[1] + minutes]
-    # pprint(all_comment)
-    if with_id:
-        return all_comment
-    total_time = [total_time[0] + total_time[1] // 60, total_time[1] % 60]
-    total_time_str = ''
-    if total_time[0] > 0:
-        if total_time[0] == 1:
-            word = 'час'
-        elif 2 <= total_time[0] <= 4:
-            word = 'часа'
-        else:
-            word = 'часов'
-        total_time_str += f'{total_time[0]} {word} '
-    if total_time[1] > 0:
-        total_time_str += f'{total_time[1]} минут '
-    if date == 'today':
-        date = 'сегодня'
-    else:
-        date = date
-    answer += f"Общее время за {date}: {total_time_str}"
-    if total_time[0] + total_time[1] == 0:
-        return None
-    return answer
 
 
 def remove_cost_ws(page: str, cost_id: int) -> dict:

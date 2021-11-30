@@ -1,26 +1,25 @@
 import json
 import hashlib
-import time
 import re
 
 import requests
 
-import sqlalchemy
-import psycopg2
 from sqlalchemy.orm import Session
 from sqlalchemy import MetaData
-from structure_of_db import Task, Project, Bookmark, User, UserBookmark, Comment
-from api_keys import SMDE_URL, api_token_worksection
+
+from app.config_reader import load_config
+from structure_of_db import engine, Task, Project, Bookmark, User, UserBookmark
 from pprint import pprint
 
 
-API_KEY = api_token_worksection
-ENCOD = 'utf-8'
-PROJECT_NAME_TEMPLATE = '[a-z]{3,5}-\d{3}([a-z]\d\d)?'
+config = load_config("config/ws.ini")
+ENCOD = config["ws_token"]["ENCOD"]
+API_KEY = config["ws_token"]["api_token_worksection"]
+SMDE_URL = config["ws_token"]["SMDE_URL"]
+
+PROJECT_NAME_TEMPLATE = r'[a-z]{3,5}-\d{3}([a-z]\d\d)?'
 
 
-engine = sqlalchemy.create_engine("postgresql+psycopg2://postgres:Mig120300SQL@localhost/tele_ws",
-                                  echo=False, pool_size=6, max_overflow=10, encoding='latin1')
 metadata = MetaData()
 session = Session(bind=engine)
 

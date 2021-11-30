@@ -131,7 +131,6 @@ $cat .gitignore
 app/list_users.json
 app/list_waiting.json
 app/list_black.json
-config/bot.ini
+config/*.ini
 users_messages.txt
 api_keys.py
-/config/ws.ini

@@ -4,9 +4,15 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean  # , Table, DateTime, Numeric
 from sqlalchemy import ForeignKey  # , UniqueConstraint, ForeignKeyConstraint, PrimaryKeyConstraint, CheckConstraint, \
 #   values, insert, select, create_engine
+from app.config_reader import load_config
+
+config = load_config("config/db.ini")
+user = config["db"]["user"]
+password = config["db"]["password"]
+bd_name = config["db"]["bd_name"]
 
 
-engine = sqlalchemy.create_engine("postgresql+psycopg2://postgres:Mig120300SQL@localhost/tele_ws",
+engine = sqlalchemy.create_engine(f"postgresql+psycopg2://{user}:{password}@localhost/{bd_name}",
                                   echo=True, pool_size=6, max_overflow=10, encoding='latin1')
 
 

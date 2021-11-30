@@ -13,8 +13,6 @@ from aiogram.dispatcher import FSMContext
 
 from app.config_reader import load_config
 from app.auth import TUser
-# from app.api.ws_api import get_all_project_for_user, search_tasks, get_format_today_costs, remove_cost_ws, add_cost, \
-#     get_task_info, check_task_name, reformat_date, get_day_costs_from_ws
 from app.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, remove_costs, \
     remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, get_users_of_list, \
     get_project_list, update_task_parent, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark
@@ -22,7 +20,7 @@ from app.main import see_days_costs, update_day_costs, about_user, menu_buttons,
 from pprint import pprint
 
 config = load_config("config/bot.ini")
-bot = Bot(token=config.tg_bot.token, parse_mode=types.ParseMode.HTML)
+bot = Bot(token=config['tg_bot']['token'], parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
 
