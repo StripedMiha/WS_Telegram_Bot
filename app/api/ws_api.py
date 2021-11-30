@@ -7,8 +7,6 @@ import datetime
 import json
 import os
 
-from app.db_access import check_comment
-
 
 dir_name = (os.path.dirname(__file__))
 ENCOD = 'utf-8'
