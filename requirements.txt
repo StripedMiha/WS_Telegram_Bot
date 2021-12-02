@@ -1,4 +1,5 @@
-aiogram==2.14.3
-requests
-sqlalchemy
+aiogram~=2.16
+requests~=2.26.0
+sqlalchemy~=1.4.26
 psycopg2
+matplotlib~=3.5.0

@@ -134,3 +134,4 @@ app/list_black.json
 config/*.ini
 users_messages.txt
 api_keys.py
+app/db/png/*.png

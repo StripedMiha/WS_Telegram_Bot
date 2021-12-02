@@ -18,6 +18,20 @@ def get_days_costs(user: TUser) -> list[Comment]:
     return query_comments
 
 
+def get_all_month_costs(first_day: str):
+    session = _get_session()
+    comms = session.query(Comment.user_id, Comment.time) \
+                   .filter(Comment.date >= first_day, Comment.via_bot == True).all()
+    return [list(i) for i in comms]
+
+
+def get_months_user(first_day: str) -> list[int]:
+    session = _get_session()
+    users: list[tuple[int, str]] = session.query(Comment.user_id) \
+                                          .filter(Comment.date >= first_day, Comment.via_bot == True).all()
+    return [i[0] for i in users]
+
+
 def get_comment_task_path(cost_id: int) -> str:
     session = _get_session()
     task_path = session.query(Task.task_path).join(Comment).filter(Comment.task_id == Task.task_id,

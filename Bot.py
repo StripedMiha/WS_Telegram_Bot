@@ -15,7 +15,8 @@ from app.config_reader import load_config
 from app.auth import TUser
 from app.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, remove_costs, \
     remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, get_users_of_list, \
-    get_project_list, update_task_parent, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark
+    get_project_list, update_task_parent, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, \
+    get_month_stat
 
 from pprint import pprint
 
@@ -77,6 +78,7 @@ logger = logging.getLogger(__name__)
 async def set_commands(bot: Bot):
     commands = [
         BotCommand(command="/menu", description="Взаимодействие с ботом"),
+        BotCommand(command="/stat", description="Получить месячную статистику")
 
     ]
     await bot.set_my_commands(commands)  # TODO наверх
@@ -543,6 +545,13 @@ async def log_for_admin(message: types.Message):
     for i in text:
         answer += i
     await bot.send_message(chat_id=message.from_user.id, text=answer)
+
+
+@dp.message_handler(commands="stat")
+async def cmd_stat(message: types.Message):
+    await update_day_costs(TUser(message.from_user.id))
+    get_month_stat()
+    await bot.send_photo(message.from_user.id, types.InputFile('app/db/png/1.png'))
 
 
 # проверка запуска
