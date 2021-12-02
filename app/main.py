@@ -333,6 +333,10 @@ def add_bookmark(user_id: int, task_id: str) -> str:
         add_bookmark_to_user(user_id, bookmark_id)
         return "Закладка добавлена"
 
+    
+def get_month_stat():
+    current_month_stat()
+
 
 if __name__ == '__main__':
     pass
