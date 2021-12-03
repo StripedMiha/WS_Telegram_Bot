@@ -38,7 +38,11 @@ def show_gist():
     print(data)
     print(time)
     plt.gcf().clear()
+    # fig, ax = plt.subplots(figsize=(5, 3))
     plt.title('Статистика за текущий календарный месяц')
+    # ax.set_ylabel('часы')
+    # fig.tight_layout()
+    plt.ylabel('часы')
     plt.bar(users, time)
     plt.savefig('app/db/png/1')
 
