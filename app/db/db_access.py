@@ -133,8 +133,8 @@ def get_project_id_by_task_id(parent_id) -> str:
 def get_list_user_bookmark(user_id: int) -> list[list]:
     session = _get_session()
     user_bookmarks: list[tuple] = session.query(Bookmark.bookmark_name, Task.task_ws_id)\
-                                         .join(Bookmark).join(UserBookmark) \
-                                         .filter(UserBookmark.user_id == user_id).all()
+                                         .join(Bookmark).join(UserBookmark).join(Project) \
+                                         .filter(UserBookmark.user_id == user_id).order_by(Project.project_name, Task.task_name).all()
     return [(list(i)) for i in user_bookmarks]
 
 

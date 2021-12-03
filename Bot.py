@@ -549,9 +549,11 @@ async def log_for_admin(message: types.Message):
 
 @dp.message_handler(commands="stat")
 async def cmd_stat(message: types.Message):
-    await update_day_costs(TUser(message.from_user.id))
+    log_in(message.from_user.full_name, message.text)
+    # await message.answer('Секунду, составляю график...')
     get_month_stat()
-    await bot.send_photo(message.from_user.id, types.InputFile('app/db/png/1.png'))
+    await bot.send_photo(message.from_user.id, types.InputFile('app/db/png/1.png'),
+                         caption='В графике отображены только те часы, которые были занесены через бота')
 
 
 # проверка запуска
