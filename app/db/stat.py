@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from pprint import pp, pprint
 import matplotlib.pyplot as plt
 
 
@@ -12,9 +13,12 @@ def sum_month_time_costs(first_day: str):
     for i in users:
         users_sum[i] = timedelta(hours=0)
     users_costs: list[list[str, str]] = get_all_month_costs(first_day)
+
     for i, j in users_costs:
         users_sum[i] += timedelta(hours=int(j.split(':')[0]),
                                   minutes=int(j.split(':')[1]))
+        pprint(users_sum)
+    
     return users_sum
 
 
@@ -22,12 +26,13 @@ def current_month_stat():
     now_date = datetime.now()
     first_day = '-'.join([str(now_date.year), str(now_date.month), '01'])
     users_sum = sum_month_time_costs(first_day)
+    pprint(users_sum)
     return users_sum
 
 
 def to_float(time: timedelta) -> float:
-    dtime = timedelta(seconds=time.seconds)
-    hours = dtime.seconds // 60 // 60 + (dtime.seconds // 60 % 60) / 60
+    dtime = timedelta(seconds=time.seconds, days=time.days)
+    hours = (dtime.seconds // 60 // 60 + (dtime.seconds // 60 % 60) / 60) + dtime.days * 24
     return hours
 
 

@@ -317,11 +317,9 @@ def parse_input_comments(message: str) -> list[list[str, timedelta]]:
             comments.remove('')
         time_d = to_correct_time(row.split('!')[0])
         for i in time_to_comment(comments, time_d):
-            print(type(i))
             comment_with_time.append(i)
     for i in comment_with_time:
         i[1] = ':'.join(str(i[1]).split(':')[:2])
-    pprint(comment_with_time)
     return comment_with_time
 
 
