@@ -55,14 +55,10 @@ INPUT_COST_EXAMPLE = """
 
 
 def format_time(time: str) -> str:
-    print('---------')
-    print('ввод ', time)
     hours = int(time.split(':')[0].strip(' '))
     minutes = int(time.split(':')[1].strip(' '))
     f_hours: str = ''
     f_minutes: str = ''
-    print('минут ', minutes)
-    print('часов ', hours)
     if minutes > 0:
         f_minutes = f'{minutes} минут'
     if hours >= 0:
@@ -71,12 +67,10 @@ def format_time(time: str) -> str:
         elif 2 <= hours <= 4:
             word = 'часа'
         elif hours == 0:
-            print('вывод_min - ', f_minutes)
             return f_minutes
         else:
             word = 'часов'
         f_hours = f'{hours} {word}'
-    print('вывод - ', ' '.join([f_hours, f_minutes]))
     return ' '.join([f_hours, f_minutes])
 
 
@@ -88,10 +82,7 @@ def format_date(date: str) -> str:
 def sum_time(times: list[str]) -> str:
     tot_time: timedelta = timedelta()
     for i in times:
-        print('суммируем. часы - ', int(i.split(':')[0]), ' //// минуты - ', int(i.split(':')[1]))
-        print('до сложения - ', tot_time)
         tot_time += timedelta(hours=int(i.split(':')[0]), minutes=int(i.split(':')[1]))
-        print('после сложения - ', tot_time)
     return ':'.join(str(tot_time).split(':')[:2])
 
 
@@ -158,11 +149,14 @@ def see_days_costs(user: TUser) -> str:
     else:
         total_time: list[str] = []
         prev_proj_name, prev_task_name = comments[0][3], comments[0][2]
-        answer = f"Проект: {prev_proj_name}\n\tЗадача: {prev_task_name}"
+        now_proj = ' '.join(["Проект:", prev_proj_name])
+        now_task = ' '.join(["  Задача:", prev_task_name])
+        now_row = ' '.join(["    Потрачено:", format_time(comments[0][1]), "на", comments[0][0]])
+        answer = "\n".join([now_proj, now_task, now_row])
+        total_time.append(comments[0][1])
         for comment in comments[1:]:
             cur_proj_name, cur_task_name = comment[3], comment[2]
             cur_time, cur_text = comment[1], comment[0]
-            print(cur_proj_name)
             if prev_proj_name == cur_proj_name:
                 if prev_task_name == cur_task_name:
                     now_row = ' '.join(['    Потрачено:', format_time(cur_time), 'на', cur_text])
