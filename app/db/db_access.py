@@ -164,6 +164,12 @@ def get_task_db_id(task_ws_id: str) -> int:
     return int(task_db_id[0])
 
 
+def get_task_ws_id_db(task_id: int) -> str:
+    session = _get_session()
+    task_ws_db_id = session.query(Task.task_ws_id).filter(Task.task_id == task_id).one()
+    return task_ws_db_id[0]
+
+
 def add_bookmark_to_user(user_id: int, bookmark_id: int) -> None:
     session = _get_session()
     user_book = UserBookmark(user_id=user_id,

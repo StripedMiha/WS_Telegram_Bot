@@ -5,6 +5,7 @@ import re
 
 import aiogram.utils.exceptions
 from aiogram import Bot, Dispatcher, types
+from aiogram.dispatcher.filters import Text
 from aiogram.utils.callback_data import CallbackData
 from aiogram.types import BotCommand
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -16,7 +17,7 @@ from app.auth import TUser
 from app.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, remove_costs, \
     remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, get_users_of_list, \
     get_project_list, update_task_parent, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, \
-    get_month_stat
+    get_month_stat, get_task_ws_id
 
 from pprint import pprint
 
@@ -470,6 +471,10 @@ async def wait_hours(message: types.Message, state: FSMContext):
     elif 'ничего не понял' in text.lower() or '!' not in text.lower():
         await message.answer(INPUT_COST_EXAMPLE)
         return
+    # elif 'выбрать' in text.lower() or 'select' not in text.lower():
+    #     await message.answer(select_task(message.from_user.id, data['id']))
+    #     await state.finish()
+    #     return
     else:
         for i_status in add_costs(text, data):
             await message.answer(i_status)
@@ -552,6 +557,18 @@ async def cmd_stat(message: types.Message):
     await update_day_costs(TUser(message.from_user.id))
     get_month_stat()
     await bot.send_photo(message.from_user.id, types.InputFile('app/db/png/1.png'))
+
+
+@dp.message_handler(lambda message_answer: message_answer.text.lower() in ["ввести", "add"])
+async def fast_input(message: types.Message, state: FSMContext):
+    await message.answer("Да-да?")
+    user = TUser(message.from_user.id)
+    task_ws_id = get_task_ws_id(user.selected_task)
+    text = get_tasks(task_ws_id, user.user_id)
+    await state.update_data(id=task_ws_id,
+                            user_id=user.user_id)
+    await message.answer(text)
+    await OrderMenu.waiting_for_time_comment.set()
 
 
 # проверка запуска

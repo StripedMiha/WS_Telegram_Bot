@@ -20,6 +20,7 @@ class TUser:
             self.__email = None
             self.__date_of_input = 'today'
             self.__status = 'wait'
+            self.selected_task = None
 
         else:
             self.user_id = q.user_id
@@ -29,6 +30,7 @@ class TUser:
             self.__email = q.email
             self.__date_of_input = q.date_of_input
             self.__status = q.status
+            self.selected_task = q.selected_task
         self.admin = self.__is_admin()
         self.has_access = self.__has_access()
         self.blocked = self.__is_blocked

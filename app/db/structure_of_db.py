@@ -53,6 +53,7 @@ class User(Base):
     last_name = Column(String(50))
     date_of_input = Column(String(15))
     status = Column(String(20), nullable=False)
+    selected_task = Column(Integer(), ForeignKey('tasks.task_id'), nullable=True)
 
 
 class UserBookmark(Base):
