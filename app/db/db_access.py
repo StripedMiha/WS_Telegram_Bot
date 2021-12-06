@@ -7,14 +7,13 @@ from app.db.structure_of_db import Comment, Project, Task, User, Bookmark, UserB
 from app.auth import _get_session, TUser
 
 
-def get_days_costs(user: TUser) -> list[Comment]:
+def get_days_costs(user: TUser) -> list[tuple]:
     session = _get_session()
     query_comments = session.query(Comment.comment_text, Comment.time, Task.task_name, Project.project_name,
                                    Comment.comment_id) \
         .join(Comment).join(Project) \
-        .filter(
-        Comment.user_id == user.user_id,
-        Comment.date == user.get_date()).all()
+        .filter(Comment.user_id == user.user_id,
+                Comment.date == user.get_date()).order_by(Project.project_name, Task.task_name).all()
     return query_comments
 
 
@@ -133,8 +132,8 @@ def get_project_id_by_task_id(parent_id) -> str:
 def get_list_user_bookmark(user_id: int) -> list[list]:
     session = _get_session()
     user_bookmarks: list[tuple] = session.query(Bookmark.bookmark_name, Task.task_ws_id)\
-                                         .join(Bookmark).join(UserBookmark) \
-                                         .filter(UserBookmark.user_id == user_id).all()
+                                         .join(Bookmark).join(UserBookmark).join(Project) \
+                                         .filter(UserBookmark.user_id == user_id).order_by(Project.project_name, Task.task_name).all()
     return [(list(i)) for i in user_bookmarks]
 
 

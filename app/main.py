@@ -56,20 +56,22 @@ INPUT_COST_EXAMPLE = """
 
 
 def format_time(time: str) -> str:
-    hours = int(time.split(':')[0])
-    minutes = int(time.split(':')[1])
+    hours = int(time.split(':')[0].strip(' '))
+    minutes = int(time.split(':')[1].strip(' '))
     f_hours: str = ''
     f_minutes: str = ''
-    if hours > 0:
+    if minutes > 0:
+        f_minutes = f'{minutes} минут'
+    if hours >= 0:
         if hours == 1:
             word = 'час'
         elif 2 <= hours <= 4:
             word = 'часа'
+        elif hours == 0:
+            return f_minutes
         else:
             word = 'часов'
         f_hours = f'{hours} {word}'
-    if minutes > 0:
-        f_minutes = f'{minutes} минут'
     return ' '.join([f_hours, f_minutes])
 
 
@@ -147,13 +149,34 @@ def see_days_costs(user: TUser) -> str:
                  'Будь умничкой - внеси часы.'
     else:
         total_time: list[str] = []
-        for i in comments:
-            text_comment = f"Проект: {i[3]}\n" \
-                           f"Задача: {i[2]}\n" \
-                           f"Потрачено: {format_time(i[1])}на {i[0]}\n"
-            answer += text_comment + '\n'
-            total_time.append(i[1])
-        answer += f"Общее время за {format_date(user.get_date())}: {format_time(sum_time(total_time))}"
+        prev_proj_name, prev_task_name = comments[0][3], comments[0][2]
+        now_proj = ' '.join(["Проект:", prev_proj_name])
+        now_task = ' '.join(["  Задача:", prev_task_name])
+        now_row = ' '.join(["    Потрачено:", format_time(comments[0][1]), "на", comments[0][0]])
+        answer = "\n".join([now_proj, now_task, now_row])
+        total_time.append(comments[0][1])
+        for comment in comments[1:]:
+            cur_proj_name, cur_task_name = comment[3], comment[2]
+            cur_time, cur_text = comment[1], comment[0]
+            if prev_proj_name == cur_proj_name:
+                if prev_task_name == cur_task_name:
+                    now_row = ' '.join(['    Потрачено:', format_time(cur_time), 'на', cur_text])
+                    answer = '\n'.join([answer, now_row])
+                else:
+                    prev_task_name = cur_task_name
+                    now_task = ' '.join(["  Задача:", cur_task_name])
+                    now_row = ' '.join(['    Потрачено:', format_time(cur_time), 'на', cur_text])
+                    answer = '\n'.join([answer, now_task, now_row])
+            else:
+                now_proj = ' '.join(["\nПроект:", cur_proj_name])
+                now_task = ' '.join(["  Задача:", cur_task_name])
+                now_row = ' '.join(['    Потрачено:', format_time(cur_time), 'на', cur_text])
+                answer = '\n'.join([answer, now_proj, now_task, now_row])
+                prev_task_name = cur_task_name
+                prev_proj_name = cur_proj_name
+            total_time.append(cur_time)
+        tot_row = f"\nОбщее время за {format_date(user.get_date())}: {format_time(sum_time(total_time))}"
+        answer = '\n'.join([answer, tot_row])
     return answer
 
 
@@ -318,11 +341,9 @@ def parse_input_comments(message: str) -> list[list[str, timedelta]]:
             comments.remove('')
         time_d = to_correct_time(row.split('!')[0])
         for i in time_to_comment(comments, time_d):
-            print(type(i))
             comment_with_time.append(i)
     for i in comment_with_time:
         i[1] = ':'.join(str(i[1]).split(':')[:2])
-    pprint(comment_with_time)
     return comment_with_time
 
 
