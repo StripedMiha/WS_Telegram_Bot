@@ -17,8 +17,6 @@ def sum_month_time_costs(first_day: str):
     for i, j in users_costs:
         users_sum[i] += timedelta(hours=int(j.split(':')[0]),
                                   minutes=int(j.split(':')[1]))
-        pprint(users_sum)
-    
     return users_sum
 
 
@@ -26,7 +24,6 @@ def current_month_stat():
     now_date = datetime.now()
     first_day = '-'.join([str(now_date.year), str(now_date.month), '01'])
     users_sum = sum_month_time_costs(first_day)
-    pprint(users_sum)
     return users_sum
 
 
@@ -40,8 +37,6 @@ def show_gist():
     data = current_month_stat()
     users = [TUser(i).full_name for i in data.keys()]
     time = [to_float(i) for i in data.values()]
-    print(data)
-    print(time)
     plt.gcf().clear()
     # fig, ax = plt.subplots(figsize=(5, 3))
     plt.title('Статистика за текущий календарный месяц')
