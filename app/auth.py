@@ -84,6 +84,9 @@ class TUser:
             split_date = ((str(datetime.date.today() - timedelta)).split('-'))
             split_date.reverse()
             new_date = '.'.join(split_date)
+        for i in [' ', ',', ':']:
+            temp = new_date.split(i)
+            new_date = '.'.join(temp)
         session = _get_session()
         update_row: User = session.query(User).get(self.user_id)
         update_row.date_of_input = new_date
