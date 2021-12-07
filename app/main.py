@@ -9,7 +9,7 @@ from app.db.db_access import get_days_costs, check_comment, get_comment_task_pat
     remove_users_bookmark_db, get_projects_db, add_project_in_db, get_all_tasks_id_db, add_task_in_db, \
     get_tasks_from_db, get_task_name, get_project_id_by_task_id, remove_task_from_db, get_list_user_bookmark, \
     get_all_booked_task_id, add_bookmark_into_db, get_bookmark_id, add_bookmark_to_user, get_tasks_path, \
-    add_comment_in_db, get_task_ws_id_db
+    add_comment_in_db, get_task_ws_id_db, change_selected_task
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks,\
     get_task_info, add_cost
 from app.db.stat import current_month_stat, show_gist
@@ -20,6 +20,7 @@ INPUT_COSTS = """
 В начале указываете количество часов, следом через '!' можно перечислить один или несколько комментариев.
 Можно ввести больше двух часов. Алгоритм сам разделит по два часа. Пробелы между '!' не важны
 
+Для выбора задачи для быстрого ввода введите '<i>выбрать</i>'
 Для отмены введите '<i>отмена</i>'
 Для более подробного описания введите '<i>Ничего не понял</i>'
 Для добавления задачи в закладки введите '<i>Добавить закладку</i>'
@@ -361,11 +362,9 @@ def get_month_stat():
     show_gist()
 
 
-def get_task_ws_id(task_id):
-    return get_task_ws_id_db(task_id)
-
-
-# def select_task(user_id: int, task_id) -> str:
+def select_task(user_id: int, task_ws_id) -> str:
+    change_selected_task(user_id, task_ws_id)
+    return '\n'.join(['Выбранная задача:', get_task_name(task_ws_id)])
 
 
 if __name__ == '__main__':

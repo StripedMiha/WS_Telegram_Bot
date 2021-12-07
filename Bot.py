@@ -17,7 +17,7 @@ from app.auth import TUser
 from app.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, remove_costs, \
     remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, get_users_of_list, \
     get_project_list, update_task_parent, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, \
-    get_month_stat, get_task_ws_id
+    get_month_stat, select_task
 
 from pprint import pprint
 
@@ -468,13 +468,13 @@ async def wait_hours(message: types.Message, state: FSMContext):
         task_id = data['id']
         await message.answer(add_bookmark(message.from_user.id, task_id))
         await state.finish()
+    elif 'выбрать' in text.lower() or 'select' in text.lower():
+        await message.answer(select_task(message.from_user.id, data['id']))
+        await state.finish()
+        return
     elif 'ничего не понял' in text.lower() or '!' not in text.lower():
         await message.answer(INPUT_COST_EXAMPLE)
         return
-    # elif 'выбрать' in text.lower() or 'select' not in text.lower():
-    #     await message.answer(select_task(message.from_user.id, data['id']))
-    #     await state.finish()
-    #     return
     else:
         for i_status in add_costs(text, data):
             await message.answer(i_status)
@@ -555,7 +555,6 @@ async def log_for_admin(message: types.Message):
 @dp.message_handler(commands="stat")
 async def cmd_stat(message: types.Message):
     log_in(message.from_user.full_name, message.text)
-    # await message.answer('Секунду, составляю график...')
     get_month_stat()
     await bot.send_photo(message.from_user.id, types.InputFile('app/db/png/1.png'),
                          caption='В графике отображены только те часы, которые были занесены через бота')
@@ -565,9 +564,11 @@ async def cmd_stat(message: types.Message):
 async def fast_input(message: types.Message, state: FSMContext):
     await message.answer("Да-да?")
     user = TUser(message.from_user.id)
-    task_ws_id = get_task_ws_id(user.selected_task)
-    text = get_tasks(task_ws_id, user.user_id)
-    await state.update_data(id=task_ws_id,
+    if user.selected_task is None:
+        await message.answer('Задача не выбрана, выбери её через поиск')
+        return
+    text = get_tasks(user.selected_task, user.user_id)
+    await state.update_data(id=user.selected_task,
                             user_id=user.user_id)
     await message.answer(text)
     await OrderMenu.waiting_for_time_comment.set()

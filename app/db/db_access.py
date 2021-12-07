@@ -74,11 +74,6 @@ async def add_project_in_db(project: list[str, int]) -> None:
     session.commit()
 
 
-# def set_parent_task(task_id: str, parent: str) -> None:
-#     session = _get_session()
-#     q = session.query(Task)
-
-
 def get_all_tasks_id_db(project_id: str) -> list[int]:
     session = _get_session()
     tasks_id = session.query(Task.task_ws_id).filter(Task.project_id == project_id).all()
@@ -203,6 +198,14 @@ def add_comment_in_db(comment_id: str, user_id: int, task_ws_id: str, time: str,
         via_bot=True,
     )
     session.add(comment)
+    session.commit()
+
+
+def change_selected_task(user_id: int, task_ws_id: str) -> None:
+    session = _get_session()
+    i: User = session.query(User).filter(User.user_id == user_id).one()
+    i.selected_task = task_ws_id
+    session.add(i)
     session.commit()
 
 
