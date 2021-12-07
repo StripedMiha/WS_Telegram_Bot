@@ -86,6 +86,12 @@ def get_all_tasks_id_db() -> list[int]:
     return [i[0] for i in tasks_id]
 
 
+def get_all_projects_id_db() -> list[int]:
+    session = _get_session()
+    projects_id = session.query(Project.project_id).all()
+    return [i[0] for i in projects_id]
+
+
 def add_task_in_db(task_info: dict, parent_id: str = None) -> None:
     par_id = int(task_info.get('project').get('id')) if parent_id is None else parent_id
     t = Task(task_path=task_info.get('page'),

@@ -9,7 +9,7 @@ from app.db.db_access import get_days_costs, check_comment, get_comment_task_pat
     remove_users_bookmark_db, get_projects_db, add_project_in_db, get_project_tasks_id_db, add_task_in_db, \
     get_tasks_from_db, get_task_name, get_project_id_by_task_id, remove_task_from_db, get_list_user_bookmark, \
     get_all_booked_task_id, add_bookmark_into_db, get_bookmark_id, add_bookmark_to_user, get_tasks_path, \
-    add_comment_in_db, get_task_ws_id_db, change_selected_task, get_all_tasks_id_db
+    add_comment_in_db, get_task_ws_id_db, change_selected_task, get_all_tasks_id_db, get_all_projects_id_db
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks,\
     get_task_info, add_cost
 from app.db.stat import current_month_stat, show_gist
@@ -266,15 +266,27 @@ async def update_task_parent(parent_id: int) -> None:
         #     set_parent_task(key, value)
 
 
+def get_text_add_costs(parent_id: str, user: TUser) -> str:
+    name = get_task_name(parent_id)
+    date = f'Установленная дата - {format_date(user.get_date())}'
+    answer: str = '\n'.join([name, date, INPUT_COSTS])
+    return answer
+
+
 def get_tasks(parent_id: str, user_id: int) -> Union[list[list], str]:
+    user = TUser(user_id)
     child_tasks: list[list] = get_tasks_from_db(parent_id)
+    if parent_id in get_all_projects_id_db():
+        update_task_parent(int(parent_id))
     if len(child_tasks) == 0:
-        name = get_task_name(parent_id)
-        date = f'Установленная дата - {format_date(TUser(user_id).get_date())}'
-        answer: str = '\n'.join([name, date, INPUT_COSTS])
-        return answer
+        return get_text_add_costs(parent_id, user)
     for i in child_tasks:
         i.append('search_task')
+    if parent_id not in get_all_projects_id_db():
+        child_tasks.reverse()
+        task_name = ' '.join([f'🗂', get_task_name(parent_id).split(' | ')[1]])
+        child_tasks.append([task_name, parent_id, 'input_here'])
+        child_tasks.reverse()
     return child_tasks
 
 
@@ -283,7 +295,7 @@ def get_list_bookmark(user_id: int) -> Union[list[list], str]:
     if len(user_list_bookmark) == 0:
         return 'У вас нет закладок.\n Добавить закладки можно через кнопку "Найти задачу"'
     for i in user_list_bookmark:
-        i.append('add_costs')
+        i.append('search_task')
     return user_list_bookmark  # TODO две подобные функции выдающие закладки
 
 

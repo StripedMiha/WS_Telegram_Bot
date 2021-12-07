@@ -16,8 +16,8 @@ from app.config_reader import load_config
 from app.auth import TUser
 from app.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, remove_costs, \
     remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, get_users_of_list, \
-    get_project_list, update_task_parent, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, \
-    get_month_stat, select_task, check_task_id
+    get_project_list, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, \
+    get_month_stat, select_task, check_task_id, get_text_add_costs
 
 from pprint import pprint
 
@@ -437,7 +437,6 @@ async def search_project_via_bookmarks(call: types.CallbackQuery, callback_data:
 async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     log_in(call.from_user.full_name, call['data'])
     project_id = callback_data['id']
-    await update_task_parent(project_id)
     tasks = get_tasks(project_id, call.from_user.id)
     if isinstance(tasks, str):
         await state.update_data(id=callback_data['id'],
@@ -449,17 +448,16 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
     await call.message.edit_text('Выберите задачу', reply_markup=keyboard)
 
 
-@dp.callback_query_handler(callback_remove.filter(action=["add_costs"]))
+@dp.callback_query_handler(callback_remove.filter(action=["input_here"]))
 async def add_costs_via_bookmarks(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     log_in(call.from_user.full_name, call['data'])
-    project_id = callback_data['id']
-    tasks = get_tasks(project_id, call.from_user.id)
-    if isinstance(tasks, str):
-        await state.update_data(id=callback_data['id'],
-                                user_id=call.from_user.id)
-        await call.message.edit_text(tasks)
-        await OrderMenu.waiting_for_time_comment.set()
-        return None
+    task_id = callback_data['id']
+    text = get_text_add_costs(task_id, TUser(call.from_user.id))
+    await state.update_data(id=callback_data['id'],
+                            user_id=call.from_user.id)
+    await call.message.edit_text(text)
+    await OrderMenu.waiting_for_time_comment.set()
+    return None
 
 
 @dp.callback_query_handler(callback_remove.filter(action="remove_bookmark"))
