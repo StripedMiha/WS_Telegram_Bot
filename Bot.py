@@ -17,7 +17,7 @@ from app.auth import TUser
 from app.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, remove_costs, \
     remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, get_users_of_list, \
     get_project_list, update_task_parent, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, \
-    get_month_stat, select_task
+    get_month_stat, select_task, check_task_id
 
 from pprint import pprint
 
@@ -28,6 +28,7 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 
 class OrderMenu(StatesGroup):
     wait_for_email = State()
+    waiting_for_task_id = State()
     waiting_for_time_comment = State()
     wait_for_offer = State()
     wait_news = State()
@@ -39,6 +40,7 @@ def register_handlers_time_cost(dp: Dispatcher):
     dp.register_message_handler(wait_offer, state=OrderMenu.wait_for_offer)
     dp.register_message_handler(wait_email, state=OrderMenu.wait_for_email)
     dp.register_message_handler(wait_date, state=OrderMenu.wait_for_date)
+    dp.register_message_handler(wait_task_id, state=OrderMenu.waiting_for_task_id)
     dp.register_message_handler(wait_hours, state=OrderMenu.waiting_for_time_comment)
     dp.register_message_handler(news_to_users, state=OrderMenu.wait_news)
 
@@ -327,7 +329,7 @@ async def wait_date(message: types.Message, state: FSMContext):
     elif message.text.lower() == 'вчера' or message.text.lower() == 'yesterday':
         user.change_date('yesterday')
         await message.answer('Установлена вчерашняя дата')
-    elif re.match(r'(((0[1-9])|([1-2][0-9])|(3[0-1]))\.((0[1-9])|(1[0-2]))\.20[2-9][0-9])', message.text):
+    elif re.match(r'(((0[1-9])|([1-2][0-9])|(3[0-1]))[., :]((0[1-9])|(1[0-2]))[., :]20[2-9][0-9])', message.text):
         date = message.text.strip(' ')
         user.change_date(date)
         await message.answer(f'Установлена дата: {user.get_date()}')
@@ -376,8 +378,39 @@ async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
     user = TUser(call.from_user.id)
     log_in(call.from_user.full_name, user.get_email(), '- add time cost')
     buttons = [['Через поиск', 'via search'],
-               ['❤️ Через закладки', 'via bookmarks']]
+               ['❤️ Через закладки', 'via bookmarks'],
+               ['Ввести id задачи', 'task id input']]
     await call.message.edit_text('Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
+
+
+@dp.callback_query_handler(callback_menu.filter(action=['task id input']))
+async def task_id_input(call: types.CallbackQuery, callback_data: dict):
+    user = TUser(call.from_user.id)
+    log_in(user.full_name, call['data'])
+    await call.message.edit_text('Введите ID задачи из WorkSection')
+    await OrderMenu.waiting_for_task_id.set()
+
+
+async def wait_task_id(message: types.Message, state: FSMContext):
+    user = TUser(message.from_user.id)
+    log_in(user.full_name, message.text)
+    if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
+        await message.answer('Отменён ввод ID задачи.\n')
+        log_in(user.full_name, 'cancel input task id')
+        await state.finish()
+    if check_task_id(message.text):
+        await state.update_data(id=message.text,
+                                user_id=message.from_user.id)
+        text = get_tasks(message.text, user.user_id)
+        if isinstance(text, list):
+            await message.answer('У данной задачи есть подзадачи, пока не могу выбрать эту задачу :С')
+            await state.finish()
+            return
+        await message.answer(text)
+        await OrderMenu.waiting_for_time_comment.set()
+    else:
+        await message.answer('Задачи с этим ID нет у меня :С \nВведите "отмена" для отмены ввода')
+
 
 
 @dp.callback_query_handler(callback_menu.filter(action=['via search']))

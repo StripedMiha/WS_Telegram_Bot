@@ -74,9 +74,15 @@ async def add_project_in_db(project: list[str, int]) -> None:
     session.commit()
 
 
-def get_all_tasks_id_db(project_id: str) -> list[int]:
+def get_project_tasks_id_db(project_id: str) -> list[int]:
     session = _get_session()
     tasks_id = session.query(Task.task_ws_id).filter(Task.project_id == project_id).all()
+    return [i[0] for i in tasks_id]
+
+
+def get_all_tasks_id_db() -> list[int]:
+    session = _get_session()
+    tasks_id = session.query(Task.task_ws_id).all()
     return [i[0] for i in tasks_id]
 
 
