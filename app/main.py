@@ -235,8 +235,8 @@ async def get_project_list(user: TUser) -> list[list[str, int, str]]:
     return projects
 
 
-async def update_task_parent(parent_id: int) -> None:
-    project_id = get_project_id_by_task_id(parent_id)
+def update_task_parent(parent_id: int) -> None:
+    project_id = get_project_id_by_task_id(str(parent_id))
     project_tasks = search_tasks(f'/project/{project_id}/')
     all_db_task_id = get_project_tasks_id_db(project_id)
     all_ws_task_id: list = []
