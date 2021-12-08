@@ -437,6 +437,7 @@ async def search_project_via_bookmarks(call: types.CallbackQuery, callback_data:
 async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     log_in(call.from_user.full_name, call['data'])
     project_id = callback_data['id']
+    await call.message.edit_text('Идёт поиск всех задач. Секундочку подождите')
     tasks = get_tasks(project_id, call.from_user.id)
     if isinstance(tasks, str):
         await state.update_data(id=callback_data['id'],

@@ -14,6 +14,7 @@ def get_days_costs(user: TUser) -> list[tuple]:
         .join(Comment).join(Project) \
         .filter(Comment.user_id == user.user_id,
                 Comment.date == user.get_date()).order_by(Project.project_name, Task.task_name).all()
+    session.close()
     return query_comments
 
 
@@ -21,6 +22,7 @@ def get_all_month_costs(first_day: str):
     session = _get_session()
     comms = session.query(Comment.user_id, Comment.time) \
                    .filter(Comment.date >= first_day, Comment.via_bot == True).all()
+    session.close()
     return [list(i) for i in comms]
 
 
@@ -28,6 +30,7 @@ def get_months_user(first_day: str) -> list[int]:
     session = _get_session()
     users: list[tuple[int, str]] = session.query(Comment.user_id) \
                                           .filter(Comment.date >= first_day, Comment.via_bot == True).all()
+    session.close()
     return [i[0] for i in users]
 
 
@@ -35,6 +38,7 @@ def get_comment_task_path(cost_id: int) -> str:
     session = _get_session()
     task_path = session.query(Task.task_path).join(Comment).filter(Comment.task_id == Task.task_id,
                                                                    Comment.comment_id == cost_id).one()[0]
+    session.close()
     return task_path
 
 
@@ -43,12 +47,14 @@ def remove_comment_db(cost_id: int) -> None:
     comment = session.query(Comment).filter(Comment.comment_id == cost_id).one()
     session.delete(comment)
     session.commit()
+    session.close()
 
 
 def get_bookmarks_user(user: TUser) -> list[UserBookmark]:
     session = _get_session()
     query_bookmarks = session.query(UserBookmark.ub_id, Bookmark.bookmark_name) \
         .join(Bookmark).filter(UserBookmark.user_id == user.user_id).all()
+    session.close()
     return query_bookmarks
 
 
@@ -57,11 +63,13 @@ def remove_users_bookmark_db(id_ub: int) -> None:
     i = session.query(UserBookmark).filter(UserBookmark.ub_id == id_ub).one()
     session.delete(i)
     session.commit()
+    session.close()
 
 
 def get_projects_db() -> list[int]:
     session = _get_session()
     projects_id = session.query(Project.project_id).all()
+    session.close()
     return [i[0] for i in projects_id]
 
 
@@ -72,23 +80,27 @@ async def add_project_in_db(project: list[str, int]) -> None:
                           project_path=f'/project/{str(project[1])}/')
     session.add(new_project)
     session.commit()
+    session.close()
 
 
 def get_project_tasks_id_db(project_id: str) -> list[int]:
     session = _get_session()
     tasks_id = session.query(Task.task_ws_id).filter(Task.project_id == project_id).all()
+    session.close()
     return [i[0] for i in tasks_id]
 
 
 def get_all_tasks_id_db() -> list[int]:
     session = _get_session()
     tasks_id = session.query(Task.task_ws_id).all()
+    session.close()
     return [i[0] for i in tasks_id]
 
 
 def get_all_projects_id_db() -> list[int]:
     session = _get_session()
     projects_id = session.query(Project.project_id).all()
+    session.close()
     return [i[0] for i in projects_id]
 
 
@@ -103,6 +115,7 @@ def add_task_in_db(task_info: dict, parent_id: str = None) -> None:
     session = _get_session()
     session.add(t)
     session.commit()
+    session.close()
 
 
 def remove_task_from_db(task_id) -> None:
@@ -111,18 +124,32 @@ def remove_task_from_db(task_id) -> None:
     i.status = 'removed'
     session.add(i)
     session.commit()
+    session.close()
 
 
 def get_tasks_from_db(parent_id: str) -> list[list]:
     session = _get_session()
     child_tasks: list[tuple] = session.query(Task.task_name, Task.task_ws_id)\
                                       .filter(Task.parent_id == parent_id, Task.status == 'active').all()
+    session.close()
     return [(list(i)) for i in child_tasks]
 
 
 def get_task_name(task_id: str) -> str:
     session = _get_session()
+    print(task_id)
+    name = session.query(Task.task_name)  .filter(Task.task_ws_id == task_id).one()[0]
+    print(name)
+    session.close()
+    return name
+
+
+def get_full_task_name(task_id: str) -> str:
+    session = _get_session()
+    print(task_id)
     name = session.query(Project.project_name, Task.task_name).join(Project).filter(Task.task_ws_id == task_id).one()
+    print(name)
+    session.close()
     return ' | '.join(name)
 
 
@@ -133,6 +160,7 @@ def get_project_id_by_task_id(parent_id) -> str:
         project_id = parent_id
     else:
         project_id = session.query(Task.project_id).filter(Task.task_ws_id == parent_id).one()[0]
+    session.close()
     return project_id
 
 
@@ -141,38 +169,44 @@ def get_list_user_bookmark(user_id: int) -> list[list]:
     user_bookmarks: list[tuple] = session.query(Bookmark.bookmark_name, Task.task_ws_id)\
                                          .join(Bookmark).join(UserBookmark).join(Project) \
                                          .filter(UserBookmark.user_id == user_id).order_by(Project.project_name, Task.task_name).all()
+    session.close()
     return [(list(i)) for i in user_bookmarks]
 
 
 def get_all_booked_task_id() -> list[int]:
     session = _get_session()
     q: list[tuple[str]] = session.query(Task.task_ws_id).join(Bookmark).filter(Bookmark.task_id == Task.task_id).all()
+    session.close()
     return [int(i[0]) for i in q]
 
 
 def add_bookmark_into_db(task_ws_id: str) -> None:
     session = _get_session()
     b = Bookmark(task_id=get_task_db_id(task_ws_id),
-                 bookmark_name=get_task_name(str(task_ws_id)))
+                 bookmark_name=get_full_task_name(str(task_ws_id)))
     session.add(b)
     session.commit()
+    session.close()
 
 
 def get_bookmark_id(task_id: str) -> int:
     session = _get_session()
     bookmark_id = session.query(Bookmark.bookmark_id).join(Task).filter(Task.task_ws_id == task_id).one()
+    session.close()
     return bookmark_id[0]
 
 
 def get_task_db_id(task_ws_id: str) -> int:
     session = _get_session()
     task_db_id = session.query(Task.task_id).filter(Task.task_ws_id == task_ws_id).one()
+    session.close()
     return int(task_db_id[0])
 
 
 def get_task_ws_id_db(task_id: int) -> str:
     session = _get_session()
     task_ws_db_id = session.query(Task.task_ws_id).filter(Task.task_id == task_id).one()
+    session.close()
     return task_ws_db_id[0]
 
 
@@ -182,11 +216,13 @@ def add_bookmark_to_user(user_id: int, bookmark_id: int) -> None:
                              bookmark_id=bookmark_id)
     session.add(user_book)
     session.commit()
+    session.close()
 
 
 def get_tasks_path(task_id: str) -> str:
     session = _get_session()
     task_path: tuple[str] = session.query(Task.task_path).filter(Task.task_ws_id == task_id).one()
+    session.close()
     return task_path[0]
 
 
@@ -211,6 +247,7 @@ def add_comment_in_db(comment_id: str, user_id: int, task_ws_id: str, time: str,
     )
     session.add(comment)
     session.commit()
+    session.close()
 
 
 def change_selected_task(user_id: int, task_ws_id: str) -> None:
@@ -219,6 +256,7 @@ def change_selected_task(user_id: int, task_ws_id: str) -> None:
     i.selected_task = task_ws_id
     session.add(i)
     session.commit()
+    session.close()
 
 
 def check_comment(com):
@@ -261,6 +299,7 @@ def check_comment(com):
             )
             session.add(comment)
     session.commit()
+    session.close()
 
 
 example = {'comment': 'обсуждение вопросов по сайту',

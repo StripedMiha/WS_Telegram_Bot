@@ -47,19 +47,22 @@ class TUser:
     @staticmethod
     def __get_user_from_db(user_id):
         session = _get_session()
-        q: Union[None, User] = session.query(User).filter(User.user_id == user_id).first()
+        q: Union[None, User] = session.query(User).filter(User.user_id == user_id).one()
+        session.close()
         return q
 
     @classmethod
     def get_users_list(cls):
         session = _get_session()
         q: list[User] = session.query(User).all()  # .user_id, User.first_name, User.last_name, User.__status
+        session.close()
         return q
 
     @classmethod
     def get_admin_id(cls):
         session = _get_session()
         q: int = session.query(User.user_id).filter(User.status == 'admin').first()[0]
+        session.close()
         return q
 
     def change_status(self, new_status: str):
@@ -68,6 +71,7 @@ class TUser:
         update_row.status = new_status
         session.add(update_row)
         session.commit()
+        session.close()
         self.__status = new_status
 
     def change_mail(self, new_mail: str):
@@ -76,6 +80,7 @@ class TUser:
         update_row.email = new_mail
         session.add(update_row)
         session.commit()
+        session.close()
         self.__email = new_mail
 
     def change_date(self, new_date: str):
@@ -92,6 +97,7 @@ class TUser:
         update_row.date_of_input = new_date
         session.add(update_row)
         session.commit()
+        session.close()
         self.__date_of_input = new_date
 
     def get_email(self):
