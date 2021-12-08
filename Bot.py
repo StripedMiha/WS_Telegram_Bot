@@ -599,7 +599,7 @@ async def fast_input(message: types.Message, state: FSMContext):
     if user.selected_task is None:
         await message.answer('Задача не выбрана, выбери её через поиск')
         return
-    text = get_tasks(user.selected_task, user.user_id)
+    text = get_text_add_costs(user.selected_task, user)
     await state.update_data(id=user.selected_task,
                             user_id=user.user_id)
     await message.answer(text)
