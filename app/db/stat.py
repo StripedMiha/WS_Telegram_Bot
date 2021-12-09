@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 from pprint import pp, pprint
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 from app.db.db_access import get_all_month_costs, get_months_user
@@ -43,6 +44,8 @@ def show_gist():
     # ax.set_ylabel('часы')
     # fig.tight_layout()
     plt.ylabel('часы')
+    plt.yticks(np.arange(0, max(time)+5, step=5))
+    plt.xticks(rotation=10)
     plt.bar(users, time)
     plt.savefig('app/db/png/1')
 
