@@ -7,7 +7,7 @@ from app.db.structure_of_db import Comment, Project, Task, User, Bookmark, UserB
 from app.auth import _get_session, TUser
 
 
-def get_days_costs(user: TUser) -> list[tuple]:
+def get_user_days_costs(user: TUser) -> list[tuple]:
     session = _get_session()
     query_comments = session.query(Comment.comment_text, Comment.time, Task.task_name, Project.project_name,
                                    Comment.comment_id) \
@@ -16,6 +16,14 @@ def get_days_costs(user: TUser) -> list[tuple]:
                 Comment.date == user.get_date()).order_by(Project.project_name, Task.task_name).all()
     session.close()
     return query_comments
+
+
+def get_all_user_day_costs(user: TUser) -> list[tuple]:
+    session = _get_session()
+    all_comments = session.query(Comment.comment_text, Comment.time, Comment.comment_id) \
+        .filter(Comment.date == user.get_date()).all()
+    session.close()
+    return all_comments
 
 
 def get_all_month_costs(first_day: str):

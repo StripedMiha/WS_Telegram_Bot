@@ -4,13 +4,13 @@ from pprint import pprint
 from typing import Union
 
 from app.auth import TUser
-from app.db.db_access import get_days_costs, check_comment, get_comment_task_path, remove_comment_db, \
+from app.db.db_access import get_user_days_costs, check_comment, get_comment_task_path, remove_comment_db, \
     get_bookmarks_user, \
     remove_users_bookmark_db, get_projects_db, add_project_in_db, get_project_tasks_id_db, add_task_in_db, \
     get_tasks_from_db, get_full_task_name, get_project_id_by_task_id, remove_task_from_db, get_list_user_bookmark, \
     get_all_booked_task_id, add_bookmark_into_db, get_bookmark_id, add_bookmark_to_user, get_tasks_path, \
     add_comment_in_db, get_task_ws_id_db, change_selected_task, get_all_tasks_id_db, get_all_projects_id_db, \
-    get_task_name
+    get_task_name, get_all_user_day_costs
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks,\
     get_task_info, add_cost
 from app.db.stat import current_month_stat, show_gist
@@ -91,7 +91,7 @@ def sum_time(times: list[str]) -> str:
 
 def text_count_removed_costs(user_id: int) -> str:
     user = TUser(user_id)
-    count = len(get_days_costs(user))
+    count = len(get_user_days_costs(user))
     if 2 <= count <= 4:
         word = 'записи'
     else:
@@ -143,7 +143,7 @@ def about_user(user: TUser) -> str:
 
 
 def see_days_costs(user: TUser) -> str:
-    comments = get_days_costs(user)
+    comments = get_user_days_costs(user)
     answer: str = ''
     if comments is None or len(comments) == 0:
         answer = f"Вы не внесли трудоёмкости за {user.get_date()}.\n"\
@@ -183,7 +183,7 @@ def see_days_costs(user: TUser) -> str:
 
 
 def days_costs_for_remove(user: TUser) -> list[list[str, int, str]]:
-    comments = get_days_costs(user)
+    comments = get_user_days_costs(user)
     list_comments: list[list[str, int, str]] = []
     for comment in comments:
         name = ' '.join([format_time(comment[1]), comment[0], comment[2]])
@@ -193,8 +193,18 @@ def days_costs_for_remove(user: TUser) -> list[list[str, int, str]]:
 
 
 async def update_day_costs(user: TUser) -> None:
+    db = [i[2] for i in get_all_user_day_costs(user)]
+    ws = []
     for comment in await get_day_costs_from_ws(user.get_date()):
+        ws.append(int(comment['id']))
         check_comment(comment)
+    for i in ws:
+        try:
+            db.remove(i)
+        except ValueError:
+            pass
+    for id in db:
+        remove_comment_db(id)
 
 
 def remove_cost(cost_id: int) -> str:
@@ -221,7 +231,7 @@ def remove_bookmark_from_user(id_ub: int) -> None:
 
 
 def remove_costs(user: TUser):
-    comments = get_days_costs(user)
+    comments = get_user_days_costs(user)
     id_comments = [i[-1] for i in comments]
     for i in id_comments:
         yield remove_cost(i)  # TODO удалить из бд трудоёмкости которые были удалены через сам WS
