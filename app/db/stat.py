@@ -36,7 +36,7 @@ def to_float(time: timedelta) -> float:
 
 def show_gist():
     data = current_month_stat()
-    users = [TUser(i).full_name for i in data.keys()]
+    users = [TUser(i).first_name for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     plt.gcf().clear()
     # fig, ax = plt.subplots(figsize=(5, 3))
@@ -45,7 +45,7 @@ def show_gist():
     # fig.tight_layout()
     plt.ylabel('часы')
     plt.yticks(np.arange(0, max(time)+5, step=5))
-    plt.xticks(rotation=10)
+    plt.xticks(rotation=0)
     plt.bar(users, time)
     plt.savefig('app/db/png/1')
 

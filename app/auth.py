@@ -1,8 +1,10 @@
 import datetime
+from re import U
 # from pprint import pprint
 
 import sqlalchemy
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, session
+from sqlalchemy.exc import NoResultFound 
 from typing import Union
 
 from app.db.structure_of_db import User
@@ -12,16 +14,17 @@ class TUser:
 
     def __init__(self, user_id: int, first_name: str = '', last_name: Union[str, None] = ''):
         q: Union[User, None] = self.__get_user_from_db(user_id)
-        if q is None:
+        print(q)
+        if isinstance(q, type(None)):
             self.user_id = user_id
             self.first_name = first_name
-            self.last_name = last_name
+            self.last_name = '' if isinstance(last_name, type(None)) else last_name
             self.full_name = self.first_name + ' ' + self.last_name
             self.__email = None
             self.__date_of_input = 'today'
             self.__status = 'wait'
             self.selected_task = None
-
+            self.add_new_user()
         else:
             self.user_id = q.user_id
             self.first_name = q.first_name
@@ -33,8 +36,7 @@ class TUser:
             self.selected_task = q.selected_task
         self.admin = self.__is_admin()
         self.has_access = self.__has_access()
-        self.blocked = self.__is_blocked
-
+        self.blocked = self.__is_blocked()
     def __is_admin(self):
         return True if self.__status == 'admin' else False
 
@@ -47,7 +49,10 @@ class TUser:
     @staticmethod
     def __get_user_from_db(user_id):
         session = _get_session()
-        q: Union[None, User] = session.query(User).filter(User.user_id == user_id).one()
+        try:
+            q: Union[None, User] = session.query(User).filter(User.user_id == user_id).one()
+        except NoResultFound:
+            return None
         session.close()
         return q
 
@@ -64,6 +69,22 @@ class TUser:
         q: int = session.query(User.user_id).filter(User.status == 'admin').first()[0]
         session.close()
         return q
+
+    def add_new_user(self):
+        session = _get_session()
+        user = User(
+            user_id = self.user_id,
+            first_name = self.first_name,
+            last_name = self.last_name,
+            email = None,
+            date_of_input = 'today',
+            status = 'wait',
+            selected_task = None
+        )
+        session.add(user)
+        session.commit()
+        session.close()
+
 
     def change_status(self, new_status: str):
         session = _get_session()
@@ -106,7 +127,7 @@ class TUser:
     def get_date(self):
         return self.__date_of_input
 
-    def get_status(self):
+    def get_status(self) -> str:
         return self.__status
 
 

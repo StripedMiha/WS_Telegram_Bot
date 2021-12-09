@@ -184,6 +184,7 @@ async def cmd_test1(message: types.Message):
         log_in(message.from_user.full_name, 'Пытается запустить бота в групповом чате')
         return None
     user = TUser(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
+    print(user.first_name)
     if user.blocked:
         return None
     elif user.get_status() == 'wait':
@@ -191,7 +192,7 @@ async def cmd_test1(message: types.Message):
         data_for_keyboard = [['Добавить пользователя', 'known_user', user.user_id],
                              ['Игнорировать пользователя', 'black_user', user.user_id]]
         keyboard = get_keyboard_admin(data_for_keyboard, width=2, enable_cancel=False)
-        await bot.send_message(TUser.get_admin_id(), f"Этот перец пишет мне: {user.full_name}\n"
+        await bot.send_message(int(TUser.get_admin_id()), f"Этот перец пишет мне: {user.full_name}\n"
                                                      f"Пишет вот что: {message.text}", reply_markup=keyboard)
         return None
     answer = [f"Наталья, морская пехота",
