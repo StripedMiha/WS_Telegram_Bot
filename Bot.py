@@ -123,7 +123,7 @@ async def cmd_test1(message: types.Message):
 
 
 date_keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-buttons = ["Вчера", "Сегодня"]
+buttons = ["Вчера", "Сегодня", "Отмена"]
 date_keyboard.add(*buttons)
 
 
@@ -328,7 +328,7 @@ async def wait_date(message: types.Message, state: FSMContext):
     log_in(message.from_user.full_name, 'Вводит дату:', message.text)
     user = TUser(message.from_user.id)
     if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
-        await message.answer('Отменён ввод даты.\n')
+        await message.answer('Отменён ввод даты.\n', reply_markup=types.ReplyKeyboardRemove())
         log_in(user.full_name, 'cancel input date')
         await state.finish()
     elif message.text.lower() == 'сегодня' or message.text.lower() == 'today':
