@@ -121,6 +121,12 @@ async def cmd_test1(message: types.Message):
     answer = '\n'.join(text_help)
     await message.answer(answer)
 
+
+date_keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+buttons = ["Вчера", "Сегодня"]
+date_keyboard.add(*buttons)
+
+
 # Словарь для считывания инлайн кнопок
 callback_menu = CallbackData("fab_menu", "action")
 callback_auth = CallbackData("fab_auth", "action", "data")
@@ -284,7 +290,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
     log_in(call.from_user.full_name, action)
     user = TUser(call.from_user.id)
     date = 'сегодня' if user.get_date() == 'today' else user.get_date()
-    if action == 'set email' or action == 'change email':
+    if action == 'set email':  # or action == 'change email':
         await call.message.edit_text('Введите вашу корпоративную почту:\n'
                                      'Введите "Отмена" для отмены ввода')
         await OrderMenu.wait_for_email.set()
@@ -305,11 +311,12 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
                                      reply_markup=await get_remove_keyboard(bookmarks_for_remove(user)))
     elif action == 'change date':
         answer = "Введите дату в формате ДД.ММ.ГГГГ:\n" \
-                 "Введите 'сегодня' или 'today', чтобы бот взаимодействовал с днём который будет на тот" \
-                 " момент сегодняшним 🤪\n" \
-                 "Введите 'вчера' или 'yesterday' для установления вчерашней даты\n"\
                  "Введите 'отмена' для отмены изменения даты"
+                 # "Введите 'сегодня' или 'today', чтобы бот взаимодействовал с днём который будет на тот" \
+                 # " момент сегодняшним 🤪\n" \
+                 # "Введите 'вчера' или 'yesterday' для установления вчерашней даты\n"\
         await call.message.edit_text(answer)
+        await call.message.answer('Или воспользуйтесь кнопками ниже', reply_markup=date_keyboard)
         await OrderMenu.wait_for_date.set()
     else:
         await call.message.edit_text('Пока ниработает :с')
@@ -326,14 +333,14 @@ async def wait_date(message: types.Message, state: FSMContext):
         await state.finish()
     elif message.text.lower() == 'сегодня' or message.text.lower() == 'today':
         user.change_date('today')
-        await message.answer('Теперь бот будет записывать на текущий день')
+        await message.answer('Теперь бот будет записывать на текущий день', reply_markup=types.ReplyKeyboardRemove())
     elif message.text.lower() == 'вчера' or message.text.lower() == 'yesterday':
         user.change_date('yesterday')
-        await message.answer('Установлена вчерашняя дата')
+        await message.answer('Установлена вчерашняя дата', reply_markup=types.ReplyKeyboardRemove())
     elif re.match(r'(((0[1-9])|([1-2][0-9])|(3[0-1]))[., :]((0[1-9])|(1[0-2]))[., :]20[2-9][0-9])', message.text):
         date = message.text.strip(' ')
         user.change_date(date)
-        await message.answer(f'Установлена дата: {user.get_date()}')
+        await message.answer(f'Установлена дата: {user.get_date()}', reply_markup=types.ReplyKeyboardRemove())
     else:
         await message.answer('Дата введена в неверном формате.')
         return
