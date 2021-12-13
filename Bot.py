@@ -629,7 +629,7 @@ async def noon_print():
         print(now_minute)
 
 async def on_startup():
-    aioschedule.every().second.do(noon_print)
+    aioschedule.every().minute.do(noon_print)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
