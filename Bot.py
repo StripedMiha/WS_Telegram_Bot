@@ -4,8 +4,10 @@ import asyncio
 import re
 
 import aiogram.utils.exceptions
+import aioschedule
 from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher.filters import Text
+from aiogram.utils import executor
 from aiogram.utils.callback_data import CallbackData
 from aiogram.types import BotCommand
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -52,6 +54,7 @@ async def main():
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     )
     logger.error("Starting bot")
+    logging.getLogger('schedule').propagate = False
 
     # парсинг файла конфигурации
     # config = load_config("config/bot.ini")
@@ -69,6 +72,7 @@ async def main():
     # Запуск поллинга
     await dp.skip_updates()  # пропуск накопившихся апдейтов (необязательно)
     await dp.start_polling()
+    # await executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
 
 
 user_data = {}
@@ -614,6 +618,26 @@ async def fast_input(message: types.Message, state: FSMContext):
     await OrderMenu.waiting_for_time_comment.set()
 
 
+async def noon_print():
+    five = [i for i in range(0, 60, 5)]
+    now_second = datetime.datetime.now().second
+    if now_second in five:
+        print(now_second)
+
+
+async def on_startup():
+    aioschedule.every().second.do(noon_print)
+    while True:
+        await aioschedule.run_pending()
+        await asyncio.sleep(1)
+
+
+async def start():
+    m = asyncio.create_task(main())
+    t = asyncio.create_task(on_startup())
+    await asyncio.gather(m, t)
+
+
 # проверка запуска
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(start())
