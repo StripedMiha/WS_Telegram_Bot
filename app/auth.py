@@ -14,7 +14,6 @@ class TUser:
 
     def __init__(self, user_id: int, first_name: str = '', last_name: Union[str, None] = ''):
         q: Union[User, None] = self.__get_user_from_db(user_id)
-        print(q)
         if isinstance(q, type(None)):
             self.user_id = user_id
             self.first_name = first_name

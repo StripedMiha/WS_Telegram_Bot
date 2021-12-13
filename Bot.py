@@ -131,6 +131,11 @@ buttons = ["Вчера", "Сегодня", "Отмена"]
 date_keyboard.add(*buttons)
 
 
+input_keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+buttons = ["Выбрать по умолчанию", "Добавить закладку", "Ничего не понял", "Отмена"]
+input_keyboard.add(*buttons)
+
+
 # Словарь для считывания инлайн кнопок
 callback_menu = CallbackData("fab_menu", "action")
 callback_auth = CallbackData("fab_auth", "action", "data")
@@ -316,9 +321,6 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
     elif action == 'change date':
         answer = "Введите дату в формате ДД.ММ.ГГГГ:\n" \
                  "Введите 'отмена' для отмены изменения даты"
-                 # "Введите 'сегодня' или 'today', чтобы бот взаимодействовал с днём который будет на тот" \
-                 # " момент сегодняшним 🤪\n" \
-                 # "Введите 'вчера' или 'yesterday' для установления вчерашней даты\n"\
         await call.message.edit_text(answer)
         await call.message.answer('Или воспользуйтесь кнопками ниже', reply_markup=date_keyboard)
         await OrderMenu.wait_for_date.set()
@@ -455,6 +457,7 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
         await state.update_data(id=callback_data['id'],
                                 user_id=call.from_user.id)
         await call.message.edit_text(tasks)
+        await call.message.answer('Варианты доп действий на кнопках:', reply_markup=input_keyboard)
         await OrderMenu.waiting_for_time_comment.set()
         return None
     keyboard = await get_remove_keyboard(tasks, width=2)
@@ -469,6 +472,7 @@ async def add_costs_via_bookmarks(call: types.CallbackQuery, callback_data: dict
     await state.update_data(id=callback_data['id'],
                             user_id=call.from_user.id)
     await call.message.edit_text(text)
+    await call.message.answer('Варианты доп действий на кнопках:', reply_markup=input_keyboard)
     await OrderMenu.waiting_for_time_comment.set()
     return None
 
@@ -505,19 +509,19 @@ async def wait_hours(message: types.Message, state: FSMContext):
     data = await state.get_data()
     text = message.text
     if 'отмена' in text.lower() or 'cancel' in text.lower():
-        await message.answer('Отмена ввода')
+        await message.answer('Отмена ввода', reply_markup=types.ReplyKeyboardRemove())
         await state.finish()
         return
     elif 'добавить закладку' in text.lower():
         task_id = data['id']
-        await message.answer(add_bookmark(message.from_user.id, task_id))
+        await message.answer(add_bookmark(message.from_user.id, task_id), reply_markup=types.ReplyKeyboardRemove())
         await state.finish()
-    elif 'выбрать' in text.lower() or 'select' in text.lower():
-        await message.answer(select_task(message.from_user.id, data['id']))
+    elif 'выбрать' in text.lower() or 'select' in text.lower() or 'выбрать по умолчанию' in text.lower():
+        await message.answer(select_task(message.from_user.id, data['id']), reply_markup=types.ReplyKeyboardRemove())
         await state.finish()
         return
     elif 'ничего не понял' in text.lower() or '!' not in text.lower():
-        await message.answer(INPUT_COST_EXAMPLE)
+        await message.answer(INPUT_COST_EXAMPLE, reply_markup=types.ReplyKeyboardRemove())
         return
     else:
         for i_status in add_costs(text, data):
@@ -604,7 +608,7 @@ async def cmd_stat(message: types.Message):
                          caption='В графике отображены только те часы, которые были занесены через бота')
 
 
-@dp.message_handler(lambda message_answer: message_answer.text.lower() in ["ввести", "add"])
+@dp.message_handler(lambda message_answer: message_answer.text.lower() in ["ввести", "add", "внести"])
 async def fast_input(message: types.Message, state: FSMContext):
     await message.answer("Да-да?")
     user = TUser(message.from_user.id)
@@ -614,16 +618,15 @@ async def fast_input(message: types.Message, state: FSMContext):
     text = get_text_add_costs(user.selected_task, user)
     await state.update_data(id=user.selected_task,
                             user_id=user.user_id)
-    await message.answer(text)
+    await message.answer(text, reply_markup=input_keyboard)
     await OrderMenu.waiting_for_time_comment.set()
 
 
 async def noon_print():
     five = [i for i in range(0, 60, 5)]
-    now_second = datetime.datetime.now().second
-    if now_second in five:
-        print(now_second)
-
+    now_minute = datetime.datetime.now().minute
+    if now_minute in five:
+        print(now_minute)
 
 async def on_startup():
     aioschedule.every().second.do(noon_print)
