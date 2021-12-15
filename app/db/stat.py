@@ -1,11 +1,10 @@
-from datetime import date, datetime, timedelta
-from pprint import pp, pprint
+from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 from app.db.db_access import get_all_month_costs, get_months_user
-from app.auth import TUser
+from app.tgbot.auth import TUser
 
 
 def sum_month_time_costs(first_day: str):

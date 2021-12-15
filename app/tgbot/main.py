@@ -1,19 +1,18 @@
 import datetime
 from datetime import timedelta
-from pprint import pprint
 from typing import Union
 
-from app.auth import TUser
+from app.tgbot.auth import TUser
 from app.db.db_access import get_user_days_costs, check_comment, get_comment_task_path, remove_comment_db, \
     get_bookmarks_user, \
     remove_users_bookmark_db, get_projects_db, add_project_in_db, get_project_tasks_id_db, add_task_in_db, \
     get_tasks_from_db, get_full_task_name, get_project_id_by_task_id, remove_task_from_db, get_list_user_bookmark, \
     get_all_booked_task_id, add_bookmark_into_db, get_bookmark_id, add_bookmark_to_user, get_tasks_path, \
-    add_comment_in_db, get_task_ws_id_db, change_selected_task, get_all_tasks_id_db, get_all_projects_id_db, \
+    add_comment_in_db, change_selected_task, get_all_tasks_id_db, get_all_projects_id_db, \
     get_task_name, get_all_user_day_costs
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks,\
     get_task_info, add_cost
-from app.db.stat import current_month_stat, show_gist
+from app.db.stat import show_gist
 
 INPUT_COSTS = """
 Введите часы и описание деятельности:
@@ -35,7 +34,7 @@ INPUT_COSTS = """
 # "В первом примере в бот разделит указанное количество часов на количество задач,"
 # "в данном случае в WS улетит две записи по полтора часа.\n"
 # "Во втором примере в WS улетит 3 записи:\n"
-# "Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся "
+# "Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся"
 # "на две записи: на запись с двумя часами и запись с получасом."
 # """
 
@@ -125,7 +124,7 @@ def menu_buttons(user: TUser) -> list[list[str]]:
     else:
         buttons = [[f"📃 Отчёт за {format_date(user.get_date())}", 'daily report'],
                    ['🔍 Найти задачу', 'get tasks list'],
-                   ['❌🕓 Удалить трудочасы', 'remove time cost'],
+                   ['❌🕓 Удалить трудоёмкость', 'remove time cost'],
                    ['❌🧷 Удалить закладку', 'remove book'],
                    ['🔄📅 Изменить дату', 'change date'],
                    ['🔄📧 Изменить почту', 'change email'],

@@ -4,7 +4,7 @@
 from datetime import datetime
 
 from app.db.structure_of_db import Comment, Project, Task, User, Bookmark, UserBookmark
-from app.auth import _get_session, TUser
+from app.tgbot.auth import _get_session, TUser
 
 
 def get_user_days_costs(user: TUser) -> list[tuple]:
