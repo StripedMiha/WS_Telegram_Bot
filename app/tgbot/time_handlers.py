@@ -34,7 +34,7 @@ async def now_day():
 
 
 async def time_scanner():
-    aioschedule.every(2).hour.do(noon_print)
+    aioschedule.every(2).hours.do(noon_print)
     aioschedule.every().day.at("00:01").do(now_day)
     while True:
         await aioschedule.run_pending()

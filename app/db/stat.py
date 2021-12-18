@@ -4,6 +4,7 @@ import numpy as np
 
 
 from app.db.db_access import get_all_month_costs, get_months_user
+from app.exceptions import EmptyCost
 from app.tgbot.auth import TUser
 
 
@@ -52,6 +53,8 @@ def show_gist():
     data = current_month_stat()
     users = [TUser(i).first_name for i in data.keys()]
     time = [to_float(i) for i in data.values()]
+    if len(time) == 0:
+        raise EmptyCost
     max_value = get_count_work_days() * 8
     plt.gcf().clear()
     plt.title('Статистика за текущий календарный месяц')

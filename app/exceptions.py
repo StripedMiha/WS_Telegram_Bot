@@ -1,0 +1,2 @@
+class EmptyCost(ValueError):
+    pass

@@ -1,3 +1,4 @@
+from app.KeyboardDataClass import KeyboardData
 from app.config_reader import load_config
 from pprint import pprint
 
@@ -19,7 +20,7 @@ def reformat_date(date):
     return format_date
 
 
-async def get_all_project_for_user(email, status_filter='active'):
+async def get_all_project_for_user(email, status_filter='active') -> list[KeyboardData]:
     action = 'get_projects'
     hash_key = hashlib.md5(action.encode(ENCOD)+API_KEY.encode(ENCOD))
 
@@ -40,9 +41,8 @@ async def get_all_project_for_user(email, status_filter='active'):
     for i in projects:
         list_email = [j.get('email') for j in i.get('users')]
         if email in list_email:
-            project_id = i.get('id')
-            name = i.get('name')
-            user_project.append([name, str(project_id)])
+            project: KeyboardData = KeyboardData(i.get('name'), i.get('id'))
+            user_project.append(project)
     return user_project
 
 

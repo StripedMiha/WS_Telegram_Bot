@@ -3,6 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher, types
 
 from app.create_log import setup_logger
+from app.exceptions import EmptyCost
 from app.tgbot.main import get_month_stat
 
 bot: Bot
@@ -18,6 +19,10 @@ def register_handlers_stat(dp: Dispatcher, main_bot: Bot, admin_id: int):
 # Первая версия статистики
 async def cmd_stat(message: types.Message):
     stat_logger.info("%s ввёл команду /stat" % message.from_user.full_name)
-    get_month_stat()
+    try:
+        get_month_stat()
+    except EmptyCost:
+        await message.answer("В этом месяце никто ещё не заполнял через бота :с")
+        return
     await bot.send_photo(message.from_user.id, types.InputFile('app/db/png/1.png'),
                          caption='В графике отображены только те часы, которые были занесены через бота')

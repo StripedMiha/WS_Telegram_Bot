@@ -7,6 +7,7 @@ from aiogram.utils.callback_data import CallbackData
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
 
+from app.KeyboardDataClass import KeyboardData
 from app.create_log import setup_logger
 from app.tgbot.auth import TUser
 from app.tgbot.main import get_users_of_list
@@ -20,7 +21,7 @@ class OrderMenu(StatesGroup):
     wait_news = State()
 
 
-callback_auth = CallbackData("fab_auth", "action", "data")
+callback_auth = CallbackData("fab_auth", "data", "action")
 
 
 def register_handlers_admin(dp: Dispatcher, main_bot: Bot, admin_id: int):
@@ -37,12 +38,13 @@ def register_handlers_admin(dp: Dispatcher, main_bot: Bot, admin_id: int):
     dp.register_message_handler(news_to_users, IDFilter(user_id=admin_id), state=OrderMenu.wait_news)
 
 
-def get_keyboard_admin(list_data: list[list], width: int = 1, enable_cancel: bool = True) -> types.InlineKeyboardMarkup:
+def get_keyboard_admin(list_data: list[KeyboardData], width: int = 1, enable_cancel: bool = True) \
+        -> types.InlineKeyboardMarkup:
     buttons = []
-    for text, action, data in list_data:
-        buttons.append(types.InlineKeyboardButton(text=text,
-                                                  callback_data=callback_auth.new(action=action,
-                                                                                  data=data)))
+    for i in list_data:
+        buttons.append(types.InlineKeyboardButton(text=i.text,
+                                                  callback_data=callback_auth.new(action=i.action,
+                                                                                  data=i.id)))
     if enable_cancel:
         buttons.append(types.InlineKeyboardButton(text="Отмена", callback_data=callback_auth.new(action="cancel",
                                                                                                  data='   ')))
@@ -93,8 +95,8 @@ async def add_cancel(call: types.CallbackQuery, state: FSMContext):
 
 async def status_changer(message: types.Message):
     admin_logger.info("%s запрашивает списки пользователей" % message.from_user.full_name)
-    data_for_keyboard = [['Пользователи', 'list_user', ' '],
-                         ['Заблокированные', 'list_black', ' ']]
+    data_for_keyboard = [KeyboardData('Пользователи', 0, 'list_user'),
+                         KeyboardData('Заблокированные',  0, 'list_black')]
     keyboard = get_keyboard_admin(data_for_keyboard)
     await message.answer('Выбери список для поиска пользователя, которому хочешь изменить статус',
                          reply_markup=keyboard)
@@ -116,7 +118,7 @@ async def wait_for_news(message: types.Message):
 
 async def news_to_users(message: types.Message, state: FSMContext):
     admin_logger.info("%s отправил новость" % message.from_user.full_name)
-    users: list[list[str, int]] = [[i, k] for i, j, k in get_users_of_list('user')]
+    users: list[list[str, int]] = [[i.text, i.id] for i in get_users_of_list('user')]
     for name, user_id in users:
         news = message.text
         text = f'{name}, Это новости бота 🙃\n\n{news}'

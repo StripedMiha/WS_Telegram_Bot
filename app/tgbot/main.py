@@ -2,6 +2,7 @@ import datetime
 from datetime import timedelta
 from typing import Union
 
+from app.KeyboardDataClass import KeyboardData
 from app.tgbot.auth import TUser
 from app.db.db_access import get_user_days_costs, check_comment, get_comment_task_path, remove_comment_db, \
     get_bookmarks_user, \
@@ -100,20 +101,20 @@ def text_count_removed_costs(user_id: int) -> str:
     return f'Будет удалено {str(count)} {word}.'
 
 
-def get_users_of_list(selected_list: str) -> list[list[str, str, int]]:
+def get_users_of_list(selected_list: str) -> list[KeyboardData]:
     all_users = TUser.get_users_list()
     selected_users = [u for u in all_users if u.status == selected_list]
     users: list[TUser] = []
     for i in selected_users:
         users.append(TUser(i.user_id))
-    data_for_keyboard: list = []
+    data_for_keyboard: list[KeyboardData] = []
     action = ''
     if selected_list == 'user':
         action: str = 'black_user'
     elif selected_list == 'black':
         action: str = 'known_user'
     for i in users:
-        data_for_keyboard.append([i.full_name, action, i.user_id])
+        data_for_keyboard.append(KeyboardData(i.full_name, i.user_id, action))
     return data_for_keyboard
 
 
@@ -183,12 +184,12 @@ def see_days_costs(user: TUser) -> str:
     return answer
 
 
-def days_costs_for_remove(user: TUser) -> list[list[str, int, str]]:
+def days_costs_for_remove(user: TUser) -> list[KeyboardData]:
     comments = get_user_days_costs(user)
-    list_comments: list[list[str, int, str]] = []
+    list_comments: list[KeyboardData] = []
     for comment in comments:
         name = ' '.join([format_time(comment[1]), comment[0], comment[2]])
-        list_comment = [name, comment[4], 'remove_cost_ws']
+        list_comment = KeyboardData(name, comment[4], "remove_cost_ws")
         list_comments.append(list_comment)
     return list_comments
 
@@ -219,11 +220,11 @@ def remove_cost(cost_id: int) -> str:
         return 'Ошибка удаления из WorkSection'
 
 
-def bookmarks_for_remove(user: TUser) -> list[list[str, int, str]]:
+def bookmarks_for_remove(user: TUser) -> list[KeyboardData]:
     bookmarks = get_bookmarks_user(user)
-    list_bookmarks: list[list[str, int, str]] = []
+    list_bookmarks: list[KeyboardData] = []
     for bookmark in bookmarks:
-        list_bookmarks.append([bookmark[1], bookmark[0], 'remove_bookmark'])
+        list_bookmarks.append(KeyboardData(bookmark[1], bookmark[0], "remove_bookmark"))
     return list_bookmarks
 
 
@@ -238,12 +239,12 @@ def remove_costs(user: TUser):
         yield remove_cost(i)  # TODO удалить из бд трудоёмкости которые были удалены через сам WS
 
 
-async def get_project_list(user: TUser) -> list[list[str, int, str]]:
-    projects: list[list] = await get_all_project_for_user(user.get_email())
+async def get_project_list(user: TUser) -> list[KeyboardData]:
+    projects: list[KeyboardData] = await get_all_project_for_user(user.get_email())
     for i in projects:
-        if i[1] not in get_projects_db():
+        if i.id not in get_projects_db():
             await add_project_in_db(i)
-        i.append('search_task')
+        i.action = "search_task"
     return projects
 
 
@@ -285,29 +286,29 @@ def get_text_add_costs(parent_id: str, user: TUser) -> str:
     return answer
 
 
-def get_tasks(parent_id: str, user_id: int) -> Union[list[list], str]:
+def get_tasks(parent_id: str, user_id: int) -> Union[list[KeyboardData], str]:
     user = TUser(user_id)
-    child_tasks: list[list] = get_tasks_from_db(parent_id)
+    child_tasks: list[KeyboardData] = get_tasks_from_db(parent_id)
     if parent_id in get_all_projects_id_db():
         update_task_parent(int(parent_id))
     if len(child_tasks) == 0:
         return get_text_add_costs(parent_id, user)
     for i in child_tasks:
-        i.append('search_task')
+        i.action = "search_task"
     if parent_id not in get_all_projects_id_db():
         child_tasks.reverse()
         task_name = ' '.join([f'🗂', get_task_name(parent_id)])
-        child_tasks.append([task_name, parent_id, 'input_here'])
+        child_tasks.append(KeyboardData(task_name, int(parent_id), 'input_here'))
         child_tasks.reverse()
     return child_tasks
 
 
-def get_list_bookmark(user_id: int) -> Union[list[list], str]:
-    user_list_bookmark = get_list_user_bookmark(user_id)
+def get_list_bookmark(user_id: int) -> Union[list[KeyboardData], str]:
+    user_list_bookmark: list[KeyboardData] = get_list_user_bookmark(user_id)
     if len(user_list_bookmark) == 0:
         return 'У вас нет закладок.\n Добавить закладки можно через кнопку "Найти задачу"'
     for i in user_list_bookmark:
-        i.append('search_task')
+        i.action = "search_task"
     return user_list_bookmark  # TODO две подобные функции выдающие закладки
 
 

@@ -3,6 +3,7 @@
 # from app.api.ws_api import get_day_costs_from_ws
 from datetime import datetime
 
+from app.KeyboardDataClass import KeyboardData
 from app.db.structure_of_db import Comment, Project, Task, User, Bookmark, UserBookmark
 from app.tgbot.auth import _get_session, TUser
 
@@ -81,11 +82,11 @@ def get_projects_db() -> list[int]:
     return [i[0] for i in projects_id]
 
 
-async def add_project_in_db(project: list[str, int]) -> None:
+async def add_project_in_db(project: KeyboardData) -> None:
     session = _get_session()
-    new_project = Project(project_id=project[1],
-                          project_name=project[0],
-                          project_path=f'/project/{str(project[1])}/')
+    new_project = Project(project_id=project.id,
+                          project_name=project.text,
+                          project_path=f'/project/{str(project.id)}/')
     session.add(new_project)
     session.commit()
     session.close()
@@ -135,12 +136,12 @@ def remove_task_from_db(task_id) -> None:
     session.close()
 
 
-def get_tasks_from_db(parent_id: str) -> list[list]:
+def get_tasks_from_db(parent_id: str) -> list[KeyboardData]:
     session = _get_session()
     child_tasks: list[tuple] = session.query(Task.task_name, Task.task_ws_id)\
                                       .filter(Task.parent_id == parent_id, Task.status == 'active').all()
     session.close()
-    return [(list(i)) for i in child_tasks]
+    return [KeyboardData(i[0], i[1]) for i in child_tasks]
 
 
 def get_task_name(task_id: str) -> str:
@@ -172,13 +173,13 @@ def get_project_id_by_task_id(parent_id) -> str:
     return project_id
 
 
-def get_list_user_bookmark(user_id: int) -> list[list]:
+def get_list_user_bookmark(user_id: int) -> list[KeyboardData]:
     session = _get_session()
     user_bookmarks: list[tuple] = session.query(Bookmark.bookmark_name, Task.task_ws_id)\
                                          .join(Bookmark).join(UserBookmark).join(Project) \
                                          .filter(UserBookmark.user_id == user_id).order_by(Project.project_name, Task.task_name).all()
     session.close()
-    return [(list(i)) for i in user_bookmarks]
+    return [KeyboardData(i[0], i[1]) for i in user_bookmarks]
 
 
 def get_all_booked_task_id() -> list[int]:

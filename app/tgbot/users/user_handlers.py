@@ -8,11 +8,13 @@ from aiogram.utils.callback_data import CallbackData
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
 
+from app.KeyboardDataClass import KeyboardData
 from app.tgbot.auth import TUser
 from app.create_log import setup_logger
-from app.tgbot.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, remove_costs, \
-    remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, get_project_list,\
-    get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, select_task, get_text_add_costs
+from app.tgbot.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, \
+    remove_costs, remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, \
+    get_project_list, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, select_task, \
+    get_text_add_costs
 from app.tgbot.administration.admin_handlers import get_keyboard_admin
 
 
@@ -98,15 +100,15 @@ def get_keyboard(list_data: list[list], width: int = 3, enable_cancel: bool = Tr
 
 
 # Формирование инлайн клавиатуры для поиска, задач\трудоёмкостей\закладок
-async def get_remove_keyboard(list_data: list[list[str, int, str]],
+async def get_remove_keyboard(list_data: list[KeyboardData],
                               width: int = 1, enable_cancel: bool = True) -> types.InlineKeyboardMarkup:
     buttons: list[types.InlineKeyboardButton] = []
     if len(list_data) > 0:
-        is_cost_remove = True if (list_data[0][2].split('_')[1] == 'cost' if len(list_data) > 1 else False) else False
-        for text, data, action in list_data:
-            buttons.append(types.InlineKeyboardButton(text=text,
-                                                      callback_data=callback_remove.new(action=action,
-                                                                                        id=data)))
+        is_cost_remove = True if (list_data[0].action.split('_')[1] == 'cost' and len(list_data) > 1) else False
+        for i in list_data:
+            buttons.append(types.InlineKeyboardButton(text=i.text,
+                                                      callback_data=callback_remove.new(action=i.action,
+                                                                                        id=i.id)))
         if is_cost_remove:
             buttons.append(types.InlineKeyboardButton(text="Удалить все",
                                                       callback_data=callback_remove.new(action="remove_costs",
@@ -159,8 +161,8 @@ async def lets_start(message: types.Message):
         return None
     elif user.get_status() == 'wait':
         await message.answer('Заявка ушла админу. Ждите.')
-        data_for_keyboard = [['Добавить пользователя', 'known_user', user.user_id],
-                             ['Игнорировать пользователя', 'black_user', user.user_id]]
+        data_for_keyboard = [KeyboardData('Добавить пользователя', user.user_id, 'known_user'),
+                             KeyboardData('Игнорировать пользователя', user.user_id, 'black_user')]
         keyboard = get_keyboard_admin(data_for_keyboard, width=2, enable_cancel=False)
         await bot.send_message(int(TUser.get_admin_id()), f"Этот перец пишет мне: {user.full_name}\n"
                                                           f"Пишет вот что: {message.text}", reply_markup=keyboard)
@@ -348,7 +350,7 @@ async def search_task_via_bookmarks(call: types.CallbackQuery, callback_data: di
 # Поиск задачи
 async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     user_logger.info("%s поиск задачи через через закладки. Получает список задач/подзадач" % call.from_user.full_name)
-    project_id = callback_data['id']
+    project_id: str = callback_data['id']
     await call.message.edit_text('Идёт поиск всех задач. Секундочку подождите')
     tasks = get_tasks(project_id, call.from_user.id)
     if isinstance(tasks, str):
@@ -361,7 +363,7 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
 # Задача выбрана. Запуск ожидания ввода трудоёмкости
 async def task_found(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     user_logger.info("%s выбрал задачу" % call.from_user.full_name)
-    task_id = callback_data['id']
+    task_id: str = str(callback_data['id'])
     text = get_text_add_costs(task_id, TUser(call.from_user.id))
     await start_comment_input(state, text, call.from_user.id, task_id, call)
 
@@ -478,4 +480,3 @@ async def with_pasta(message_answer: types.Message):
 
 async def with_puree(message_answer: types.Message):
     await message_answer.answer("Ням-ням", reply_markup=types.ReplyKeyboardRemove())
-
