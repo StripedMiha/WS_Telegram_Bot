@@ -13,7 +13,7 @@ from app.db.db_access import get_user_days_costs, check_comment, get_comment_tas
     get_task_name, get_all_user_day_costs
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks,\
     get_task_info, add_cost
-from app.db.stat import show_gist
+from app.db.stat import show_month_gist, show_week_gist
 
 INPUT_COSTS = """
 Введите часы и описание деятельности:
@@ -384,7 +384,12 @@ def add_bookmark(user_id: int, task_id: str) -> str:
 
     
 def get_month_stat():
-    show_gist()
+    show_month_gist()
+
+
+def get_week_stat():
+    show_week_gist()
+
 
 
 def select_task(user_id: int, task_ws_id) -> str:

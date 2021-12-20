@@ -27,15 +27,16 @@ def get_all_user_day_costs(user: TUser) -> list[tuple]:
     return all_comments
 
 
-def get_all_month_costs(first_day: str):
+def get_all_period_costs(first_day: str):
     session = _get_session()
+    print(first_day)
     comms = session.query(Comment.user_id, Comment.time) \
                    .filter(Comment.date >= first_day, Comment.via_bot == True).all()
     session.close()
     return [list(i) for i in comms]
 
 
-def get_months_user(first_day: str) -> list[int]:
+def get_period_user(first_day: str) -> list[int]:
     session = _get_session()
     users: list[tuple[int, str]] = session.query(Comment.user_id) \
                                           .filter(Comment.date >= first_day, Comment.via_bot == True).all()
