@@ -1,4 +1,17 @@
 import logging
+import os
+
+
+log_path = "log"
+if os.path.exists(log_path):
+    print("Директория %s уже существует" % log_path)
+else:
+    try:
+        os.mkdir(log_path)
+    except OSError:
+        print("Создать директорию %s не удалось" % log_path)
+    else:
+        print("Успешно создана директория %s " % log_path)
 
 
 def setup_logger(name, log_file, level=logging.INFO):

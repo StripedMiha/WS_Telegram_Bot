@@ -2,6 +2,8 @@ import datetime
 from datetime import timedelta
 from typing import Union
 
+from aiogram.utils.exceptions import MessageTextIsEmpty
+
 from app.KeyboardDataClass import KeyboardData
 from app.tgbot.auth import TUser
 from app.db.db_access import get_user_days_costs, check_comment, get_comment_task_path, remove_comment_db, \
@@ -10,10 +12,10 @@ from app.db.db_access import get_user_days_costs, check_comment, get_comment_tas
     get_tasks_from_db, get_full_task_name, get_project_id_by_task_id, remove_task_from_db, get_list_user_bookmark, \
     get_all_booked_task_id, add_bookmark_into_db, get_bookmark_id, add_bookmark_to_user, get_tasks_path, \
     add_comment_in_db, change_selected_task, get_all_tasks_id_db, get_all_projects_id_db, \
-    get_task_name, get_all_user_day_costs
+    get_task_name, get_all_user_day_costs, get_time_notification, get_the_user_costs_for_period
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks,\
     get_task_info, add_cost
-from app.db.stat import show_month_gist, show_week_gist
+from app.db.stat import show_month_gist, show_week_gist, sum_period_time_costs
 
 INPUT_COSTS = """
 Введите часы и описание деятельности:
@@ -57,6 +59,8 @@ INPUT_COST_EXAMPLE = """
 Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся на две записи: 
 на запись с двумя часами и запись с получасом.
 """
+remind_settings_button: list = [["Вкл/выкл напоминания", "toggle_notifications"],
+                                ["Установить время для напоминаний", "Set_notification_time"]]
 
 
 def format_time(time: str) -> str:
@@ -129,7 +133,8 @@ def menu_buttons(user: TUser) -> list[list[str]]:
                    ['❌🧷 Удалить закладку', 'remove book'],
                    ['🔄📅 Изменить дату', 'change date'],
                    ['🔄📧 Изменить почту', 'change email'],
-                   ['ℹ️ О вас', 'about me'],
+                   ['⏰ Настройки оповещений', 'notifications'],
+                   ['ℹ️ О вас', 'about me'],  # TODO обновить инфу
                    ['💬 Предложение/отзыв', 'offers']]
     return buttons
 
@@ -391,7 +396,6 @@ def get_week_stat():
     show_week_gist()
 
 
-
 def select_task(user_id: int, task_ws_id) -> str:
     change_selected_task(user_id, task_ws_id)
     return '\n'.join(['Выбранная задача:', get_full_task_name(task_ws_id)])
@@ -405,6 +409,44 @@ def check_task_id(text: str) -> bool:
         return False
 
 
+async def get_time_user_notification():
+    times = await get_time_notification()
+    return times
+
+
+async def day_report_message(user: TUser) -> str:
+    now_time: str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    now_date: str = datetime.datetime.now().strftime("%Y-%m-%d")
+    costs: list = get_the_user_costs_for_period(user, now_date)
+    day_cost_sum: timedelta = timedelta(hours=0)
+    for i in costs:
+        hours, minutes = i.split(":")
+        day_cost_sum += timedelta(hours=int(hours), minutes=int(minutes))
+    day_cost_sum: float = day_cost_sum.seconds / 60 / 60
+    text: str = ' '
+    if user.notification_status:
+        if user.get_notification_time() == now_time:
+            if day_cost_sum >= 12:
+                text = "\n\n".join(["Вы либо очень большой молодец, либо где-то переусердствовали."
+                                    "\nУ вас за сегодня больше 12 часов. Это законно?", see_days_costs(user)])
+            elif day_cost_sum >= 8:
+                text = "\n\n".join(["Вы всё заполнили, вы молодец!", see_days_costs(user)])
+            elif day_cost_sum > 0:
+                text = "\n\n".join(["Вы немного не дотянули до 8 часов!", see_days_costs(user)])
+            else:
+                text = see_days_costs(user)
+        elif user.get_remind_notification_time() == now_time:
+            text = "Вы отложили напоминание заполнить трудоёмкости. Вот оно!"
+            user.set_remind_time(None)
+    return text
+
+
+async def set_remind(user: TUser, time: str, message_time: datetime.datetime) -> str:
+    hours, minutes = time.split(".")
+    remind_time: datetime.timedelta = datetime.timedelta(hours=int(hours), minutes=int(minutes))
+    user.set_remind_time(message_time + remind_time)
+    return "Напоминание будет в %s" % user.remind_notification.strftime("%H:%M")
+
+
 if __name__ == '__main__':
     pass
-    # get_project_list(TUser(300617281))

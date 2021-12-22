@@ -1,3 +1,4 @@
+import datetime
 import logging
 import re
 from typing import Union
@@ -14,7 +15,7 @@ from app.create_log import setup_logger
 from app.tgbot.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, \
     remove_costs, remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, \
     get_project_list, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, select_task, \
-    get_text_add_costs
+    get_text_add_costs, remind_settings_button
 from app.tgbot.administration.admin_handlers import get_keyboard_admin
 
 
@@ -28,7 +29,7 @@ class OrderMenu(StatesGroup):
     waiting_for_time_comment = State()
     wait_for_offer = State()
     wait_for_date = State()
-
+    wait_for_notification_time = State()
 
 def register_handlers_wait_input(dp: Dispatcher, main_bot: Bot, admin_id: int):
     global bot
@@ -39,6 +40,7 @@ def register_handlers_wait_input(dp: Dispatcher, main_bot: Bot, admin_id: int):
     dp.register_message_handler(wait_date, state=OrderMenu.wait_for_date)
     dp.register_message_handler(wait_task_id, state=OrderMenu.waiting_for_task_id)
     dp.register_message_handler(wait_hours, state=OrderMenu.waiting_for_time_comment)
+    dp.register_message_handler(wait_notification_time, state=OrderMenu.wait_for_notification_time)
 
 
 def register_handlers_user(dp: Dispatcher):
@@ -54,6 +56,9 @@ def register_handlers_user(dp: Dispatcher):
     dp.register_callback_query_handler(search_project_via_search, callback_menu.filter(action='via search'))
     dp.register_callback_query_handler(search_task_via_bookmarks, callback_menu.filter(action='via bookmarks'))
     dp.register_callback_query_handler(search_tasks_via_search, callback_remove.filter(action='search_task'))
+    dp.register_callback_query_handler(setting_notification_menu, callback_menu.filter(action='notifications'))
+    dp.register_callback_query_handler(setting_notification,
+                                       callback_menu.filter(action=['toggle_notifications', 'Set_notification_time']))
     dp.register_message_handler(fast_input,
                                 lambda message: message.text.lower() in ["ввести", "add", "внести"])
     dp.register_callback_query_handler(task_found, callback_remove.filter(action="input_here"))
@@ -455,6 +460,46 @@ async def remove_comments(call: types.CallbackQuery, callback_data: dict):
             await call.message.answer(i_status)
         await call.message.answer('Удаление завершено')
     return
+
+
+# Меню настроек напоминаний
+async def setting_notification_menu(call: types.CallbackQuery, callback_data: dict):
+    user_logger.info("%s выбрал кнопку настроек напоминаний")
+    await call.message.edit_text("Настройки напоминаний", reply_markup=get_keyboard(remind_settings_button, width=1))
+
+
+# Настройки напоминаний
+async def setting_notification(call: types.CallbackQuery, callback_data: dict):
+    action: str = callback_data["action"]
+    user: TUser = TUser(call.from_user.id)
+    if action == "toggle_notifications":
+        user.toggle_notification_status()
+        user_logger.info("%s переключил статус напоминаний на %s" % (user.full_name, user.notification_status))
+        status = "Уведомления включены" if user.notification_status else "Уведомления выключены"
+        await call.message.edit_text(status)
+    elif action == "Set_notification_time":
+        user_logger.info("%s запускает ввод времени для уведомлений" % user.full_name)
+        await call.message.edit_text("Введите время для уведомлений в формате ЧЧ:MM")
+        await OrderMenu.wait_for_notification_time.set()
+
+
+
+
+async def wait_notification_time(message: types.Message, state: FSMContext):
+    user: TUser = TUser(message.from_user.id)
+    if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
+        await message.answer('Отменён ввод времени.\n')
+        user_logger.info("%s Отменяет ввод времени" % user.full_name)
+        await state.finish()
+    elif re.match(r'^(([0-1][0-9])|(2[0-3])):([0-5][0-9])$', message.text):
+        in_time = message.text.strip(' ').split(":")
+        time: datetime.time = datetime.time(hour=int(in_time[0]), minute=int(in_time[1]))
+        user.set_notification_time(time)
+        await message.answer(f'Установлено время: {user.notification_time}')
+        await state.finish()
+    else:
+        await message.answer('Время введено в неверном формате. Введите "отмена" для отмены ввода')
+        return
 
 
 # Выбор обеда с клавиатуры

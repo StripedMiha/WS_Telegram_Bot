@@ -1,13 +1,10 @@
 import datetime
-from re import U
 # from pprint import pprint
 
-import sqlalchemy
-from sqlalchemy.orm import Session, session
-from sqlalchemy.exc import NoResultFound 
+from sqlalchemy.exc import NoResultFound
 from typing import Union
 
-from app.db.structure_of_db import User
+from app.db.structure_of_db import User, _get_session
 
 
 class TUser:
@@ -33,9 +30,14 @@ class TUser:
             self.__date_of_input = q.date_of_input
             self.__status = q.status
             self.selected_task = q.selected_task
+            self.notification_status: bool = q.notification_status
+            self.notification_time: str = q.notification_time.strftime("%H:%M")
+            self.remind_notification: datetime.datetime = q.remind_notification \
+                if isinstance(q.remind_notification, datetime.datetime) else None
         self.admin = self.__is_admin()
         self.has_access = self.__has_access()
         self.blocked = self.__is_blocked()
+
     def __is_admin(self):
         return True if self.__status == 'admin' else False
 
@@ -84,7 +86,6 @@ class TUser:
         session.commit()
         session.close()
 
-
     def change_status(self, new_status: str):
         session = _get_session()
         update_row: User = session.query(User).get(self.user_id)
@@ -105,10 +106,7 @@ class TUser:
 
     def change_date(self, new_date: str):
         if new_date == 'yesterday':
-            timedelta = datetime.timedelta(days=1)
-            split_date = ((str(datetime.date.today() - timedelta)).split('-'))
-            split_date.reverse()
-            new_date = '.'.join(split_date)
+            new_date = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%D.%M.%Y")
         for i in [' ', ',', ':']:
             temp = new_date.split(i)
             new_date = '.'.join(temp)
@@ -120,6 +118,41 @@ class TUser:
         session.close()
         self.__date_of_input = new_date
 
+    def set_remind_time(self, new_time: Union[datetime.datetime, None]):
+        session = _get_session()
+        update_row: User = session.query(User).get(self.user_id)
+        update_row.remind_notification = new_time
+        session.add(update_row)
+        session.commit()
+        session.close()
+        self.remind_notification = new_time
+
+    def set_notification_time(self, new_time: datetime.time):
+        session = _get_session()
+        update_row: User = session.query(User).get(self.user_id)
+        update_row.notification_time = new_time
+        session.add(update_row)
+        session.commit()
+        session.close()
+        self.notification_time = new_time.strftime("%H:%M")
+
+    def toggle_notification_status(self):
+        new_status: bool = False if self.notification_status else True
+        session = _get_session()
+        update_row: User = session.query(User).get(self.user_id)
+        update_row.notification_status = new_status
+        session.add(update_row)
+        session.commit()
+        session.close()
+        self.notification_status = new_status
+
+    def get_notification_time(self) -> str:
+        now: datetime.datetime = datetime.datetime.now()
+        return " ".join([now.strftime("%Y-%m-%d"), self.notification_time])
+
+    def get_remind_notification_time(self) -> str:
+        return self.remind_notification.strftime("%Y-%m-%d %H:%M")
+
     def get_email(self):
         return self.__email
 
@@ -128,10 +161,3 @@ class TUser:
 
     def get_status(self) -> str:
         return self.__status
-
-
-def _get_session():
-    engine = sqlalchemy.create_engine("postgresql+psycopg2://postgres:Mig120300SQL@localhost/tele_ws",
-                                      echo=False, pool_size=6, max_overflow=10, encoding='latin1')
-    session = Session(bind=engine)
-    return session

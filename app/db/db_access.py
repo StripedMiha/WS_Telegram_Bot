@@ -2,6 +2,10 @@
 
 # from app.api.ws_api import get_day_costs_from_ws
 from datetime import datetime
+from pprint import pprint
+from typing import Union
+
+from sqlalchemy.exc import NoResultFound
 
 from app.KeyboardDataClass import KeyboardData
 from app.db.structure_of_db import Comment, Project, Task, User, Bookmark, UserBookmark
@@ -27,13 +31,19 @@ def get_all_user_day_costs(user: TUser) -> list[tuple]:
     return all_comments
 
 
-def get_all_period_costs(first_day: str):
+def get_all_costs_for_period(first_day: str):
     session = _get_session()
-    print(first_day)
-    comms = session.query(Comment.user_id, Comment.time) \
-                   .filter(Comment.date >= first_day, Comment.via_bot == True).all()
+    q = session.query(Comment.user_id, Comment.time) \
+               .filter(Comment.date >= first_day, Comment.via_bot == True).all()
     session.close()
-    return [list(i) for i in comms]
+    return [list(i) for i in q]
+
+
+def get_the_user_costs_for_period(user: TUser, day_from: str) -> list:
+    session = _get_session()
+    q = session.query(Comment.time).filter(Comment.user_id == user.user_id, Comment.date >= day_from).all()
+    session.close()
+    return [i[0] for i in q]
 
 
 def get_period_user(first_day: str) -> list[int]:
@@ -147,18 +157,14 @@ def get_tasks_from_db(parent_id: str) -> list[KeyboardData]:
 
 def get_task_name(task_id: str) -> str:
     session = _get_session()
-    print(task_id)
     name = session.query(Task.task_name)  .filter(Task.task_ws_id == task_id).one()[0]
-    print(name)
     session.close()
     return name
 
 
 def get_full_task_name(task_id: str) -> str:
     session = _get_session()
-    print(task_id)
     name = session.query(Project.project_name, Task.task_name).join(Project).filter(Task.task_ws_id == task_id).one()
-    print(name)
     session.close()
     return ' | '.join(name)
 
@@ -310,6 +316,13 @@ def check_comment(com):
             session.add(comment)
     session.commit()
     session.close()
+
+
+async def get_time_notification() -> set[datetime.time]:
+    session = _get_session()
+    q: set[datetime.time] = session.query(User.notification_time).all()
+    session.close()
+    return set([(i[0].strftime("%H:%M")) for i in q])
 
 
 example = {'comment': 'обсуждение вопросов по сайту',

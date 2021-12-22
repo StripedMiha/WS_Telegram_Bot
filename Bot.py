@@ -9,7 +9,7 @@ from app.config_reader import load_config
 from app.create_log import setup_logger
 
 from app.tgbot.administration.admin_handlers import register_handlers_admin
-from app.tgbot.time_handlers import time_scanner
+from app.tgbot.time_handlers import time_scanner, register_handlers_time
 from app.tgbot.users.stat_handlers import register_handlers_stat
 from app.tgbot.users.user_handlers import register_handlers_user, register_handlers_wait_input
 
@@ -33,6 +33,7 @@ async def main_bot():
     register_handlers_user(dp)
     register_handlers_wait_input(dp, bot, config['tg_bot']['admin_id'])
     register_handlers_stat(dp, bot, config['tg_bot']['admin_id'])
+    register_handlers_time(dp, bot, config['tg_bot']['admin_id'])
 
     # Установка команд бота
     await set_commands(bot)

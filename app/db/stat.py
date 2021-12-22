@@ -3,17 +3,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-from app.db.db_access import get_all_period_costs, get_period_user
+from app.db.db_access import get_all_costs_for_period, get_period_user
 from app.exceptions import EmptyCost
 from app.tgbot.auth import TUser
 
 
-def sum_period_time_costs(first_day: str):
+def sum_period_time_costs(first_day: str) -> dict:
     users = get_period_user(first_day)
     users_sum = {}
     for i in users:
         users_sum[i] = timedelta(hours=0)
-    users_costs: list[list[str, str]] = get_all_period_costs(first_day)
+    users_costs: list[list[str, str]] = get_all_costs_for_period(first_day)
 
     for i, j in users_costs:
         users_sum[i] += timedelta(hours=int(j.split(':')[0]),

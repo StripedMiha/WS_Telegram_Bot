@@ -1,9 +1,11 @@
 import sqlalchemy
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean  # , Table, DateTime, Numeric
+from sqlalchemy import MetaData, String, Integer, Column, Text, Time, Boolean, DateTime  # , Table, , Numeric
 from sqlalchemy import ForeignKey  # , UniqueConstraint, ForeignKeyConstraint, PrimaryKeyConstraint, CheckConstraint, \
 #   values, insert, select, create_engine
+from sqlalchemy.orm import Session
+
 from app.config_reader import load_config
 
 config = load_config("config/db.ini")
@@ -13,7 +15,7 @@ bd_name = config["db"]["bd_name"]
 
 
 engine = sqlalchemy.create_engine(f"postgresql+psycopg2://{user}:{password}@localhost/{bd_name}",
-                                  echo=True, pool_size=6, max_overflow=10, encoding='latin1')
+                                  echo=False, pool_size=6, max_overflow=10, encoding='latin1')
 
 
 Base = declarative_base()
@@ -54,6 +56,9 @@ class User(Base):
     date_of_input = Column(String(15))
     status = Column(String(20), nullable=False)
     selected_task = Column(String(15), ForeignKey('tasks.task_ws_id'), nullable=True)
+    notification_status = Column(Boolean, default=True)
+    notification_time = Column(DateTime, default='')
+    remind_notification = Column(DateTime)
 
 
 class UserBookmark(Base):
@@ -70,8 +75,20 @@ class Comment(Base):
     task_id = Column(Integer(), ForeignKey('tasks.task_id'))
     time = Column(String(10))
     comment_text = Column(Text())
-    date = Column(Date())
+    date = Column(Time)
     via_bot = Column(Boolean)
 
 
 Base.metadata.create_all(engine)
+
+
+def _get_session():
+    session = Session(bind=engine)
+    return session
+
+
+# ALTER TABLE public.users
+#     ADD COLUMN notification_status boolean;
+#
+# ALTER TABLE public.users
+#     ADD COLUMN notification_time time without time zone;
