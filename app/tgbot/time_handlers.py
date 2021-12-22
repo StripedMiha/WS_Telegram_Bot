@@ -13,8 +13,8 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from app.create_log import setup_logger
 from app.tgbot.auth import TUser
-from app.tgbot.main import get_time_user_notification, get_users_of_list, see_days_costs, day_report_message, set_remind
-
+from app.tgbot.main import get_time_user_notification, get_users_of_list, see_days_costs, day_report_message, \
+    set_remind, update_day_costs
 
 bot: Bot
 time_logger: logging.Logger = setup_logger("App.Bot.time", "log/time.log")
@@ -85,6 +85,14 @@ async def day_report():
                 continue
 
 
+async def check_costs():
+    if datetime.datetime.now().isoweekday() < 6:
+        users: list[TUser] = [TUser(i.id) for i in get_users_of_list('user')] + \
+                             [TUser(i.id) for i in get_users_of_list('admin')]
+        for user in users:
+            await update_day_costs(user)
+
+
 async def remind_cancel(call: types.CallbackQuery, callback_data: dict):
     time_logger.info("%s не будет откладывать напоминание" % call.from_user.full_name)
     await call.message.edit_text("А вы рисковый!")
@@ -103,6 +111,7 @@ async def get_time():
 async def time_scanner():
     aioschedule.every().friday.do(week_report)
     aioschedule.every().minute.do(day_report)
+    aioschedule.every(5).minutes.do(check_costs)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
