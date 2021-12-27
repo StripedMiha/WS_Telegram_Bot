@@ -86,11 +86,15 @@ async def day_report():
 
 
 async def check_costs():
+    print('start sinc', datetime.datetime.now())
     if datetime.datetime.now().isoweekday() < 6:
         users: list[TUser] = [TUser(i.id) for i in get_users_of_list('user')] + \
                              [TUser(i.id) for i in get_users_of_list('admin')]
         for user in users:
+            print('sinc user ', user.user_id, user.full_name, datetime.datetime.now())
             await update_day_costs(user)
+            await asyncio.sleep(5)
+    print('end sinc', datetime.datetime.now())
 
 
 async def remind_cancel(call: types.CallbackQuery, callback_data: dict):
@@ -111,7 +115,7 @@ async def get_time():
 async def time_scanner():
     aioschedule.every().friday.do(week_report)
     aioschedule.every().minute.do(day_report)
-    aioschedule.every(5).minutes.do(check_costs)
+    # aioschedule.every(1).minutes.do(check_costs)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)

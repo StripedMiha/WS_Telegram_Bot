@@ -106,7 +106,9 @@ class TUser:
 
     def change_date(self, new_date: str):
         if new_date == 'yesterday':
-            new_date = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%D.%M.%Y")
+            new_date = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d.%m.%Y")
+            
+            print(new_date)
         for i in [' ', ',', ':']:
             temp = new_date.split(i)
             new_date = '.'.join(temp)
