@@ -15,6 +15,7 @@ def register_handlers_stat(dp: Dispatcher, main_bot: Bot, admin_id: int):
     bot = main_bot
     dp.register_message_handler(stat_month, commands="month")
     dp.register_message_handler(stat_week, commands="week")
+    # dp.register_message_handler(day_report, lambda message: message.text.lower() == "test")
 
 
 # Первая версия статистики

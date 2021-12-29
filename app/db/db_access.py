@@ -5,6 +5,7 @@ from datetime import datetime
 from pprint import pprint
 from typing import Union
 
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
 from app.KeyboardDataClass import KeyboardData
@@ -23,10 +24,10 @@ def get_user_days_costs(user: TUser) -> list[tuple]:
     return query_comments
 
 
-def get_all_user_day_costs(user: TUser) -> list[tuple]:
+def get_all_user_day_costs(date: str) -> list[tuple]:
     session = _get_session()
     all_comments = session.query(Comment.comment_text, Comment.time, Comment.comment_id) \
-        .filter(Comment.date == user.get_date()).all()
+        .filter(Comment.date == date).all()
     session.close()
     return all_comments
 
@@ -34,7 +35,7 @@ def get_all_user_day_costs(user: TUser) -> list[tuple]:
 def get_all_costs_for_period(first_day: str):
     session = _get_session()
     q = session.query(Comment.user_id, Comment.time) \
-               .filter(Comment.date >= first_day, Comment.via_bot == True).all()
+        .filter(Comment.date >= first_day, Comment.via_bot == True).all()
     session.close()
     return [list(i) for i in q]
 
@@ -49,9 +50,19 @@ def get_the_user_costs_for_period(user: TUser, day_from: str) -> list:
 def get_period_user(first_day: str) -> list[int]:
     session = _get_session()
     users: list[tuple[int, str]] = session.query(Comment.user_id) \
-                                          .filter(Comment.date >= first_day, Comment.via_bot == True).all()
+        .filter(Comment.date >= first_day, Comment.via_bot == True).all()
     session.close()
     return [i[0] for i in users]
+
+
+def get_the_user_projects_time_cost_per_period(first_day: str, user: TUser) -> list:
+    session = _get_session()
+    statement = select(Project.project_name, Comment.time) \
+        .join_from(Comment, Task).join_from(Task, Project) \
+        .where(Comment.user_id == user.user_id, Comment.date >= first_day)
+    test = session.execute(statement)
+    session.close()
+    return [list(i) for i in test]
 
 
 def get_comment_task_path(cost_id: int) -> str:
@@ -149,15 +160,15 @@ def remove_task_from_db(task_id) -> None:
 
 def get_tasks_from_db(parent_id: str) -> list[KeyboardData]:
     session = _get_session()
-    child_tasks: list[tuple] = session.query(Task.task_name, Task.task_ws_id)\
-                                      .filter(Task.parent_id == parent_id, Task.status == 'active').all()
+    child_tasks: list[tuple] = session.query(Task.task_name, Task.task_ws_id) \
+        .filter(Task.parent_id == parent_id, Task.status == 'active').all()
     session.close()
     return [KeyboardData(i[0], i[1]) for i in child_tasks]
 
 
 def get_task_name(task_id: str) -> str:
     session = _get_session()
-    name = session.query(Task.task_name)  .filter(Task.task_ws_id == task_id).one()[0]
+    name = session.query(Task.task_name).filter(Task.task_ws_id == task_id).one()[0]
     session.close()
     return name
 
@@ -182,9 +193,9 @@ def get_project_id_by_task_id(parent_id) -> str:
 
 def get_list_user_bookmark(user_id: int) -> list[KeyboardData]:
     session = _get_session()
-    user_bookmarks: list[tuple] = session.query(Bookmark.bookmark_name, Task.task_ws_id)\
-                                         .join(Bookmark).join(UserBookmark).join(Project) \
-                                         .filter(UserBookmark.user_id == user_id).order_by(Project.project_name, Task.task_name).all()
+    user_bookmarks: list[tuple] = session.query(Bookmark.bookmark_name, Task.task_ws_id) \
+        .join(Bookmark).join(UserBookmark).join(Project) \
+        .filter(UserBookmark.user_id == user_id).order_by(Project.project_name, Task.task_name).all()
     session.close()
     return [KeyboardData(i[0], i[1]) for i in user_bookmarks]
 
@@ -275,7 +286,7 @@ def change_selected_task(user_id: int, task_ws_id: str) -> None:
     session.close()
 
 
-def check_comment(com):
+async def check_comment(com):
     session = _get_session()
     query_project = [i[0] for i in session.query(Project.project_id).all()]
     if com.get('task').get('project').get('id') not in query_project:
@@ -350,7 +361,6 @@ example = {'comment': 'обсуждение вопросов по сайту',
            'user_from': {'email': 'e.grigoryeva@smde.ru',
                          'id': '361647',
                          'name': 'Екатерина Григорьева'}}
-
 
 if __name__ == '__main__':
     pass

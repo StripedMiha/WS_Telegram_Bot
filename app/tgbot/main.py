@@ -1,5 +1,6 @@
 import datetime
 from datetime import timedelta
+from pprint import pprint
 from typing import Union
 
 from aiogram.utils.exceptions import MessageTextIsEmpty
@@ -199,12 +200,13 @@ def days_costs_for_remove(user: TUser) -> list[KeyboardData]:
     return list_comments
 
 
-async def update_day_costs(user: TUser) -> None:
-    db = [i[2] for i in get_all_user_day_costs(user)]
+async def update_day_costs(date: str) -> None:
+    db = [i[2] for i in get_all_user_day_costs(date)]
     ws = []
-    for comment in await get_day_costs_from_ws(user.get_date()):
+    ws_comments = await get_day_costs_from_ws(date)
+    for comment in ws_comments:
         ws.append(int(comment['id']))
-        check_comment(comment)
+        await check_comment(comment)
     for i in ws:
         try:
             db.remove(i)
@@ -217,11 +219,10 @@ async def update_day_costs(user: TUser) -> None:
 def remove_cost(cost_id: int) -> str:
     task_path: str = get_comment_task_path(cost_id)
     req = remove_cost_ws(task_path, cost_id)
-    if req.get('status') == 'ok':  # TODO переписать под бросание ошибки
+    if req.get('status') == 'ok':
         remove_comment_db(cost_id)
         return 'Успешно удалено'
     else:
-        # TODO лог ошибки админу
         return 'Ошибка удаления из WorkSection'
 
 

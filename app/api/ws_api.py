@@ -12,14 +12,6 @@ API_KEY = config["ws_token"]["api_token_worksection"]
 SMDE_URL = config["ws_token"]["SMDE_URL"]
 
 
-def reformat_date(date):
-    date = str(date)
-    split_date = date.split('-')
-    split_date.reverse()
-    format_date = '.'.join(split_date)
-    return format_date
-
-
 async def get_all_project_for_user(email, status_filter='active') -> list[KeyboardData]:
     action = 'get_projects'
     hash_key = hashlib.md5(action.encode(ENCOD)+API_KEY.encode(ENCOD))
@@ -73,23 +65,21 @@ def search_tasks(page, status_filter='active'):
     return out
 
 
-async def get_day_costs_from_ws(date):
+async def get_day_costs_from_ws(date: str):
     action = 'get_costs'
     hash_key = hashlib.md5(action.encode(ENCOD) + API_KEY.encode(ENCOD))
-    if date == 'today' or date == 'сегодня':
-        date_check = reformat_date(datetime.date.today())
-    elif date == 'yesterday':
-        timedelta = datetime.timedelta(days=1)
-        date_check = reformat_date(datetime.date.today() - timedelta)
+    if date == 'today':
+        date_check = datetime.date.today().strftime("%d.%m.%Y")
     else:
         date_check = date
     attributes_requests = {
         'SMDE_URL': SMDE_URL,
         'action': action,
         'hash': hash_key.hexdigest(),
-        'date': date_check
+        'date_b': date_check,
+        'date_e': datetime.date.today().strftime("%d.%m.%Y")
     }
-    query = '{SMDE_URL}action={action}&show_subtasks=2&hash={hash}&datestart={date}&dateend={date}'.format(
+    query = '{SMDE_URL}action={action}&show_subtasks=2&hash={hash}&datestart={date_b}&dateend={date_e}'.format(
         **attributes_requests)
     req = requests.get(query).json().get('data')
     return req
@@ -115,7 +105,7 @@ def add_cost(page, user_email, comment, time, date='today'):
     action = 'add_costs'
     hash_key = hashlib.md5(page.encode(ENCOD) + action.encode(ENCOD) + API_KEY.encode(ENCOD))
     if date == 'today':
-        date_add = reformat_date(datetime.date.today())
+        date_add = datetime.date.today().strftime("%d.%m.%Y")
     else:
         date_add = date
 

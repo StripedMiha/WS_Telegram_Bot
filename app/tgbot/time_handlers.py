@@ -12,6 +12,8 @@ from aiogram.types import BotCommand
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from app.create_log import setup_logger
+from app.db.stat import show_week_projects_report, projects_report
+from app.exceptions import EmptyCost, WrongTime
 from app.tgbot.auth import TUser
 from app.tgbot.main import get_time_user_notification, get_users_of_list, see_days_costs, day_report_message, \
     set_remind, update_day_costs
@@ -23,7 +25,7 @@ time_logger: logging.Logger = setup_logger("App.Bot.time", "log/time.log")
 def register_handlers_time(dp: Dispatcher, main_bot: Bot, admin_id: int):
     global bot
     bot = main_bot
-    # dp.register_message_handler(day_report, lambda message: message.text.lower() == "test")
+    dp.register_message_handler(week_report, lambda message: message.text.lower() == "test")
     dp.register_callback_query_handler(delay_remind, callback_time.filter(action="remind"))
     dp.register_callback_query_handler(remind_cancel, callback_time.filter(action="cancel"))
 
@@ -55,11 +57,35 @@ async def noon_print():
 
 
 async def print_second():
+    show_week_projects_report()
     pass
 
 
-async def week_report():
-    pass
+async def week_report(a=1):
+    users: list[TUser] = [TUser(i.id) for i in get_users_of_list('user')] + \
+                         [TUser(i.id) for i in get_users_of_list('admin')]
+    try:
+        min_dates = min(set([i.get_date() for i in users]))
+        await update_day_costs(min_dates)
+    except:
+        await bot.send_message(TUser.get_admin_id(), "Ошибка пятничной статы")
+    for user in users:
+        print(user.full_name)
+
+        if user.notification_status:
+            try:
+                sum_costs = projects_report(user)
+                await bot.send_photo(user.user_id, types.InputFile('app/db/png/week_%s.png' % user.full_name),
+                                     caption='Распределение ваших %s часов по проектам за неделю' % sum_costs)
+            except EmptyCost:
+                try:
+                    await bot.send_message(user.user_id, "Вы не заполняли на этой неделе. Нипорядок!")
+                except ChatNotFound:
+                    pass
+            except WrongTime:
+                pass
+            except ChatNotFound:
+                pass
 
 
 async def day_report():
@@ -68,7 +94,6 @@ async def day_report():
                              [TUser(i.id) for i in get_users_of_list('admin')]
         for user in users:
             try:
-
                 text = await day_report_message(user)
                 if len(text) <= 10:
                     continue
@@ -92,7 +117,7 @@ async def check_costs():
                              [TUser(i.id) for i in get_users_of_list('admin')]
         for user in users:
             print('sinc user ', user.user_id, user.full_name, datetime.datetime.now())
-            await update_day_costs(user)
+            await update_day_costs(user.get_date())
             await asyncio.sleep(5)
     print('end sinc', datetime.datetime.now())
 
@@ -113,7 +138,7 @@ async def get_time():
 
 
 async def time_scanner():
-    aioschedule.every().friday.do(week_report)
+    aioschedule.every().thursday.at("19:00").do(week_report)
     aioschedule.every().minute.do(day_report)
     # aioschedule.every(1).minutes.do(check_costs)
     while True:

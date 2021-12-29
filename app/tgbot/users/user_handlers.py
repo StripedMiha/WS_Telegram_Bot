@@ -194,7 +194,7 @@ async def menu(message: types.Message):
         return None
     buttons = menu_buttons(user)
     await message.answer('Доступные действия:', reply_markup=get_keyboard(buttons, 2))
-    await update_day_costs(user)
+    await update_day_costs(user.get_date())
 
 
 # Нажали кнопку в меню
