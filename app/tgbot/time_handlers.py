@@ -2,9 +2,10 @@ from datetime import timedelta, datetime
 import logging
 import asyncio
 from pprint import pprint
+import aiogram
 
 from aiogram.utils.callback_data import CallbackData
-from aiogram.utils.exceptions import ChatNotFound, MessageTextIsEmpty
+from aiogram.utils.exceptions import ChatNotFound, MessageTextIsEmpty, BotBlocked
 import aioschedule
 
 from aiogram import Bot, Dispatcher, types
@@ -91,6 +92,9 @@ async def week_report(a=1):
                 except ChatNotFound:
                     time_logger.error("Чат с пользователем %s не найден" % user.full_name)
                     pass
+                except BotBlocked:
+                    time_logger.error("Пользователь %s заблокировал бота" % user.full_name)
+                    pass
             except WrongTime:
                 pass
             except ChatNotFound:
@@ -150,6 +154,9 @@ async def day_report():
             except ChatNotFound:
                 time_logger.error("Чат с пользователем %s не найден" % user.full_name)
                 pass
+            except BotBlocked:
+                    time_logger.error("Пользователь %s заблокировал бота" % user.full_name)
+                    pass
             except MessageTextIsEmpty:
                 time_logger.error("Сообщение пользователю %s пустое" % user.full_name)
                 pass
@@ -185,7 +192,7 @@ async def get_time():
 
 
 async def time_scanner():
-    aioschedule.every().friday.at("18:35").do(week_report)
+    aioschedule.every().monday.at("09:57").do(week_report)
     aioschedule.every().minute.do(day_report)
     # aioschedule.every(1).minutes.do(check_costs)
     while True:
