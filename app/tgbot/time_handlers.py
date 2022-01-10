@@ -192,7 +192,7 @@ async def get_time():
 
 
 async def time_scanner():
-    aioschedule.every().monday.at("09:57").do(week_report)
+    aioschedule.every().friday.at("18:30").do(week_report)
     aioschedule.every().minute.do(day_report)
     # aioschedule.every(1).minutes.do(check_costs)
     while True:
