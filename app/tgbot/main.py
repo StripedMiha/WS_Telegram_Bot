@@ -415,33 +415,6 @@ async def get_time_user_notification():
     return times
 
 
-async def day_report_message(user: TUser) -> str:
-    now_time: str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    now_date: str = datetime.datetime.now().strftime("%Y-%m-%d")
-    costs: list = get_the_user_costs_for_period(user, now_date)
-    day_cost_sum: timedelta = timedelta(hours=0)
-    for i in costs:
-        hours, minutes = i.split(":")
-        day_cost_sum += timedelta(hours=int(hours), minutes=int(minutes))
-    day_cost_sum: float = day_cost_sum.seconds / 60 / 60
-    text: str = ' '
-    if user.notification_status:
-        if user.get_notification_time() == now_time:
-            if day_cost_sum >= 12:
-                text = "\n\n".join(["Вы либо очень большой молодец, либо где-то переусердствовали."
-                                    "\nУ вас за сегодня больше 12 часов. Это законно?", see_days_costs(user)])
-            elif day_cost_sum >= 8:
-                text = "\n\n".join(["Вы всё заполнили, вы молодец!", see_days_costs(user)])
-            elif day_cost_sum > 0:
-                text = "\n\n".join(["Вы немного не дотянули до 8 часов!", see_days_costs(user)])
-            else:
-                text = see_days_costs(user)
-        elif user.get_remind_notification_time() == now_time:
-            text = "Вы отложили напоминание заполнить трудоёмкости. Вот оно!"
-            user.set_remind_time(None)
-    return text
-
-
 async def set_remind(user: TUser, time: str, message_time: datetime.datetime) -> str:
     hours, minutes = time.split(".")
     remind_time: datetime.timedelta = datetime.timedelta(hours=int(hours), minutes=int(minutes))
