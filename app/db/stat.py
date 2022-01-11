@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import collections
 
-
+from app.api.work_calendar import is_work_day
 from app.db.db_access import get_all_costs_for_period, get_period_user, get_the_user_projects_time_cost_per_period
 from app.exceptions import EmptyCost, WrongTime
 from app.tgbot.auth import TUser
@@ -54,7 +54,7 @@ def get_f_date(i: int) -> datetime:
 
 def get_count_work_days() -> int:
     now_day = datetime.now().day
-    w = [1 if get_f_date(i).isoweekday() < 6 else 0 for i in range(1, now_day + 1)]
+    w = [1 if is_work_day(get_f_date(i)) else 0 for i in range(1, now_day + 1)]
     counter_work_days = sum(w)
     return counter_work_days
 
@@ -150,7 +150,7 @@ def show_week_projects_report(user: TUser):
     if len(time) == 0:
         raise EmptyCost
     plt.gcf().clear()
-    plt.plot(kind='pie', subplots=True, figsize=(8, 8), dpi= 80)
+    plt.plot(kind='pie', subplots=True, figsize=(8, 8), dpi=80)
     plt.pie(time, labels=projects)
     plt.title("Распределение за неделю")
     plt.savefig('app/db/png/%s_%s' % ('week', user.full_name))

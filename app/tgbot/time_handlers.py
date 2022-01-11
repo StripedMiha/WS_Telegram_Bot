@@ -12,6 +12,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import BotCommand
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
+from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
 from app.db.db_access import get_the_user_costs_for_period
 from app.db.stat import show_week_projects_report, projects_report
@@ -135,7 +136,7 @@ async def day_report_message(user: TUser) -> str:
 
 
 async def day_report():
-    if datetime.now().isoweekday() < 6:
+    if is_work_day(datetime.now()):
         time_logger.info("Сегодня %s" % datetime.now().strftime("%A"))
         users: list[TUser] = [TUser(i.id) for i in get_users_of_list('user')] + \
                              [TUser(i.id) for i in get_users_of_list('admin')]
