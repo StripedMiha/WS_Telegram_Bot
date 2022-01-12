@@ -10,6 +10,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
 
 from app.KeyboardDataClass import KeyboardData
+from app.exceptions import WrongDate, FutureDate
 from app.tgbot.auth import TUser
 from app.create_log import setup_logger
 from app.tgbot.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, \
@@ -250,8 +251,12 @@ async def wait_date(message: types.Message, state: FSMContext):
         await message.answer('Установлена вчерашняя дата', reply_markup=types.ReplyKeyboardRemove())
     elif re.match(r'(((0[1-9])|([1-2][0-9])|(3[0-1]))[., :]((0[1-9])|(1[0-2]))[., :]20[2-9][0-9])', message.text):
         date = message.text.strip(' ')
-        user.change_date(date)
-        await message.answer(f'Установлена дата: {user.get_date()}', reply_markup=types.ReplyKeyboardRemove())
+        try:
+            user.change_date(date)
+            await message.answer(f'Установлена дата: {user.get_date()}', reply_markup=types.ReplyKeyboardRemove())
+        except FutureDate:
+            await message.answer("Не всем дано смотреть в завтрашний день\nВведи дату не в будущем")
+            return
     else:
         await message.answer('Дата введена в неверном формате.')
         return

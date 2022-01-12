@@ -4,3 +4,11 @@ class EmptyCost(ValueError):
 
 class WrongTime(ValueError):
     pass
+
+
+class WrongDate(ValueError):
+    pass
+
+
+class FutureDate(WrongDate):
+    pass

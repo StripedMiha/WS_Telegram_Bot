@@ -5,6 +5,7 @@ from sqlalchemy.exc import NoResultFound
 from typing import Union
 
 from app.db.structure_of_db import User, _get_session
+from app.exceptions import FutureDate
 
 
 class TUser:
@@ -109,9 +110,16 @@ class TUser:
             new_date = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d.%m.%Y")
             
             print(new_date)
-        for i in [' ', ',', ':']:
-            temp = new_date.split(i)
-            new_date = '.'.join(temp)
+        elif new_date == 'today':
+            pass
+        else:
+            for i in [' ', ',', ':']:
+                temp = new_date.split(i)
+                new_date = '.'.join(temp)
+            temp = new_date.split('.')
+            print(temp)
+            if datetime.datetime(year=int(temp[2]), month=int(temp[1]), day=int(temp[0])) > datetime.datetime.now():
+                raise FutureDate
         session = _get_session()
         update_row: User = session.query(User).get(self.user_id)
         update_row.date_of_input = new_date
