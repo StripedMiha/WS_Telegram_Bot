@@ -126,7 +126,9 @@ async def news_to_users(message: types.Message, state: FSMContext):
             await bot.send_message(user_id, text)
             admin_logger.info("%s получил новость" % name)
         except aiogram.utils.exceptions.ChatNotFound:
-            admin_logger.info("%s НЕ получил новость" % name)
+            admin_logger.error("%s НЕ получил новость" % name)
+        except aiogram.utils.exceptions.BotBlocked:
+            admin_logger.error("%s заблокировал бота" % name)
     await state.finish()
     await message.answer('Отправлено')
 
