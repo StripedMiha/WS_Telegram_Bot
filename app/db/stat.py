@@ -5,8 +5,8 @@ import numpy as np
 import collections
 
 from app.api.work_calendar import is_work_day
-from app.db.db_access import get_all_costs_for_period, get_period_user, get_the_user_projects_time_cost_per_period
-from app.exceptions import EmptyCost, WrongTime
+from app.db.db_access import get_all_costs_for_period, get_the_user_projects_time_cost_per_period
+from app.exceptions import EmptyCost
 from app.tgbot.auth import TUser
 
 
@@ -116,7 +116,7 @@ def show_month_gist():
     # plt.axhline(max_value + 10, color='white')
     plt.legend(loc=1)
     plt.ylabel('часы')
-    plt.grid(visible=True)
+    # plt.grid(visible=True)
     step: int = 5 if max_value < 100 else 10
     plt.yticks(np.arange(0, max(time) + 15 if max(time) > max_value else max_value + 15, step=step))
     plt.xticks(rotation=0)

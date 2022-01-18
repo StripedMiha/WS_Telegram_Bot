@@ -8,21 +8,21 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from app.config_reader import load_config
 from app.create_log import setup_logger
 
-from app.tgbot.administration.admin_handlers import register_handlers_admin
+from app.tgbot.admin_handlers import register_handlers_admin
 from app.tgbot.time_handlers import time_scanner, register_handlers_time
-from app.tgbot.users.stat_handlers import register_handlers_stat
-from app.tgbot.users.user_handlers import register_handlers_user, register_handlers_wait_input
+from app.tgbot.stat_handlers import register_handlers_stat
+from app.tgbot.user_handlers import register_handlers_user, register_handlers_wait_input
 
-main_logger: logging.Logger = setup_logger("App.Bot.bot", "log/tgbot.log")
-bot_logger: logging.Logger = setup_logger("App.Bot", "log/bot.log")
-app_logger: logging.Logger = setup_logger("App", "log/app.log")
+main_logger: logging.Logger = setup_logger("App.Bot.bot", "app/log/tgbot.log")
+bot_logger: logging.Logger = setup_logger("App.Bot", "app/log/bot.log")
+app_logger: logging.Logger = setup_logger("App", "app/log/app.log")
 
 
 async def main_bot():
     main_logger.error("Starting bot")
 
     # парсинг файла конфигурации
-    config = load_config("config/bot.ini")
+    config = load_config("/run/secrets/bot")
 
     # Объявление и инициализация объектов бота и диспетчера
     bot = Bot(token=config['tg_bot']['token'], parse_mode=types.ParseMode.HTML)
@@ -39,7 +39,7 @@ async def main_bot():
     await set_commands(bot)
 
     # Запуск поллинга
-    await dp.skip_updates()  # пропуск накопившихся апдейтов (необязательно)
+    # await dp.skip_updates()  # пропуск накопившихся апдейтов (необязательно)
     await dp.start_polling()
     main_logger.info("The bot has started")
 

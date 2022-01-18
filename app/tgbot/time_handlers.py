@@ -1,27 +1,23 @@
 from datetime import timedelta, datetime
 import logging
 import asyncio
-from pprint import pprint
-import aiogram
 
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import ChatNotFound, MessageTextIsEmpty, BotBlocked
 import aioschedule
 
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import BotCommand
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
 from app.db.db_access import get_the_user_costs_for_period
-from app.db.stat import show_week_projects_report, projects_report
+from app.db.stat import projects_report
 from app.exceptions import EmptyCost, WrongTime
 from app.tgbot.auth import TUser
 from app.tgbot.main import get_time_user_notification, get_users_of_list, see_days_costs, set_remind, update_day_costs
 
 bot: Bot
-time_logger: logging.Logger = setup_logger("App.Bot.time", "log/time.log")
+time_logger: logging.Logger = setup_logger("App.Bot.time", "app/log/time.log")
 
 
 def register_handlers_time(dp: Dispatcher, main_bot: Bot, admin_id: int):
@@ -179,13 +175,17 @@ async def check_costs():
 
 async def remind_cancel(call: types.CallbackQuery, callback_data: dict):
     time_logger.info("%s не будет откладывать напоминание" % call.from_user.full_name)
-    await call.message.edit_text("А вы рисковый!")
+    mes_text = call.message.text
+    await call.message.edit_text(mes_text)
+    await call.message.answer("А вы рисковый!")
 
 
 async def delay_remind(call: types.CallbackQuery, callback_data: dict):
     user: TUser = TUser(call.from_user.id)
     text = await set_remind(user, callback_data.get("time"), call.message.date)
-    await call.message.edit_text(text)
+    mes_text = call.message.text
+    await call.message.edit_text(mes_text)
+    await call.message.answer(text)
 
 
 async def get_time():

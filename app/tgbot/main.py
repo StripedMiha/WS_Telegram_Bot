@@ -1,9 +1,6 @@
 import datetime
 from datetime import timedelta
-from pprint import pprint
 from typing import Union
-
-from aiogram.utils.exceptions import MessageTextIsEmpty
 
 from app.KeyboardDataClass import KeyboardData
 from app.tgbot.auth import TUser
@@ -13,10 +10,10 @@ from app.db.db_access import get_user_days_costs, check_comment, get_comment_tas
     get_tasks_from_db, get_full_task_name, get_project_id_by_task_id, remove_task_from_db, get_list_user_bookmark, \
     get_all_booked_task_id, add_bookmark_into_db, get_bookmark_id, add_bookmark_to_user, get_tasks_path, \
     add_comment_in_db, change_selected_task, get_all_tasks_id_db, get_all_projects_id_db, \
-    get_task_name, get_all_user_day_costs, get_time_notification, get_the_user_costs_for_period
+    get_task_name, get_all_user_day_costs, get_time_notification
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks,\
     get_task_info, add_cost
-from app.db.stat import show_month_gist, show_week_gist, sum_period_time_costs
+from app.db.stat import show_month_gist, show_week_gist
 
 INPUT_COSTS = """
 Введите часы и описание деятельности:

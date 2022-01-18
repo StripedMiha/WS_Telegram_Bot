@@ -2,11 +2,8 @@
 
 # from app.api.ws_api import get_day_costs_from_ws
 from datetime import datetime
-from pprint import pprint
-from typing import Union
 
 from sqlalchemy import select
-from sqlalchemy.exc import NoResultFound
 
 from app.KeyboardDataClass import KeyboardData
 from app.db.structure_of_db import Comment, Project, Task, User, Bookmark, UserBookmark

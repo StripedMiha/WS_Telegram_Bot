@@ -1,3 +1,5 @@
+import time
+
 import sqlalchemy
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -8,13 +10,14 @@ from sqlalchemy.orm import Session
 
 from app.config_reader import load_config
 
-config = load_config("config/db.ini")
+# time.sleep(100)
+config = load_config("/run/secrets/db")
 user = config["db"]["user"]
 password = config["db"]["password"]
 bd_name = config["db"]["bd_name"]
+host = config["db"]["host"]
 
-
-engine = sqlalchemy.create_engine(f"postgresql+psycopg2://{user}:{password}@localhost/{bd_name}",
+engine = sqlalchemy.create_engine(f"postgresql+psycopg2://{user}:{password}@{host}/{bd_name}",
                                   echo=False, pool_size=6, max_overflow=10, encoding='latin1')
 
 

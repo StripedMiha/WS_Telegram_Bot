@@ -9,12 +9,12 @@ from aiogram.dispatcher import FSMContext
 
 from app.KeyboardDataClass import KeyboardData
 from app.create_log import setup_logger
-from app.tgbot.auth import TUser
 from app.tgbot.main import get_users_of_list
+from app.tgbot.auth import TUser
 
 
 bot: Bot
-admin_logger: logging.Logger = setup_logger("App.Bot.admin", "log/admin.log")
+admin_logger: logging.Logger = setup_logger("App.Bot.admin", "app/log/admin.log")
 
 
 class OrderMenu(StatesGroup):
@@ -142,7 +142,7 @@ async def log_for_admin(message: types.Message):
         count = int(message.text.split(' ')[-1])
         log_name = 'app'
     try:
-        with open(f'log/{log_name}.log', 'r', encoding='utf-8') as f:
+        with open(f'app/log/{log_name}.log', 'r', encoding='utf-8') as f:
             text = f.readlines()[-count:]
     except FileNotFoundError:
         await message.answer('Не верное имя лога')

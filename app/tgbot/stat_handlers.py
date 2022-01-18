@@ -7,7 +7,7 @@ from app.exceptions import EmptyCost
 from app.tgbot.main import get_month_stat, get_week_stat
 
 bot: Bot
-stat_logger: logging.Logger = setup_logger("App.Bot.stat", "log/stat.log")
+stat_logger: logging.Logger = setup_logger("App.Bot.stat", "app/log/stat.log")
 
 
 def register_handlers_stat(dp: Dispatcher, main_bot: Bot, admin_id: int):

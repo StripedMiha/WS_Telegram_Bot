@@ -10,18 +10,18 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
 
 from app.KeyboardDataClass import KeyboardData
-from app.exceptions import WrongDate, FutureDate
+from app.exceptions import FutureDate
 from app.tgbot.auth import TUser
 from app.create_log import setup_logger
 from app.tgbot.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, \
     remove_costs, remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, \
     get_project_list, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, select_task, \
     get_text_add_costs, remind_settings_button
-from app.tgbot.administration.admin_handlers import get_keyboard_admin
+from app.tgbot.admin_handlers import get_keyboard_admin
 
 
 bot: Bot
-user_logger: logging.Logger = setup_logger("App.Bot.user", "log/user.log")
+user_logger: logging.Logger = setup_logger("App.Bot.user", "app/log/user.log")
 
 
 class OrderMenu(StatesGroup):
@@ -31,6 +31,7 @@ class OrderMenu(StatesGroup):
     wait_for_offer = State()
     wait_for_date = State()
     wait_for_notification_time = State()
+
 
 def register_handlers_wait_input(dp: Dispatcher, main_bot: Bot, admin_id: int):
     global bot

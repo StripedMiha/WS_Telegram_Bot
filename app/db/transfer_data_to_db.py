@@ -12,7 +12,7 @@ from structure_of_db import engine, Task, Project, Bookmark, User, UserBookmark
 from pprint import pprint
 
 
-config = load_config("config/ws.ini")
+config = load_config("keys/ws.ini")
 ENCOD = config["ws_token"]["ENCOD"]
 API_KEY = config["ws_token"]["api_token_worksection"]
 SMDE_URL = config["ws_token"]["SMDE_URL"]

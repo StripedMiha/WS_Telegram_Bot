@@ -6,7 +6,7 @@ import hashlib
 import requests
 import datetime
 
-config = load_config("config/ws.ini")
+config = load_config("/run/secrets/ws")
 ENCOD = config["ws_token"]["ENCOD"]
 API_KEY = config["ws_token"]["api_token_worksection"]
 SMDE_URL = config["ws_token"]["SMDE_URL"]

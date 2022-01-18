@@ -1,0 +1,4 @@
+app/keys/*.ini
+app/log/*.log
+app/keys/db_pass.txt
+app/keys/*
