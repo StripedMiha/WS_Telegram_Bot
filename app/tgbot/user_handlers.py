@@ -13,10 +13,10 @@ from app.KeyboardDataClass import KeyboardData
 from app.exceptions import FutureDate
 from app.tgbot.auth import TUser
 from app.create_log import setup_logger
-from app.tgbot.main import see_days_costs, update_day_costs, about_user, menu_buttons, days_costs_for_remove, \
+from app.tgbot.main import see_days_costs, update_day_costs, get_about_user_info, menu_buttons, days_costs_for_remove, \
     remove_costs, remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, \
     get_project_list, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, select_task, \
-    get_text_add_costs, remind_settings_button
+    get_text_add_costs, remind_settings_button, get_text_menu_notification
 from app.tgbot.admin_handlers import get_keyboard_admin
 
 
@@ -196,7 +196,7 @@ async def menu(message: types.Message):
         return None
     buttons = menu_buttons(user)
     await message.answer('Доступные действия:', reply_markup=get_keyboard(buttons, 2))
-    await update_day_costs(user.get_date())
+    await update_day_costs(user.get_date(), True)
 
 
 # Нажали кнопку в меню
@@ -210,7 +210,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
                                      'Введите "Отмена" для отмены ввода')
         await OrderMenu.wait_for_email.set()
     elif action == 'about me':
-        await call.message.edit_text(about_user(user))
+        await call.message.edit_text(get_about_user_info(user))
     elif action == 'daily report':
         await call.message.edit_text(f"<b>Отчёт за {date}:</b>\n\n")
         await call.message.answer(see_days_costs(user))
@@ -471,7 +471,8 @@ async def remove_comments(call: types.CallbackQuery, callback_data: dict):
 # Меню настроек напоминаний
 async def setting_notification_menu(call: types.CallbackQuery, callback_data: dict):
     user_logger.info("%s выбрал кнопку настроек напоминаний")
-    await call.message.edit_text("Настройки напоминаний", reply_markup=get_keyboard(remind_settings_button, width=1))
+    text = get_text_menu_notification(TUser(call.from_user.id).notification_status)
+    await call.message.edit_text(text, reply_markup=get_keyboard(remind_settings_button, width=1))
 
 
 # Настройки напоминаний
@@ -487,8 +488,6 @@ async def setting_notification(call: types.CallbackQuery, callback_data: dict):
         user_logger.info("%s запускает ввод времени для уведомлений" % user.full_name)
         await call.message.edit_text("Введите время для уведомлений в формате ЧЧ:MM")
         await OrderMenu.wait_for_notification_time.set()
-
-
 
 
 async def wait_notification_time(message: types.Message, state: FSMContext):

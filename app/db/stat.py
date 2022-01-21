@@ -114,6 +114,9 @@ def show_month_gist():
     plt.title('Статистика за текущий календарный месяц')
     plt.axhline(max_value, color='green', label='Эталон')
     # plt.axhline(max_value + 10, color='white')
+    for i in range(16, max_value-1, 8):
+        plt.axhline(i, color='grey')
+    plt.axhline(8, color='grey', label='День')
     plt.legend(loc=1)
     plt.ylabel('часы')
     # plt.grid(visible=True)
@@ -134,7 +137,9 @@ def show_week_gist():
     plt.gcf().clear()
     plt.title('Статистика за текущую неделю')
     plt.axhline(max_value, color='green', label='Эталон')
-    plt.axhline(max_value + 10, color='white')
+    for i in [8, 16, 24]:
+        plt.axhline(i, color='grey')
+    plt.axhline(32, color='grey', label='День')
     plt.legend(loc=1)
     plt.ylabel('часы')
     plt.yticks(np.arange(0, max(time) + 15 if max(time) > max_value else max_value + 15, step=5))

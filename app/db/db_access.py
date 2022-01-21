@@ -1,13 +1,26 @@
 # from typing import Union
 
 # from app.api.ws_api import get_day_costs_from_ws
+import logging
 from datetime import datetime
 
 from sqlalchemy import select
 
 from app.KeyboardDataClass import KeyboardData
+from app.create_log import setup_logger
 from app.db.structure_of_db import Comment, Project, Task, User, Bookmark, UserBookmark
 from app.tgbot.auth import _get_session, TUser
+
+db_logger: logging.Logger = setup_logger("App.back.db", "app/log/db.log")
+
+
+def date_to_db_format(date: str) -> str:
+    try:
+        f_date = date.split(".")
+        f_date.reverse()
+        return '-'.join(f_date)
+    except:
+        return date
 
 
 def get_user_days_costs(user: TUser) -> list[tuple]:
@@ -16,15 +29,15 @@ def get_user_days_costs(user: TUser) -> list[tuple]:
                                    Comment.comment_id) \
         .join(Comment).join(Project) \
         .filter(Comment.user_id == user.user_id,
-                Comment.date == user.get_date()).order_by(Project.project_name, Task.task_name).all()
+                Comment.date == date_to_db_format(user.get_date())).order_by(Project.project_name, Task.task_name).all()
     session.close()
     return query_comments
 
 
-def get_all_user_day_costs(date: str) -> list[tuple]:
+async def get_all_user_day_costs(date: str) -> list[tuple]:
     session = _get_session()
     all_comments = session.query(Comment.comment_text, Comment.time, Comment.comment_id) \
-        .filter(Comment.date == date).all()
+        .filter(Comment.date == date_to_db_format(date)).all()
     session.close()
     return all_comments
 
@@ -32,7 +45,7 @@ def get_all_user_day_costs(date: str) -> list[tuple]:
 def get_all_costs_for_period(first_day: str):
     session = _get_session()
     q = session.query(Comment.user_id, Comment.time) \
-        .filter(Comment.date >= first_day, Comment.via_bot == True).all()
+        .filter(Comment.date >= date_to_db_format(first_day), Comment.via_bot == True).all()
     session.close()
     return [list(i) for i in q]
 
@@ -70,7 +83,7 @@ def get_comment_task_path(cost_id: int) -> str:
     return task_path
 
 
-def remove_comment_db(cost_id: int) -> None:
+async def remove_comment_db(cost_id: int) -> None:
     session = _get_session()
     comment = session.query(Comment).filter(Comment.comment_id == cost_id).one()
     session.delete(comment)
@@ -254,6 +267,8 @@ def reformat_date(date: str) -> str:
     format_date: str = date
     if 'today' in date:
         format_date = str(datetime.today())
+    else:
+        format_date = date_to_db_format(format_date)
     return format_date
 
 
@@ -283,46 +298,58 @@ def change_selected_task(user_id: int, task_ws_id: str) -> None:
     session.close()
 
 
-async def check_comment(com):
+async def check_comment(coms):
     session = _get_session()
     query_project = [i[0] for i in session.query(Project.project_id).all()]
-    if com.get('task').get('project').get('id') not in query_project:
-        # print("project don't find")  # TODO отдельный лог
-        project = Project(
-            project_id=com.get('task').get('project').get('id'),
-            project_name=com.get('task').get('project').get('name'),
-            project_path=com.get('task').get('project').get('page')
-        )
-        session.add(project)
-        # print(com.get('task').get('project').get('id'))
-    query_task = [i[0] for i in session.query(Task.task_ws_id).all()]
-    if com.get('task').get('id') not in query_task:
-        # print("task don't find")
-        task = Task(
-            task_path=com.get('task').get('page'),
-            project_id=com.get('task').get('project').get('id'),
-            task_name=com.get('task').get('name'),
-            task_ws_id=com.get('task').get('id'),
-        )
-        session.add(task)
-    search_user: User = session.query(User).filter(User.email == com.get('user_from').get('email')).first()
-    # print(search_user)
-    if search_user:
-        task_ws_id = session.query(Task.task_id).filter(Task.task_ws_id == com.get('task').get('id')).one()[0]
-        query_com = [i[0] for i in session.query(Comment.comment_id).all()]
+    db_logger.info('start comments check')
+    query_com = [i[0] for i in session.query(Comment.comment_id).all()]
+    for com in coms:
+        db_logger.info('start comment check')
         if int(com.get('id')) not in query_com:
-            # print("comment don't find")
-            comment = Comment(
-                comment_id=com.get('id'),
-                user_id=search_user.user_id,
-                task_id=task_ws_id,
-                time=com.get('time'),
-                comment_text=com.get('comment'),
-                date=com.get('date'),
-                via_bot=False,
-            )
-            session.add(comment)
+            if com.get('task').get('project').get('id') not in query_project:
+                db_logger.info("project don't find")
+                project = Project(
+                    project_id=com.get('task').get('project').get('id'),
+                    project_name=com.get('task').get('project').get('name'),
+                    project_path=com.get('task').get('project').get('page')
+                )
+                session.add(project)
+                db_logger.info('add project with id%s' % com.get('task').get('project').get('id'))
+            else:
+                db_logger.info('the project with id%s already exists' % com.get('task').get('project').get('id'))
+            query_task = [i[0] for i in session.query(Task.task_ws_id).all()]
+            if com.get('task').get('id') not in query_task:
+                db_logger.info("task don't find")
+                task = Task(
+                    task_path=com.get('task').get('page'),
+                    project_id=com.get('task').get('project').get('id'),
+                    task_name=com.get('task').get('name'),
+                    task_ws_id=com.get('task').get('id'),
+                )
+                session.add(task)
+                db_logger.info('add task with id%s' % com.get('task').get('id'))
+            else:
+                db_logger.info('the task with id%s already exists' % com.get('task').get('id'))
+            db_logger.info('start user check')
+            search_user: User = session.query(User).filter(User.email == com.get('user_from').get('email')).first()
+            if search_user:
+                db_logger.info('user with id%s was found' % search_user.user_id)
+                task_ws_id = session.query(Task.task_id).filter(Task.task_ws_id == com.get('task').get('id')).one()[0]
+                db_logger.info("comment don't find")
+                comment = Comment(
+                    comment_id=com.get('id'),
+                    user_id=search_user.user_id,
+                    task_id=task_ws_id,
+                    time=com.get('time'),
+                    comment_text=com.get('comment'),
+                    date=com.get('date'),
+                    via_bot=False,
+                )
+                session.add(comment)
+                db_logger.info("add comment with id%s" % com.get('id'))
+    db_logger.info("start add in db")
     session.commit()
+    db_logger.info("end add in db")
     session.close()
 
 

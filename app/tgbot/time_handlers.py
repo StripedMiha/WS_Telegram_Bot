@@ -133,7 +133,7 @@ async def day_report_message(user: TUser) -> str:
 
 async def day_report():
     if is_work_day(datetime.now()):
-        time_logger.info("Сегодня %s" % datetime.now().strftime("%A"))
+        # time_logger.info("Сегодня %s" % datetime.now().strftime("%A"))
         users: list[TUser] = [TUser(i.id) for i in get_users_of_list('user')] + \
                              [TUser(i.id) for i in get_users_of_list('admin')]
         for user in users:

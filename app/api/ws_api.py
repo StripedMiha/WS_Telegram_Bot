@@ -2,15 +2,19 @@ from app.KeyboardDataClass import KeyboardData
 from app.config_reader import load_config
 from pprint import pprint
 
+import logging
 import hashlib
 import requests
 import datetime
+
+from app.create_log import setup_logger
 
 config = load_config("/run/secrets/ws")
 ENCOD = config["ws_token"]["ENCOD"]
 API_KEY = config["ws_token"]["api_token_worksection"]
 SMDE_URL = config["ws_token"]["SMDE_URL"]
 
+wsapi_logger: logging.Logger = setup_logger("App.back.wsapi", "app/log/wsapi.log")
 
 async def get_all_project_for_user(email, status_filter='active') -> list[KeyboardData]:
     action = 'get_projects'
@@ -65,23 +69,23 @@ def search_tasks(page, status_filter='active'):
     return out
 
 
-async def get_day_costs_from_ws(date: str):
+async def get_day_costs_from_ws(date: str, one_day: bool):
+    wsapi_logger.info('start api request')
     action = 'get_costs'
     hash_key = hashlib.md5(action.encode(ENCOD) + API_KEY.encode(ENCOD))
-    if date == 'today':
-        date_check = datetime.date.today().strftime("%d.%m.%Y")
-    else:
-        date_check = date
+    date_start = datetime.date.today().strftime("%d.%m.%Y") if date == 'today' else date
+    date_end = date if one_day else datetime.date.today().strftime("%d.%m.%Y")
     attributes_requests = {
         'SMDE_URL': SMDE_URL,
         'action': action,
         'hash': hash_key.hexdigest(),
-        'date_b': date_check,
-        'date_e': datetime.date.today().strftime("%d.%m.%Y")
+        'date_b': date_start,
+        'date_e': date_end
     }
     query = '{SMDE_URL}action={action}&show_subtasks=2&hash={hash}&datestart={date_b}&dateend={date_e}'.format(
         **attributes_requests)
     req = requests.get(query).json().get('data')
+    wsapi_logger.info('end api request')
     return req
 
 

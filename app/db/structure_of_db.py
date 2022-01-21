@@ -3,10 +3,11 @@ import time
 import sqlalchemy
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import MetaData, String, Integer, Column, Text, Time, Boolean, DateTime  # , Table, , Numeric
+from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, DateTime  # , Table, , Numeric
 from sqlalchemy import ForeignKey  # , UniqueConstraint, ForeignKeyConstraint, PrimaryKeyConstraint, CheckConstraint, \
 #   values, insert, select, create_engine
 from sqlalchemy.orm import Session
+
 
 from app.config_reader import load_config
 
@@ -78,7 +79,7 @@ class Comment(Base):
     task_id = Column(Integer(), ForeignKey('tasks.task_id'))
     time = Column(String(10))
     comment_text = Column(Text())
-    date = Column(Time)
+    date = Column(Date)
     via_bot = Column(Boolean)
 
 
