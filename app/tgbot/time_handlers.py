@@ -97,6 +97,9 @@ async def week_report(a=1):
             except ChatNotFound:
                 time_logger.error("Чат с пользователем %s не найден" % user.full_name)
                 pass
+            except BotBlocked:
+                time_logger.error("Пользователь %s заблокировал бота" % user.full_name)
+                pass
         else:
             time_logger.info("Пользователь %s отключил уведомления" % user.full_name)
 
@@ -193,7 +196,7 @@ async def get_time():
 
 
 async def time_scanner():
-    aioschedule.every().friday.at("18:30").do(week_report)
+    aioschedule.every().friday.at("18:40").do(week_report)
     aioschedule.every().minute.do(day_report)
     # aioschedule.every(1).minutes.do(check_costs)
     while True:
