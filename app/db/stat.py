@@ -5,7 +5,9 @@ import numpy as np
 import collections
 
 from app.api.work_calendar import is_work_day
-from app.db.db_access import get_all_costs_for_period, get_the_user_projects_time_cost_per_period
+from app.db.db_access import get_all_costs_for_period, get_the_user_projects_time_cost_per_period, \
+    get_user_costs_per_week
+from app.db.structure_of_db import Comment
 from app.exceptions import EmptyCost
 from app.tgbot.auth import TUser
 
@@ -103,6 +105,43 @@ def projects_report(user: TUser) -> float:
     #     raise WrongTime
 
 
+def sort_key(l):
+    weekdays: dict = {
+        "Monday": 1,
+        "Tuesday": 2,
+        "Wednesday": 3,
+        "Thursday": 4,
+        "Friday": 5,
+        "Saturday": 6,
+        "Sunday": 7
+    }
+    return weekdays[l[0]]
+
+
+def get_list_times() -> list:
+    return [get_zero_time(), get_zero_time()]
+
+
+def user_week_data(user: TUser) -> collections.defaultdict:
+    first_day: str = get_first_week_day()
+    comments: list[Comment] = get_user_costs_per_week(first_day, user)
+    week_comments: collections.defaultdict = collections.defaultdict(get_list_times)
+    for comment in comments:
+        weekday = comment.date.strftime("%A")
+        str_time = comment.time.split(":")
+        time: timedelta = timedelta(hours=int(str_time[0]), minutes=int(str_time[1]))
+        if comment.via_bot:
+            week_comments[weekday][0] += time
+        week_comments[weekday][1] += time
+    coms = []
+    for i, j in week_comments.items():
+        c = [i, j[0], j[1]]
+        coms.append(c)
+    coms.sort(key=sort_key)
+    return coms
+    # comments[-1].date.strftime("%A")
+
+
 def show_month_gist():
     data = current_month_stat()
     users = [TUser(i).first_name for i in data.keys()]
@@ -160,3 +199,26 @@ def show_week_projects_report(user: TUser):
     plt.title("Распределение за неделю")
     plt.savefig('app/db/png/%s_%s' % ('week', user.full_name))
     return time
+
+
+def show_week_report(user: TUser):
+    coms = user_week_data(user)
+    days: list = [i[0] for i in coms]
+    via_bot: list = [to_float(i[1]) for i in coms]
+    via_ws: list = [to_float(i[2]) for i in coms]
+    fig, ax = plt.subplots()
+    width = 0.5
+    x = np.arange(len(days))
+    plt.bar(x + 0.025, via_bot, width - 0.1, color="#29A0DC", label="Через бота")
+    plt.bar(x + width - 0.025, via_ws, width - 0.1, color="#82C018", label="Всего оформлено")
+    plt.axhline(8, color='grey', label='Эталон')
+    plt.ylabel("часы")
+    max_value = 9 if max(via_ws) <= 8 else max(via_ws) + 1
+    plt.ylim(0, max_value)
+    ax.set_xticks(x + width / 2)
+    ax.set_xticklabels(days)
+    plt.xlabel("Дни недели")
+    plt.title("Заполнение за неделю")
+    plt.legend()
+    plt.grid(axis="y", linestyle=":")
+    plt.savefig('app/db/png/%s_%s.png' % ('report', user.full_name))

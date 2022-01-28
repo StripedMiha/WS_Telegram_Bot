@@ -49,7 +49,8 @@ async def set_commands(bot: Bot):
     commands = [
         BotCommand(command="/menu", description="Взаимодействие с ботом"),
         BotCommand(command="/month", description="Получить месячную статистику"),
-        BotCommand(command="/week", description="Получить недельную статистику")
+        BotCommand(command="/week", description="Получить недельную статистику"),
+        BotCommand(command="/report", description="Получить отчёт по дням недели"),
     ]
     await bot.set_my_commands(commands)
 

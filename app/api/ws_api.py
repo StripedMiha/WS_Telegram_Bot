@@ -16,6 +16,7 @@ SMDE_URL = config["ws_token"]["SMDE_URL"]
 
 wsapi_logger: logging.Logger = setup_logger("App.back.wsapi", "app/log/wsapi.log")
 
+
 async def get_all_project_for_user(email, status_filter='active') -> list[KeyboardData]:
     action = 'get_projects'
     hash_key = hashlib.md5(action.encode(ENCOD)+API_KEY.encode(ENCOD))

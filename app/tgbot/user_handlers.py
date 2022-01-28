@@ -16,7 +16,7 @@ from app.create_log import setup_logger
 from app.tgbot.main import see_days_costs, update_day_costs, get_about_user_info, menu_buttons, days_costs_for_remove, \
     remove_costs, remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, \
     get_project_list, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, select_task, \
-    get_text_add_costs, remind_settings_button, get_text_menu_notification
+    get_text_add_costs, remind_settings_button, get_text_menu_notification, fast_date_keyboard
 from app.tgbot.admin_handlers import get_keyboard_admin
 
 
@@ -58,6 +58,7 @@ def register_handlers_user(dp: Dispatcher):
     dp.register_callback_query_handler(search_project_via_search, callback_menu.filter(action='via search'))
     dp.register_callback_query_handler(search_task_via_bookmarks, callback_menu.filter(action='via bookmarks'))
     dp.register_callback_query_handler(search_tasks_via_search, callback_remove.filter(action='search_task'))
+    dp.register_callback_query_handler(fast_input_call, callback_menu.filter(action="fast input"))
     dp.register_callback_query_handler(setting_notification_menu, callback_menu.filter(action='notifications'))
     dp.register_callback_query_handler(setting_notification,
                                        callback_menu.filter(action=['toggle_notifications', 'Set_notification_time']))
@@ -225,10 +226,12 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
         await call.message.edit_text('Выберите закладку, которую хотите удалить:',
                                      reply_markup=await get_remove_keyboard(bookmarks_for_remove(user)))
     elif action == 'change date':
-        answer = "Введите дату в формате ДД.ММ.ГГГГ:\n" \
-                 "Введите 'отмена' для отмены изменения даты"
+        answer = "Установленная дата: %s\n" \
+                 "Введите дату в формате ДД.ММ.ГГГГ:\n" \
+                 "Введите 'отмена' для отмены изменения даты" % user.get_date()
         await call.message.edit_text(answer)
-        await call.message.answer('Или воспользуйтесь кнопками ниже', reply_markup=get_fast_keyboard(DATE_BUTTONS))
+        await call.message.answer('Или воспользуйтесь кнопками ниже',
+                                  reply_markup=get_fast_keyboard(await fast_date_keyboard(user)))
         await OrderMenu.wait_for_date.set()
     else:
         await call.message.edit_text('Пока ниработает :с')
@@ -247,14 +250,17 @@ async def wait_date(message: types.Message, state: FSMContext):
     elif message.text.lower() == 'сегодня' or message.text.lower() == 'today':
         user.change_date('today')
         await message.answer('Теперь бот будет записывать на текущий день', reply_markup=types.ReplyKeyboardRemove())
+        await type_of_selection_message(message)
     elif message.text.lower() == 'вчера' or message.text.lower() == 'yesterday':
         user.change_date('yesterday')
         await message.answer('Установлена вчерашняя дата', reply_markup=types.ReplyKeyboardRemove())
+        await type_of_selection_message(message)
     elif re.match(r'(((0[1-9])|([1-2][0-9])|(3[0-1]))[., :]((0[1-9])|(1[0-2]))[., :]20[2-9][0-9])', message.text):
         date = message.text.strip(' ')
         try:
             user.change_date(date)
             await message.answer(f'Установлена дата: {user.get_date()}', reply_markup=types.ReplyKeyboardRemove())
+            await type_of_selection_message(message)
         except FutureDate:
             await message.answer("Не всем дано смотреть в завтрашний день\nВведи дату не в будущем")
             return
@@ -306,8 +312,20 @@ async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
     user_logger.info("%s выбирает способ поиска задачи" % user.full_name)
     buttons = [['Через поиск', 'via search'],
                ['❤️ Через закладки', 'via bookmarks'],
-               ['Ввести id задачи', 'task id input']]
+               ['Ввести id задачи', 'task id input'],
+               ['Задача по умолчанию', 'fast input']]
     await call.message.edit_text('Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
+
+
+# Меню выбора способа поиска задачи
+async def type_of_selection_message(message: types.Message):
+    user = TUser(message.from_user.id)
+    user_logger.info("%s выбирает способ поиска задачи" % user.full_name)
+    buttons = [['Через поиск', 'via search'],
+               ['❤️ Через закладки', 'via bookmarks'],
+               ['Ввести id задачи', 'task id input'],
+               ['Задача по умолчанию', 'fast input']]
+    await bot.send_message(user.user_id,'Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
 
 
 # Выбран способ поиска задачи - введение ID задачи
@@ -362,6 +380,7 @@ async def search_task_via_bookmarks(call: types.CallbackQuery, callback_data: di
 async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     user_logger.info("%s поиск задачи через через закладки. Получает список задач/подзадач" % call.from_user.full_name)
     project_id: str = callback_data['id']
+    print(project_id)
     await call.message.edit_text('Идёт поиск всех задач. Секундочку подождите')
     tasks = get_tasks(project_id, call.from_user.id)
     if isinstance(tasks, str):
@@ -388,6 +407,16 @@ async def fast_input(message: types.Message, state: FSMContext):
         return
     text = get_text_add_costs(user.selected_task, user)
     await start_comment_input(state, text, user.user_id, user.selected_task, message)
+
+
+async def fast_input_call(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await call.message.edit_text("Да-да?")
+    user = TUser(call.from_user.id)
+    if user.selected_task is None:
+        await call.message.edit_text('Задача не выбрана, выбери её через поиск')
+        return
+    text = get_text_add_costs(user.selected_task, user)
+    await start_comment_input(state, text, user.user_id, user.selected_task, call)
 
 
 # Вывод текста и клавиатуры по вводу трудоёмкости

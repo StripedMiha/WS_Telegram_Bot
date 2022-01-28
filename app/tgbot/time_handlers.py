@@ -136,7 +136,6 @@ async def day_report_message(user: TUser) -> str:
 
 async def day_report():
     if is_work_day(datetime.now()):
-        # time_logger.info("Сегодня %s" % datetime.now().strftime("%A"))
         users: list[TUser] = [TUser(i.id) for i in get_users_of_list('user')] + \
                              [TUser(i.id) for i in get_users_of_list('admin')]
         for user in users:
@@ -144,7 +143,7 @@ async def day_report():
                 text = await day_report_message(user)
                 if len(text) <= 10:
                     continue
-                if "Ксении" in text or "8 часов" in text:
+                if "Ксении" in text or "Вы всё заполнили, вы молодец!" in text:
                     time_logger.info("Пользователь %s не заполнил" % user.full_name)
                     keyboard = get_remind_keyboard(REMIND_BUTTON)
                     await bot.send_message(user.user_id, text, reply_markup=keyboard)

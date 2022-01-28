@@ -15,7 +15,7 @@ from app.db.db_access import get_user_days_costs, check_comment, get_comment_tas
     get_task_name, get_all_user_day_costs, get_time_notification
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks,\
     get_task_info, add_cost
-from app.db.stat import show_month_gist, show_week_gist
+from app.db.stat import show_month_gist, show_week_gist, get_first_week_day, show_week_report
 
 main_logger: logging.Logger = setup_logger("App.back.main", "app/log/main.log")
 back_logger: logging.Logger = setup_logger("App.back", "app/log/back.log")
@@ -249,8 +249,9 @@ def remove_costs(user: TUser):
 
 async def get_project_list(user: TUser) -> list[KeyboardData]:
     projects: list[KeyboardData] = await get_all_project_for_user(user.get_email())
+    projects_id = get_projects_db()
     for i in projects:
-        if i.id not in get_projects_db():
+        if i.id not in projects_id:
             await add_project_in_db(i)
         i.action = "search_task"
     return projects
@@ -297,7 +298,9 @@ def get_text_add_costs(task_id: str, user: TUser) -> str:
 def get_tasks(parent_id: str, user_id: int) -> Union[list[KeyboardData], str]:
     user = TUser(user_id)
     child_tasks: list[KeyboardData] = get_tasks_from_db(parent_id)
-    if parent_id in get_all_projects_id_db():
+    projects_id = get_all_projects_id_db()
+    print(projects_id)
+    if parent_id in projects_id:
         update_task_parent(int(parent_id))
     if len(child_tasks) == 0:
         return get_text_add_costs(parent_id, user)
@@ -400,6 +403,12 @@ def get_week_stat():
     show_week_gist()
 
 
+async def get_week_report_gist(user: TUser):
+    first_week_day = get_first_week_day()
+    await update_day_costs(first_week_day)
+    show_week_report(user)
+
+
 def select_task(user_id: int, task_ws_id) -> str:
     change_selected_task(user_id, task_ws_id)
     return '\n'.join(['Выбранная задача:', get_full_task_name(task_ws_id)])
@@ -429,6 +438,19 @@ async def set_remind(user: TUser, time: str, message_time: datetime.datetime) ->
     remind_time: datetime.timedelta = datetime.timedelta(hours=int(hours), minutes=int(minutes))
     user.set_remind_time(message_time + remind_time)
     return "Напоминание будет в %s" % user.remind_notification.strftime("%H:%M")
+
+
+DATE_BUTTONS = ["Вчера", "Сегодня", "Отмена"]
+
+
+async def fast_date_keyboard(user: TUser) -> list[str]:
+    if user.get_date() == "today":
+        return DATE_BUTTONS
+    else:
+        now = datetime.datetime.strptime(user.get_date(), "%d.%m.%Y")
+        one = timedelta(days=1)
+        ans: list[str] = [(now - one).strftime("%d.%m.%Y"), (now + one).strftime("%d.%m.%Y")] + DATE_BUTTONS
+        return ans
 
 
 if __name__ == '__main__':

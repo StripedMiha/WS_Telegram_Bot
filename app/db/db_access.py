@@ -75,6 +75,13 @@ def get_the_user_projects_time_cost_per_period(first_day: str, user: TUser) -> l
     return [list(i) for i in test]
 
 
+def get_user_costs_per_week(first_day: str, user: TUser) -> list:
+    session = _get_session()
+    comments = session.query(Comment.date, Comment.time, Comment.via_bot).filter(Comment.user_id == user.user_id,
+                                                                                 Comment.date >= first_day).all()
+    session.close()
+    return comments
+
 def get_comment_task_path(cost_id: int) -> str:
     session = _get_session()
     task_path = session.query(Task.task_path).join(Comment).filter(Comment.task_id == Task.task_id,

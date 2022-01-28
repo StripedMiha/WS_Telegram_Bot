@@ -9,6 +9,7 @@ from aiogram.dispatcher import FSMContext
 
 from app.KeyboardDataClass import KeyboardData
 from app.create_log import setup_logger
+from app.tgbot.fix import fix_parent
 from app.tgbot.main import get_users_of_list
 from app.tgbot.auth import TUser
 
@@ -27,6 +28,7 @@ callback_auth = CallbackData("fab_auth", "data", "action")
 def register_handlers_admin(dp: Dispatcher, main_bot: Bot, admin_id: int):
     global bot
     bot = main_bot
+    dp.register_message_handler(fix_parent, IDFilter(user_id=admin_id), commands="fix")
     dp.register_message_handler(status_changer, IDFilter(user_id=admin_id), commands="change_status")
     dp.register_message_handler(wait_for_news, IDFilter(user_id=admin_id), commands='news')
     dp.register_message_handler(log_for_admin, IDFilter(user_id=admin_id), commands='log')
