@@ -22,7 +22,8 @@ async def main_bot():
     main_logger.error("Starting bot")
 
     # парсинг файла конфигурации
-    config = load_config("/run/secrets/bot")
+    # config = load_config("/run/secrets/bot")
+    config = load_config("app/keys/bot.ini")
 
     # Объявление и инициализация объектов бота и диспетчера
     bot = Bot(token=config['tg_bot']['token'], parse_mode=types.ParseMode.HTML)

@@ -9,7 +9,8 @@ import datetime
 
 from app.create_log import setup_logger
 
-config = load_config("/run/secrets/ws")
+# config = load_config("/run/secrets/ws")
+config = load_config("app/keys/ws.ini")
 ENCOD = config["ws_token"]["ENCOD"]
 API_KEY = config["ws_token"]["api_token_worksection"]
 SMDE_URL = config["ws_token"]["SMDE_URL"]

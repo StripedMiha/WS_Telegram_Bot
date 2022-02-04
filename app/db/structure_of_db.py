@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.config_reader import load_config
 
-# time.sleep(100)
-config = load_config("/run/secrets/db")
+# config = load_config("/run/secrets/db")
+config = load_config("app/keys/db.ini")
 user = config["db"]["user"]
 password = config["db"]["password"]
 bd_name = config["db"]["bd_name"]
