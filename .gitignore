@@ -128,8 +128,9 @@ dmypy.json
 $cat .gitignore
 # Pyre type checker
 .pyre/
-app/keys/*.ini
+/app/keys/*.ini
 users_messages.txt
 api_keys.py
 app/db/png/*.png
 /app/keys/db_pass.txt
+/test.py

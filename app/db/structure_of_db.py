@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 
 from app.config_reader import load_config
 
-# config = load_config("/run/secrets/db")
-config = load_config("app/keys/db.ini")
+config = load_config("/run/secrets/db")
+# config = load_config("app/keys/db.ini")
+
 user = config["db"]["user"]
 password = config["db"]["password"]
 bd_name = config["db"]["bd_name"]
@@ -42,6 +43,10 @@ class Task(Base):
     task_ws_id = Column(String(15), nullable=False)
     parent_id = Column(Integer())
     status = Column(String(10), default='active')
+
+    def __repr__(self):
+        return f"db_id - {self.task_id}, ws_id - {self.task_ws_id}, path - {self.task_path}," \
+               f" project_id - {self.project_id}, name - {self.task_name}, status - {self.status}"
 
     
 class Bookmark(Base):
@@ -81,6 +86,10 @@ class Comment(Base):
     comment_text = Column(Text())
     date = Column(Date)
     via_bot = Column(Boolean)
+
+    def __repr__(self):
+        return f"comment_id - {self.comment_id}, user_id - {self.user_id}, task_id - {self.task_id}," \
+               f" via_bot - {self.via_bot}, date - {self.date}, time - {self.time}, text - {self.comment_text}"
 
 
 Base.metadata.create_all(engine)
