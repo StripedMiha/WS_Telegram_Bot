@@ -51,6 +51,7 @@ async def get_week_report(message: types.Message):
         await get_week_report_gist(user)
     except Exception as err:
         await message.answer("Происходит некоторая ошибка. Сообщите о ней Мишане")
+        print(err.args)
         await bot.send_message(TUser.get_admin_id(), "У %s ошибка графика недельного отчёта" % user.full_name)
         stat_logger.error("Ошибка %s" % err)
         return

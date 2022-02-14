@@ -73,7 +73,7 @@ def search_tasks(page, status_filter='active'):
 
 
 async def get_day_costs_from_ws(date: str, one_day: bool):
-    wsapi_logger.info('start api request')
+    wsapi_logger.info('get day costs from ws')
     action = 'get_costs'
     hash_key = hashlib.md5(action.encode(ENCOD) + API_KEY.encode(ENCOD))
     date_start = datetime.date.today().strftime("%d.%m.%Y") if date == 'today' else date
@@ -88,14 +88,30 @@ async def get_day_costs_from_ws(date: str, one_day: bool):
     query = '{SMDE_URL}action={action}&show_subtasks=2&hash={hash}&datestart={date_b}&dateend={date_e}'.format(
         **attributes_requests)
     req = requests.get(query).json().get('data')
-    wsapi_logger.info('end api request')
+    return req
+
+
+def get_the_cost_for_check(date: str, page: str):
+    wsapi_logger.info('checking add cost')
+    action = 'get_costs'
+    hash_key = hashlib.md5(page.encode(ENCOD) + action.encode(ENCOD) + API_KEY.encode(ENCOD))
+    attributes_requests = {
+        'SMDE_URL': SMDE_URL,
+        'action': action,
+        'page': page,
+        'hash': hash_key.hexdigest(),
+        'filter': f"(dateadd='{date}')"
+    }
+    query = '{SMDE_URL}action={action}&page={page}&hash={hash}&filter={filter}'.format(
+        **attributes_requests)
+    print(query)
+    req = requests.get(query).json()
     return req
 
 
 def remove_cost_ws(page: str, cost_id: int) -> dict:
     action = 'delete_costs'
     hash_key = hashlib.md5(page.encode(ENCOD) + action.encode(ENCOD) + API_KEY.encode(ENCOD))
-
     attributes_requests = {
         'SMDE_URL': SMDE_URL,
         'action': action,

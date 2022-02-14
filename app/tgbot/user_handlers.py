@@ -214,7 +214,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
         await call.message.edit_text(get_about_user_info(user))
     elif action == 'daily report':
         await call.message.edit_text(f"<b>Отчёт за {date}:</b>\n\n")
-        await call.message.answer(see_days_costs(user))
+        await call.message.answer(await see_days_costs(user))
     elif action == 'offers':
         await call.message.edit_text('Наберите ваше предложение/замечание и отправьте:\n'
                                      'Наберите "Отмена" для отмены.')
@@ -499,7 +499,7 @@ async def remove_comments(call: types.CallbackQuery, callback_data: dict):
 
 # Меню настроек напоминаний
 async def setting_notification_menu(call: types.CallbackQuery, callback_data: dict):
-    user_logger.info("%s выбрал кнопку настроек напоминаний")
+    user_logger.info("%s выбрал кнопку настроек напоминаний" % TUser(call.from_user.id).full_name)
     text = get_text_menu_notification(TUser(call.from_user.id).notification_status)
     await call.message.edit_text(text, reply_markup=get_keyboard(remind_settings_button, width=1))
 

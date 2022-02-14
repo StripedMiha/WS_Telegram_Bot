@@ -5,7 +5,7 @@ from sqlalchemy.exc import NoResultFound
 from typing import Union
 
 from app.db.structure_of_db import User, _get_session
-from app.exceptions import FutureDate
+from app.exceptions import FutureDate, NoRemindNotification
 
 
 class TUser:
@@ -75,13 +75,13 @@ class TUser:
     def add_new_user(self):
         session = _get_session()
         user = User(
-            user_id = self.user_id,
-            first_name = self.first_name,
-            last_name = self.last_name,
-            email = None,
-            date_of_input = 'today',
-            status = 'wait',
-            selected_task = None
+            user_id=self.user_id,
+            first_name=self.first_name,
+            last_name=self.last_name,
+            email=None,
+            date_of_input='today',
+            status='wait',
+            selected_task=None
         )
         session.add(user)
         session.commit()
@@ -108,7 +108,7 @@ class TUser:
     def change_date(self, new_date: str):
         if new_date == 'yesterday':
             new_date = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d.%m.%Y")
-            
+
             print(new_date)
         elif new_date == 'today':
             pass
@@ -161,12 +161,14 @@ class TUser:
         return " ".join([now.strftime("%Y-%m-%d"), self.notification_time])
 
     def get_remind_notification_time(self) -> str:
+        if isinstance(self.remind_notification, type(None)):
+            raise NoRemindNotification
         return self.remind_notification.strftime("%Y-%m-%d %H:%M")
 
-    def get_email(self):
+    def get_email(self) -> str:
         return self.__email
 
-    def get_date(self):
+    def get_date(self) -> str:
         return self.__date_of_input
 
     def get_status(self) -> str:

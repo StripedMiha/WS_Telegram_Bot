@@ -1,10 +1,13 @@
-import datetime
+# import datetime
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
+from pprint import pprint
 from typing import Union
 
 from app.KeyboardDataClass import KeyboardData
+from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
+from app.exceptions import NotUserTime, EmptyDayCosts
 from app.tgbot.auth import TUser
 from app.db.db_access import get_user_days_costs, check_comment, get_comment_task_path, remove_comment_db, \
     get_bookmarks_user, \
@@ -12,9 +15,9 @@ from app.db.db_access import get_user_days_costs, check_comment, get_comment_tas
     get_tasks_from_db, get_full_task_name, get_project_id_by_task_id, remove_task_from_db, get_list_user_bookmark, \
     get_all_booked_task_id, add_bookmark_into_db, get_bookmark_id, add_bookmark_to_user, get_tasks_path, \
     add_comment_in_db, change_selected_task, get_all_tasks_id_db, get_all_projects_id_db, \
-    get_task_name, get_all_user_day_costs, get_time_notification
-from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks,\
-    get_task_info, add_cost
+    get_task_name, get_all_user_day_costs, get_time_notification, get_the_user_costs_for_period
+from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks, \
+    get_task_info, add_cost, get_the_cost_for_check
 from app.db.stat import show_month_gist, show_week_gist, get_first_week_day, show_week_report
 
 main_logger: logging.Logger = setup_logger("App.back.main", "app/log/main.log")
@@ -100,7 +103,7 @@ def sum_time(times: list[str]) -> str:
 
 def text_count_removed_costs(user_id: int) -> str:
     user = TUser(user_id)
-    count = len(get_user_days_costs(user))
+    count = len(get_user_days_costs(user.user_id, user.get_date()))
     if 2 <= count <= 4:
         word = 'записи'
     else:
@@ -156,13 +159,24 @@ def get_about_user_info(user: TUser) -> str:
     return "\n".join(answer)
 
 
-def see_days_costs(user: TUser) -> str:
-    comments = get_user_days_costs(user)
+def get_text_for_empty_costs(date: str) -> str:
+    return f"Вы не внесли трудоёмкости за {date}.\n" \
+            "Не навлекай на себя гнев Ксении. \n" \
+            "Будь умничкой - внеси часы."
+
+
+async def see_days_costs(user: TUser, date: str = "0") -> str:
+    print('date1', date)
+    if date != "0" and date != user.get_date():
+        await update_day_costs(date, True)
+    else:
+        date = user.get_date()
+    print('date2', date)
+    comments = get_user_days_costs(user.user_id, date)
     answer: str = ''
+    pprint(comments) # TODO
     if comments is None or len(comments) == 0:
-        answer = f"Вы не внесли трудоёмкости за {user.get_date()}.\n"\
-                 'Не навлекай на себя гнев Ксении. \n'\
-                 'Будь умничкой - внеси часы.'
+        answer = get_text_for_empty_costs(date)
     else:
         total_time: list[str] = []
         prev_proj_name, prev_task_name = comments[0][3], comments[0][2]
@@ -191,13 +205,13 @@ def see_days_costs(user: TUser) -> str:
                 prev_task_name = cur_task_name
                 prev_proj_name = cur_proj_name
             total_time.append(cur_time)
-        tot_row = f"\nОбщее время за {format_date(user.get_date())}: {format_time(sum_time(total_time))}"
+        tot_row = f"\nОбщее время за {format_date(date)}: {format_time(sum_time(total_time))}"
         answer = '\n'.join([answer, tot_row])
     return answer
 
 
 def days_costs_for_remove(user: TUser) -> list[KeyboardData]:
-    comments = get_user_days_costs(user)
+    comments = get_user_days_costs(user.user_id, user.get_date())
     list_comments: list[KeyboardData] = []
     for comment in comments:
         name = ' '.join([format_time(comment[1]), comment[0], comment[2]])
@@ -214,7 +228,7 @@ async def update_day_costs(date: str, one_day: bool = False) -> None:
     await check_comment(ws_comments)
     db_for_remove = list(set(db) - set(ws))
     for comm_id in db_for_remove:
-        await remove_comment_db(comm_id)
+        remove_comment_db(comm_id)
     main_logger.info('end update day cost')
 
 
@@ -241,7 +255,7 @@ def remove_bookmark_from_user(id_ub: int) -> None:
 
 
 def remove_costs(user: TUser):
-    comments = get_user_days_costs(user)
+    comments = get_user_days_costs(user.user_id, user.get_date())
     id_comments = [i[-1] for i in comments]
     for i in id_comments:
         yield remove_cost(i)  # TODO удалить из бд трудоёмкости которые были удалены через сам WS
@@ -281,9 +295,9 @@ def update_task_parent(parent_id: int) -> None:
             # else:
             # print('sub already in base')
         # else:
-            # print(value.get('name'))
-            # print('already in base')
-            # add_task_in_db()
+        # print(value.get('name'))
+        # print('already in base')
+        # add_task_in_db()
         # if value is not None:
         #     set_parent_task(key, value)
 
@@ -324,10 +338,10 @@ def get_list_bookmark(user_id: int) -> Union[list[KeyboardData], str]:
 
 
 def add_costs(message: str, data: dict) -> str:
-    user = TUser(data.get('user_id'))
-    date = user.get_date()
-    email = user.get_email()
-    path = get_tasks_path(data.get('id'))
+    user: TUser = TUser(data.get('user_id'))
+    date: str = user.get_date()
+    email: str = user.get_email()
+    path: str = get_tasks_path(data.get('id'))
     list_comments: list[list[str, timedelta]] = parse_input_comments(message)
     for comments_text, comments_time in list_comments:
         req = add_cost(page=path,
@@ -336,27 +350,55 @@ def add_costs(message: str, data: dict) -> str:
                        time=comments_time,
                        date=date)
         status = req.get('status')
+        pprint(req)
         if status == 'ok':
             comment_id = req.get('id')
-            add_comment_in_db(comment_id, user.user_id, data.get('id'), comments_time, comments_text, date)
-            yield 'Успешно внесено'
+            # if date == 'today':
+            f_date = datetime.now().strftime("%d.%m.%Y") if date == 'today' else date
+            check_data = [comment_id, path, email, comments_text, comments_time, f_date]
+            print(check_data)
+            check = check_adding(check_data)
+            if check:
+                add_comment_in_db(comment_id, user.user_id, data.get('id'), comments_time, comments_text, date)
+                yield 'Успешно внесено'
+            else:
+                yield 'Ошибка проверки внесения'
         else:
             yield 'Не внесено'
 
 
-def to_correct_time(time: str) -> datetime.timedelta:
-    out_time: datetime.timedelta
+def check_adding(data: list):
+    comment_id, path, email, comment_text, comment_time, date = data
+    req: dict = get_the_cost_for_check(date, path)
+    if req.get("status") == "ok":
+        costs = req.get("data")
+        the_cost = {}
+        for cost in costs:
+            if int(cost.get("id")) == comment_id:
+                the_cost = cost
+                break
+        if the_cost.get("comment") != comment_text \
+                or the_cost.get("task").get("page") != path \
+                or the_cost.get("user_from").get("email") != email \
+                or the_cost.get("comment") != comment_text \
+                or datetime.strptime(the_cost.get("date"), "%Y-%m-%d").strftime("%d.%m.%Y") != date:
+            return False
+        return True
+    return False
+
+
+def to_correct_time(time: str) -> timedelta:
+    out_time: timedelta
     if ':' in time:
         out_time = timedelta(hours=int(time.split(':')[0]),
-                             minutes=int(time.split(':')[1])
-                             )
+                             minutes=int(time.split(':')[1]))
     else:
         time = float(time.replace(',', '.') if ',' in time else time)
         out_time = timedelta(hours=time)
     return out_time
 
 
-def time_to_comment(comments: list[str], time_d: datetime.timedelta):
+def time_to_comment(comments: list[str], time_d: timedelta):
     max_time_cost = timedelta(hours=2)
     for comment in comments:
         comment_time = time_d / len(comments)
@@ -394,7 +436,7 @@ def add_bookmark(user_id: int, task_id: str) -> str:
         add_bookmark_to_user(user_id, bookmark_id)
         return "Закладка добавлена"
 
-    
+
 def get_month_stat():
     show_month_gist()
 
@@ -433,9 +475,9 @@ async def get_time_user_notification():
     return times
 
 
-async def set_remind(user: TUser, time: str, message_time: datetime.datetime) -> str:
+async def set_remind(user: TUser, time: str, message_time: datetime) -> str:
     hours, minutes = time.split(".")
-    remind_time: datetime.timedelta = datetime.timedelta(hours=int(hours), minutes=int(minutes))
+    remind_time: timedelta = timedelta(hours=int(hours), minutes=int(minutes))
     user.set_remind_time(message_time + remind_time)
     return "Напоминание будет в %s" % user.remind_notification.strftime("%H:%M")
 
@@ -447,10 +489,78 @@ async def fast_date_keyboard(user: TUser) -> list[str]:
     if user.get_date() == "today":
         return DATE_BUTTONS
     else:
-        now = datetime.datetime.strptime(user.get_date(), "%d.%m.%Y")
+        now = datetime.strptime(user.get_date(), "%d.%m.%Y")
         one = timedelta(days=1)
         ans: list[str] = [(now - one).strftime("%d.%m.%Y"), (now + one).strftime("%d.%m.%Y")] + DATE_BUTTONS
         return ans
+
+
+def get_rus_weekday(eng_weekday: str) -> str:
+    rus_weekday = {
+        "Monday": "понедельник",
+        "Tuesday": "вторник",
+        "Wednesday": "среду",
+        "Thursday": "четверг",
+        "Friday": "пятницу",
+        "Saturday": "субботу",
+        "Sunday": "воскресенье",
+    }
+    return rus_weekday[eng_weekday]
+
+
+def get_header_for_report(hours: float, date: str) -> str:
+    datetime_date = datetime.strptime(date, '%Y-%m-%d')
+    date_for_header = " ".join([get_rus_weekday(datetime_date.strftime('%A')), datetime_date.strftime('%d.%m.%Y')])
+    date_header = f"Отчёт за {date_for_header}."
+    header: str = ''
+    if hours >= 12:
+        header: str = "Вы либо очень большой молодец, либо где-то переусердствовали." \
+                       "\nУ вас за сегодня больше 12 часов. Это законно?"
+    elif hours >= 8:
+        header: str = "Вы всё заполнили, вы молодец!"
+    elif hours > 0:
+        header: str = "Вы немного не дотянули до 8 часов!"
+    return "\n".join([date_header, header])
+
+
+def sum_costs_to_float(costs: list[str]) -> float:
+    day_cost_hours: timedelta = timedelta(hours=0)
+    for i in costs:
+        hours, minutes = i.split(":")
+        day_cost_hours += timedelta(hours=int(hours), minutes=int(minutes))
+    day_cost_hours: float = day_cost_hours.seconds / 60 / 60 + (day_cost_hours.days * 24)
+    return day_cost_hours
+
+
+async def day_report_message(user: TUser) -> tuple[str, float]:
+    now_time: str = datetime.now().strftime("%H:%M")
+    text: str = ' '
+    day_cost_hours: float = 0.0
+    if user.notification_status:
+        notif_time = user.get_notification_time().split(" ")[1]
+        if notif_time == now_time:
+            if datetime.strptime(notif_time, "%H:%M").time().hour < 13:
+                i = 1
+                while not is_work_day(datetime.now() - timedelta(days=i)):
+                    i += 1
+                now_date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+            else:
+                now_date: str = datetime.now().strftime("%Y-%m-%d")
+            print(now_date)
+            main_logger.info("Подготавливаем для %s ежедневный отчёт/напоминание" % user.full_name)
+            costs: list = get_the_user_costs_for_period(user, now_date)
+            day_cost_hours: float = sum_costs_to_float(costs)
+            main_logger.info("Пользователь %s наработал на %s часов" % (user.full_name, day_cost_hours))
+            text = "\n\n".join([get_header_for_report(day_cost_hours, now_date), await see_days_costs(user, now_date)])
+        elif user.get_remind_notification_time() == now_time:
+            main_logger.info("Пользователь %s откладывал напоминание. Присылаем." % user.full_name)
+            text = "Вы отложили напоминание заполнить трудоёмкости. Вот оно!"
+            user.set_remind_time(None)
+    else:
+        raise NotUserTime
+    if day_cost_hours <= 0:
+        raise EmptyDayCosts
+    return text, day_cost_hours
 
 
 if __name__ == '__main__':

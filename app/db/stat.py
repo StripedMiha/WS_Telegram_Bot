@@ -126,6 +126,8 @@ def user_week_data(user: TUser) -> collections.defaultdict:
     first_day: str = get_first_week_day()
     comments: list[Comment] = get_user_costs_per_week(first_day, user)
     week_comments: collections.defaultdict = collections.defaultdict(get_list_times)
+    for i in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
+        week_comments[i] = get_list_times()
     for comment in comments:
         weekday = comment.date.strftime("%A")
         str_time = comment.time.split(":")

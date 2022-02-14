@@ -23,13 +23,13 @@ def date_to_db_format(date: str) -> str:
         return date
 
 
-def get_user_days_costs(user: TUser) -> list[tuple]:
+def get_user_days_costs(user_id: int, user_date: str) -> list[tuple]:
     session = _get_session()
     query_comments = session.query(Comment.comment_text, Comment.time, Task.task_name, Project.project_name,
                                    Comment.comment_id) \
         .join(Comment).join(Project) \
-        .filter(Comment.user_id == user.user_id,
-                Comment.date == date_to_db_format(user.get_date())).order_by(Project.project_name, Task.task_name).all()
+        .filter(Comment.user_id == user_id,
+                Comment.date == date_to_db_format(user_date)).order_by(Project.project_name, Task.task_name).all()
     session.close()
     return query_comments
 
@@ -52,7 +52,7 @@ def get_all_costs_for_period(first_day: str):
 
 def get_the_user_costs_for_period(user: TUser, day_from: str) -> list:
     session = _get_session()
-    q = session.query(Comment.time).filter(Comment.user_id == user.user_id, Comment.date >= day_from).all()
+    q = session.query(Comment.time).filter(Comment.user_id == user.user_id, Comment.date == day_from).all()
     session.close()
     return [i[0] for i in q]
 
@@ -82,6 +82,7 @@ def get_user_costs_per_week(first_day: str, user: TUser) -> list:
     session.close()
     return comments
 
+
 def get_comment_task_path(cost_id: int) -> str:
     session = _get_session()
     task_path = session.query(Task.task_path).join(Comment).filter(Comment.task_id == Task.task_id,
@@ -90,7 +91,7 @@ def get_comment_task_path(cost_id: int) -> str:
     return task_path
 
 
-async def remove_comment_db(cost_id: int) -> None:
+def remove_comment_db(cost_id: int) -> None:
     session = _get_session()
     comment = session.query(Comment).filter(Comment.comment_id == cost_id).one()
     session.delete(comment)

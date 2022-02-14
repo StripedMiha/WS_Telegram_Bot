@@ -12,3 +12,15 @@ class WrongDate(ValueError):
 
 class FutureDate(WrongDate):
     pass
+
+
+class EmptyDayCosts(ValueError):
+    pass
+
+
+class NotUserTime(WrongTime):
+    pass
+
+
+class NoRemindNotification(ValueError):
+    pass

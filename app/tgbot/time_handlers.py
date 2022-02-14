@@ -12,9 +12,10 @@ from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
 from app.db.db_access import get_the_user_costs_for_period
 from app.db.stat import projects_report
-from app.exceptions import EmptyCost, WrongTime
+from app.exceptions import EmptyCost, WrongTime, EmptyDayCosts, NotUserTime, NoRemindNotification
 from app.tgbot.auth import TUser
-from app.tgbot.main import get_time_user_notification, get_users_of_list, see_days_costs, set_remind, update_day_costs
+from app.tgbot.main import get_time_user_notification, get_users_of_list, see_days_costs, set_remind, update_day_costs, \
+    get_text_for_empty_costs, day_report_message
 
 bot: Bot
 time_logger: logging.Logger = setup_logger("App.Bot.time", "app/log/time.log")
@@ -47,16 +48,6 @@ def get_remind_keyboard(list_data: list[list], width: int = 2,
     keyboard = types.InlineKeyboardMarkup(row_width=width)
     keyboard.add(*buttons)
     return keyboard
-
-
-async def noon_print():
-    now_hour = datetime.now().hour
-    print('Текущий час -', now_hour)
-
-
-# async def print_second():
-#     show_week_projects_report()
-#     pass
 
 
 async def week_report(a=1):
@@ -104,62 +95,39 @@ async def week_report(a=1):
             time_logger.info("Пользователь %s отключил уведомления" % user.full_name)
 
 
-async def day_report_message(user: TUser) -> str:
-    now_time: str = datetime.now().strftime("%Y-%m-%d %H:%M")
-    text: str = ' '
-    if user.notification_status:
-        if user.get_notification_time() == now_time:
-            time_logger.info("Подготавливаем для %s ежедневный отчёт/напоминание" % user.full_name)
-            now_date: str = datetime.now().strftime("%Y-%m-%d")
-            costs: list = get_the_user_costs_for_period(user, now_date)
-            day_cost_sum: timedelta = timedelta(hours=0)
-            for i in costs:
-                hours, minutes = i.split(":")
-                day_cost_sum += timedelta(hours=int(hours), minutes=int(minutes))
-            day_cost_sum: float = day_cost_sum.seconds / 60 / 60
-            time_logger.info("Пользователь %s наработал на %s часов" % (user.full_name, day_cost_sum))
-            if day_cost_sum >= 12:
-                text = "\n\n".join(["Вы либо очень большой молодец, либо где-то переусердствовали."
-                                    "\nУ вас за сегодня больше 12 часов. Это законно?", see_days_costs(user)])
-            elif day_cost_sum >= 8:
-                text = "\n\n".join(["Вы всё заполнили, вы молодец!", see_days_costs(user)])
-            elif day_cost_sum > 0:
-                text = "\n\n".join(["Вы немного не дотянули до 8 часов!", see_days_costs(user)])
-            else:
-                text = see_days_costs(user)
-        elif user.get_remind_notification_time() == now_time:
-            time_logger.info("Пользователь %s откладывал напоминание. Присылаем." % user.full_name)
-            text = "Вы отложили напоминание заполнить трудоёмкости. Вот оно!"
-            user.set_remind_time(None)
-    return text
-
-
 async def day_report():
     if is_work_day(datetime.now()):
         users: list[TUser] = [TUser(i.id) for i in get_users_of_list('user')] + \
                              [TUser(i.id) for i in get_users_of_list('admin')]
         for user in users:
             try:
-                text = await day_report_message(user)
-                if len(text) <= 10:
-                    continue
-                if "Ксении" in text or "Вы всё заполнили, вы молодец!" in text:
-                    time_logger.info("Пользователь %s не заполнил" % user.full_name)
+                text, sum_costs = await day_report_message(user)
+                if 0 < sum_costs < 8:
+                    time_logger.info("Пользователь %s заполнил меньше 8 часов" % user.full_name)
                     keyboard = get_remind_keyboard(REMIND_BUTTON)
                     await bot.send_message(user.user_id, text, reply_markup=keyboard)
                 else:
                     time_logger.info("Пользователь %s заполнил" % user.full_name)
                     await bot.send_message(user.user_id, text)
+            except NotUserTime:
+                continue
+            except EmptyDayCosts:
+                time_logger.info("Пользователь %s не заполнил" % user.full_name)
+                keyboard = get_remind_keyboard(REMIND_BUTTON)
+                try:
+                    await bot.send_message(user.user_id, get_text_for_empty_costs(user.get_date()),
+                                           reply_markup=keyboard)
+                except ChatNotFound:
+                    time_logger.error("Чат с пользователем %s не найден" % user.full_name)
+                except BotBlocked:
+                    time_logger.error("Пользователь %s заблокировал бота" % user.full_name)
             except ChatNotFound:
                 time_logger.error("Чат с пользователем %s не найден" % user.full_name)
-                pass
             except BotBlocked:
-                    time_logger.error("Пользователь %s заблокировал бота" % user.full_name)
-                    pass
+                time_logger.error("Пользователь %s заблокировал бота" % user.full_name)
             except MessageTextIsEmpty:
                 time_logger.error("Сообщение пользователю %s пустое" % user.full_name)
-                pass
-            except AttributeError:
+            except NoRemindNotification:
                 continue
 
 
@@ -197,7 +165,6 @@ async def get_time():
 async def time_scanner():
     aioschedule.every().friday.at("18:40").do(week_report)
     aioschedule.every().minute.do(day_report)
-    # aioschedule.every(1).minutes.do(check_costs)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
