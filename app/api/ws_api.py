@@ -9,14 +9,18 @@ import datetime
 
 from app.create_log import setup_logger
 
-config = load_config("/run/secrets/ws")
-# config = load_config("app/keys/ws.ini")
+from app.start_type import start_from_docker
+
+if start_from_docker:
+    config = load_config("/run/secrets/ws")
+else:
+    config = load_config("app/keys/ws.ini")
 
 ENCOD = config["ws_token"]["ENCOD"]
 API_KEY = config["ws_token"]["api_token_worksection"]
 SMDE_URL = config["ws_token"]["SMDE_URL"]
 
-wsapi_logger: logging.Logger = setup_logger("App.back.wsapi", "app/log/wsapi.log")
+wsapi_logger: logging.Logger = setup_logger("App.back.ws-api", "app/log/wsapi.log")
 
 
 async def get_all_project_for_user(email, status_filter='active') -> list[KeyboardData]:
@@ -61,14 +65,20 @@ def search_tasks(page, status_filter='active'):
     tasks = req.json().get('data')
     out = {}
     for i in tasks:
-        out[i['id']] = {'name': i['name']}
+        parent_id = i['page'].strip(" ").strip("/").split("/")[-2]
+        out[i['id']] = {'name': i['name'],
+                        'parent': int(parent_id)}
         if i.get('child') is not None:
             out[i['id']]['child'] = {}
             for j in i['child']:
-                out[i['id']]['child'][j['id']] = {'name': j['name']}
+                parent_id_1 = j['page'].strip(" ").strip("/").split("/")[-2]
+                out[i['id']]['child'][j['id']] = {'name': j['name'],
+                                                  'parent': int(parent_id_1)}
                 if j.get('child') is not None:
                     for k in j['child']:
-                        out[i['id']]['child'][k['id']] = {'name': k['name']}
+                        parent_id_2 = k['page'].strip(" ").strip("/").split("/")[-2]
+                        out[i['id']]['child'][k['id']] = {'name': k['name'],
+                                                          'parent': int(parent_id_2)}
     return out
 
 
@@ -87,8 +97,9 @@ async def get_day_costs_from_ws(date: str, one_day: bool):
     }
     query = '{SMDE_URL}action={action}&show_subtasks=2&hash={hash}&datestart={date_b}&dateend={date_e}'.format(
         **attributes_requests)
-    req = requests.get(query).json().get('data')
-    return req
+    req = requests.get(query).json()
+
+    return req.get('data')
 
 
 def get_the_cost_for_check(date: str, page: str):
@@ -104,7 +115,6 @@ def get_the_cost_for_check(date: str, page: str):
     }
     query = '{SMDE_URL}action={action}&page={page}&hash={hash}&filter={filter}'.format(
         **attributes_requests)
-    print(query)
     req = requests.get(query).json()
     return req
 
@@ -145,7 +155,7 @@ def add_cost(page, user_email, comment, time, date='today'):
     query = '{SMDE_URL}action={action}&page={page}&email_user_from={email}&time={time}' \
             '&date={date}&comment={comment}&hash={hash}'.format(**attributes_requests)
     req = requests.get(query).json()
-    # print(req)
+
     return req
 
 
@@ -160,8 +170,6 @@ def get_task_info(page):
     }
     query = '{SMDE_URL}action={action}&page={page}&hash={hash}'.format(**attributes_requests)
     req = requests.get(query).json()
-    # print('test')
-    # pprint(req)
     return req
 
 

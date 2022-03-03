@@ -7,15 +7,9 @@ from typing import Union
 from app.KeyboardDataClass import KeyboardData
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
+from app.db.structure_of_db import User, Comment, Bookmark, Task, Project
 from app.exceptions import NotUserTime, EmptyDayCosts
-from app.tgbot.auth import TUser
-from app.db.db_access import get_user_days_costs, check_comment, get_comment_task_path, remove_comment_db, \
-    get_bookmarks_user, \
-    remove_users_bookmark_db, get_projects_db, add_project_in_db, get_project_tasks_id_db, add_task_in_db, \
-    get_tasks_from_db, get_full_task_name, get_project_id_by_task_id, remove_task_from_db, get_list_user_bookmark, \
-    get_all_booked_task_id, add_bookmark_into_db, get_bookmark_id, add_bookmark_to_user, get_tasks_path, \
-    add_comment_in_db, change_selected_task, get_all_tasks_id_db, get_all_projects_id_db, \
-    get_task_name, get_all_user_day_costs, get_time_notification, get_the_user_costs_for_period
+from app.db.db_access import get_user_days_costs, check_comments, get_all_user_day_costs, get_the_user_costs_for_period
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks, \
     get_task_info, add_cost, get_the_cost_for_check
 from app.db.stat import show_month_gist, show_week_gist, get_first_week_day, show_week_report
@@ -102,7 +96,7 @@ def sum_time(times: list[str]) -> str:
 
 
 def text_count_removed_costs(user_id: int) -> str:
-    user = TUser(user_id)
+    user = User.get_user(user_id)
     count = len(get_user_days_costs(user.user_id, user.get_date()))
     if 2 <= count <= 4:
         word = 'записи'
@@ -112,11 +106,11 @@ def text_count_removed_costs(user_id: int) -> str:
 
 
 def get_users_of_list(selected_list: str) -> list[KeyboardData]:
-    all_users = TUser.get_users_list()
+    all_users = User.get_users_list()
     selected_users = [u for u in all_users if u.status == selected_list]
-    users: list[TUser] = []
+    users: list[User] = []
     for i in selected_users:
-        users.append(TUser(i.user_id))
+        users.append(User.get_user(i.user_id))
     data_for_keyboard: list[KeyboardData] = []
     action = ''
     if selected_list == 'user':
@@ -124,11 +118,11 @@ def get_users_of_list(selected_list: str) -> list[KeyboardData]:
     elif selected_list == 'black':
         action: str = 'known_user'
     for i in users:
-        data_for_keyboard.append(KeyboardData(i.full_name, i.user_id, action))
+        data_for_keyboard.append(KeyboardData(i.full_name(), i.user_id, action))
     return data_for_keyboard
 
 
-def menu_buttons(user: TUser) -> list[list[str]]:
+def menu_buttons(user: User) -> list[list[str]]:
     if user.get_email() is None:
         buttons = [['Обо мне', 'about me'],
                    ['Установить почту', 'set email']]
@@ -140,41 +134,38 @@ def menu_buttons(user: TUser) -> list[list[str]]:
                    ['🔄📅 Изменить дату', 'change date'],
                    ['🔄📧 Изменить почту', 'change email'],
                    ['⏰ Настройки оповещений', 'notifications'],
-                   ['ℹ️ О вас', 'about me'],  # TODO обновить инфу
+                   ['ℹ️ О вас', 'about me'],
                    ['💬 Предложение/отзыв', 'offers']]
     return buttons
 
 
-def get_about_user_info(user: TUser) -> str:
-    status = 'Администратор' if user.admin else 'Пользователь'
+def get_about_user_info(user: User) -> str:
+    status = 'Администратор' if user.is_admin() else 'Пользователь'
     date = format_date(user.get_date())
     notif_status = "включены" if user.notification_status else "выключены"
-    answer = [f"Ваше имя - {user.full_name}",
+    answer = [f"Ваше имя - {user.full_name()}",
               f"Ваша почта - {user.get_email()}",
               f"Ваш статус - {status}",
               f"Указанная дата - {date}",
-              f"Задача по умолчанию - {get_full_task_name(user.selected_task)}",
+              f"Задача по умолчанию - {user.default_task.full_name()}",
               f"Статус напоминаний - {notif_status}",
-              f"Время напоминаний - {user.get_notification_time().split(' ')[1]}"]
+              f"Время напоминаний - {user.get_notification_time()}"]
     return "\n".join(answer)
 
 
 def get_text_for_empty_costs(date: str) -> str:
     return f"Вы не внесли трудоёмкости за {date}.\n" \
-            "Не навлекай на себя гнев Ксении. \n" \
-            "Будь умничкой - внеси часы."
+           "Не навлекай на себя гнев Ксении. \n" \
+           "Будь умничкой - внеси часы."
 
 
-async def see_days_costs(user: TUser, date: str = "0") -> str:
-    print('date1', date)
+async def see_days_costs(user: User, date: str = "0") -> str:
     if date != "0" and date != user.get_date():
         await update_day_costs(date, True)
     else:
         date = user.get_date()
-    print('date2', date)
     comments = get_user_days_costs(user.user_id, date)
     answer: str = ''
-    pprint(comments) # TODO
     if comments is None or len(comments) == 0:
         answer = get_text_for_empty_costs(date)
     else:
@@ -210,7 +201,7 @@ async def see_days_costs(user: TUser, date: str = "0") -> str:
     return answer
 
 
-def days_costs_for_remove(user: TUser) -> list[KeyboardData]:
+def days_costs_for_remove(user: User) -> list[KeyboardData]:
     comments = get_user_days_costs(user.user_id, user.get_date())
     list_comments: list[KeyboardData] = []
     for comment in comments:
@@ -225,111 +216,113 @@ async def update_day_costs(date: str, one_day: bool = False) -> None:
     db = [i[2] for i in await get_all_user_day_costs(date)]
     ws_comments = await get_day_costs_from_ws(date, one_day)
     ws = [int(comment['id']) for comment in ws_comments]
-    await check_comment(ws_comments)
-    db_for_remove = list(set(db) - set(ws))
-    for comm_id in db_for_remove:
-        remove_comment_db(comm_id)
+    await check_comments(ws_comments)
+    db_for_remove = [Comment.get_comment(i) for i in list(set(db) - set(ws))]
+    for comment in db_for_remove:
+        comment.remove()
     main_logger.info('end update day cost')
 
 
 def remove_cost(cost_id: int) -> str:
-    task_path: str = get_comment_task_path(cost_id)
-    req = remove_cost_ws(task_path, cost_id)
+    comment = Comment.get_comment(cost_id)
+    req = remove_cost_ws(comment.task.task_path, comment.comment_id)
     if req.get('status') == 'ok':
-        remove_comment_db(cost_id)
+        comment.remove()
         return 'Успешно удалено'
     else:
         return 'Ошибка удаления из WorkSection'
 
 
-def bookmarks_for_remove(user: TUser) -> list[KeyboardData]:
-    bookmarks = get_bookmarks_user(user)
+def bookmarks_for_remove(user: User) -> list[KeyboardData]:
+    bookmarks = user.bookmarks  # get_bookmarks_user(user)
     list_bookmarks: list[KeyboardData] = []
     for bookmark in bookmarks:
-        list_bookmarks.append(KeyboardData(bookmark[1], bookmark[0], "remove_bookmark"))
+        list_bookmarks.append(KeyboardData(bookmark.bookmark_name, bookmark.bookmark_id, "remove_bookmark"))
     return list_bookmarks
 
 
-def remove_bookmark_from_user(id_ub: int) -> None:
-    remove_users_bookmark_db(id_ub)
-
-
-def remove_costs(user: TUser):
+def remove_costs(user: User):
     comments = get_user_days_costs(user.user_id, user.get_date())
     id_comments = [i[-1] for i in comments]
     for i in id_comments:
         yield remove_cost(i)  # TODO удалить из бд трудоёмкости которые были удалены через сам WS
 
 
-async def get_project_list(user: TUser) -> list[KeyboardData]:
+async def get_project_list(user: User) -> list[KeyboardData]:
     projects: list[KeyboardData] = await get_all_project_for_user(user.get_email())
-    projects_id = get_projects_db()
+    projects_id: set[int] = Project.get_all_projects_id_from_db()  # get_projects_db()
     for i in projects:
         if i.id not in projects_id:
-            await add_project_in_db(i)
+            Project.new_project(i)
         i.action = "search_task"
     return projects
 
 
-def update_task_parent(parent_id: int) -> None:
-    project_id = get_project_id_by_task_id(str(parent_id))
-    project_tasks = search_tasks(f'/project/{project_id}/')
-    all_db_task_id = get_project_tasks_id_db(project_id)
-    all_ws_task_id: list = []
+def update_task_parent(parent_id: str) -> None:
+    project: Project = Project.get_project(str(parent_id))
+    project_tasks = search_tasks(f'/project/{project.project_id}/')
+    all_db_task_id: set = {task.task_ws_id for task in project.tasks}
+    all_ws_task_id: set = set()
     for key, value in project_tasks.items():
-        all_ws_task_id.append(key)
+        all_ws_task_id.add(key)
+        task: Task = Task.get_task_via_ws_id(key)
         if key not in all_db_task_id:
-            page = f'/project/{project_id}/{key}/'
+            page = f'/project/{project.project_id}/{key}/'
             task_info = get_task_info(page)
-            add_task_in_db(task_info.get('data'))
+            Task.new_task(task_info.get('data'))
+        elif task.parent_id != value.get("parent") or isinstance(task.parent_id, type(None)):
+            task.update(value.get("parent"))
         if value.get('child') is not None:
             for sub_key, sub_value in value.get('child').items():
-                all_ws_task_id.append(sub_key)
+                all_ws_task_id.add(sub_key)
+                sub_task: Task = Task.get_task_via_ws_id(sub_key)
                 if sub_key not in all_db_task_id:
-                    sub_page = f'/project/{project_id}/{key}/{sub_key}/'
+                    sub_page = f'/project/{project.project_id}/{key}/{sub_key}/'
                     subtask_info = get_task_info(sub_page)
-                    add_task_in_db(subtask_info.get('data'), key)
-    for i in all_db_task_id:
-        if i not in all_ws_task_id:
-            remove_task_from_db(i)
-            # else:
-            # print('sub already in base')
-        # else:
-        # print(value.get('name'))
-        # print('already in base')
-        # add_task_in_db()
-        # if value is not None:
-        #     set_parent_task(key, value)
+                    Task.new_task(subtask_info.get('data'), key)
+                elif Task.get_task_via_ws_id(sub_key).parent_id != sub_value.get("parent"):
+                    sub_task.update(sub_value.get("parent"))
+    # Пометить удалёнными в дб задачи, которые были удалены из ws
+    for i in all_db_task_id - all_ws_task_id:
+        Task.get_task_via_ws_id(i).mark_remove()
 
 
-def get_text_add_costs(task_id: str, user: TUser) -> str:
-    name = get_full_task_name(task_id)
+def get_text_add_costs(task_id: str, user: User) -> str:
+    task = Task.get_task_via_ws_id(task_id)
     date = f'Установленная дата - {format_date(user.get_date())}'
-    answer: str = '\n'.join([name, date, INPUT_COSTS])
+    answer: str = '\n'.join([task.full_name(), date, INPUT_COSTS])
     return answer
 
 
 def get_tasks(parent_id: str, user_id: int) -> Union[list[KeyboardData], str]:
-    user = TUser(user_id)
-    child_tasks: list[KeyboardData] = get_tasks_from_db(parent_id)
-    projects_id = get_all_projects_id_db()
-    print(projects_id)
+    user = User.get_user(user_id)
+    projects_id: set[int] = Project.get_all_projects_id_from_db()
     if parent_id in projects_id:
-        update_task_parent(int(parent_id))
-    if len(child_tasks) == 0:
+        update_task_parent(parent_id)
+    subtasks: list[Task] = Task.get_subtasks(parent_id)
+
+    if len(subtasks) == 0:
         return get_text_add_costs(parent_id, user)
-    for i in child_tasks:
-        i.action = "search_task"
-    if parent_id not in get_all_projects_id_db():
-        child_tasks.reverse()
-        task_name = ' '.join([f'🗂', get_task_name(parent_id)])
-        child_tasks.append(KeyboardData(task_name, int(parent_id), 'input_here'))
-        child_tasks.reverse()
+    else:
+        child_tasks: list[KeyboardData] = []
+        if parent_id not in projects_id:
+            task_name = ' '.join([f'🗂', Task.get_task_via_ws_id(parent_id).task_name])
+            child_tasks += [KeyboardData(task_name, int(parent_id), 'input_here')]
+        child_tasks += [KeyboardData(task.task_name, task.task_ws_id, "search_task")
+                        for task in subtasks]
+
+        # child_tasks.reverse()
+        # task_name = ' '.join([f'🗂', Task.get_task_via_ws_id(parent_id).task_name])
+        # child_tasks.append(KeyboardData(task_name, int(parent_id), 'input_here'))
+        # child_tasks.reverse()
     return child_tasks
 
 
 def get_list_bookmark(user_id: int) -> Union[list[KeyboardData], str]:
-    user_list_bookmark: list[KeyboardData] = get_list_user_bookmark(user_id)
+    user: User = User.get_user(user_id)
+    user_list_bookmark: list[KeyboardData] = [KeyboardData(bookmark.bookmark_name, bookmark.task.task_ws_id)
+                                              for bookmark in user.bookmarks]
+    # user_list_bookmark: list[KeyboardData] = get_list_user_bookmark(user_id)
     if len(user_list_bookmark) == 0:
         return 'У вас нет закладок.\n Добавить закладки можно через кнопку "Найти задачу"'
     for i in user_list_bookmark:
@@ -338,10 +331,10 @@ def get_list_bookmark(user_id: int) -> Union[list[KeyboardData], str]:
 
 
 def add_costs(message: str, data: dict) -> str:
-    user: TUser = TUser(data.get('user_id'))
+    user: User = User.get_user(data.get('user_id'))
     date: str = user.get_date()
     email: str = user.get_email()
-    path: str = get_tasks_path(data.get('id'))
+    path: str = Task.get_task_via_ws_id(data.get('id')).task_path
     list_comments: list[list[str, timedelta]] = parse_input_comments(message)
     for comments_text, comments_time in list_comments:
         req = add_cost(page=path,
@@ -353,13 +346,12 @@ def add_costs(message: str, data: dict) -> str:
         pprint(req)
         if status == 'ok':
             comment_id = req.get('id')
-            # if date == 'today':
             f_date = datetime.now().strftime("%d.%m.%Y") if date == 'today' else date
             check_data = [comment_id, path, email, comments_text, comments_time, f_date]
-            print(check_data)
             check = check_adding(check_data)
             if check:
-                add_comment_in_db(comment_id, user.user_id, data.get('id'), comments_time, comments_text, date)
+                task_db_id: int = Task.get_task_via_ws_id(data.get('id')).task_id
+                Comment.add_comment_in_db(int(comment_id), user.user_id, task_db_id, comments_time, comments_text, date)
                 yield 'Успешно внесено'
             else:
                 yield 'Ошибка проверки внесения'
@@ -428,12 +420,12 @@ def parse_input_comments(message: str) -> list[list[str, timedelta]]:
 
 
 def add_bookmark(user_id: int, task_id: str) -> str:
-    if task_id in get_all_booked_task_id():
+    user: User = User.get_user(user_id)
+    if task_id in [bookmark.task.task_ws_id for bookmark in user.bookmarks]:
         return "Такая закладка уже есть. Отмена"
     else:
-        add_bookmark_into_db(task_id)
-        bookmark_id = get_bookmark_id(task_id)
-        add_bookmark_to_user(user_id, bookmark_id)
+        bookmark: Bookmark = Bookmark.get_bookmark(int(task_id))
+        user.add_bookmark(bookmark)
         return "Закладка добавлена"
 
 
@@ -445,23 +437,10 @@ def get_week_stat():
     show_week_gist()
 
 
-async def get_week_report_gist(user: TUser):
+async def get_week_report_gist(user: User):
     first_week_day = get_first_week_day()
     await update_day_costs(first_week_day)
     show_week_report(user)
-
-
-def select_task(user_id: int, task_ws_id) -> str:
-    change_selected_task(user_id, task_ws_id)
-    return '\n'.join(['Выбранная задача:', get_full_task_name(task_ws_id)])
-
-
-def check_task_id(text: str) -> bool:
-    tasks_id = get_all_tasks_id_db()
-    if text in tasks_id:
-        return True
-    else:
-        return False
 
 
 def get_text_menu_notification(status: bool) -> str:
@@ -470,12 +449,7 @@ def get_text_menu_notification(status: bool) -> str:
     return "\n".join([answer, st])
 
 
-async def get_time_user_notification():
-    times = await get_time_notification()
-    return times
-
-
-async def set_remind(user: TUser, time: str, message_time: datetime) -> str:
+async def set_remind(user: User, time: str, message_time: datetime) -> str:
     hours, minutes = time.split(".")
     remind_time: timedelta = timedelta(hours=int(hours), minutes=int(minutes))
     user.set_remind_time(message_time + remind_time)
@@ -485,7 +459,7 @@ async def set_remind(user: TUser, time: str, message_time: datetime) -> str:
 DATE_BUTTONS = ["Вчера", "Сегодня", "Отмена"]
 
 
-async def fast_date_keyboard(user: TUser) -> list[str]:
+async def fast_date_keyboard(user: User) -> list[str]:
     if user.get_date() == "today":
         return DATE_BUTTONS
     else:
@@ -515,7 +489,7 @@ def get_header_for_report(hours: float, date: str) -> str:
     header: str = ''
     if hours >= 12:
         header: str = "Вы либо очень большой молодец, либо где-то переусердствовали." \
-                       "\nУ вас за сегодня больше 12 часов. Это законно?"
+                      "\nУ вас за сегодня больше 12 часов. Это законно?"
     elif hours >= 8:
         header: str = "Вы всё заполнили, вы молодец!"
     elif hours > 0:
@@ -532,28 +506,32 @@ def sum_costs_to_float(costs: list[str]) -> float:
     return day_cost_hours
 
 
-async def day_report_message(user: TUser) -> tuple[str, float]:
+def get_work_date_for_report(notification_time) -> str:
+    if datetime.strptime(notification_time, "%H:%M").time().hour < 13:
+        i = 1
+        while not is_work_day(datetime.now() - timedelta(days=i)):
+            i += 1
+        now_date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+    else:
+        now_date: str = datetime.now().strftime("%Y-%m-%d")
+    return now_date
+
+
+async def day_report_message(user: User) -> tuple[str, float]:
     now_time: str = datetime.now().strftime("%H:%M")
     text: str = ' '
     day_cost_hours: float = 0.0
     if user.notification_status:
         notif_time = user.get_notification_time().split(" ")[1]
         if notif_time == now_time:
-            if datetime.strptime(notif_time, "%H:%M").time().hour < 13:
-                i = 1
-                while not is_work_day(datetime.now() - timedelta(days=i)):
-                    i += 1
-                now_date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
-            else:
-                now_date: str = datetime.now().strftime("%Y-%m-%d")
-            print(now_date)
-            main_logger.info("Подготавливаем для %s ежедневный отчёт/напоминание" % user.full_name)
+            now_date: str = get_work_date_for_report(notif_time)
+            main_logger.info("Подготавливаем для %s ежедневный отчёт/напоминание" % user.full_name())
             costs: list = get_the_user_costs_for_period(user, now_date)
             day_cost_hours: float = sum_costs_to_float(costs)
-            main_logger.info("Пользователь %s наработал на %s часов" % (user.full_name, day_cost_hours))
+            main_logger.info("Пользователь %s наработал на %s часов" % (user.full_name(), day_cost_hours))
             text = "\n\n".join([get_header_for_report(day_cost_hours, now_date), await see_days_costs(user, now_date)])
         elif user.get_remind_notification_time() == now_time:
-            main_logger.info("Пользователь %s откладывал напоминание. Присылаем." % user.full_name)
+            main_logger.info("Пользователь %s откладывал напоминание. Присылаем." % user.full_name())
             text = "Вы отложили напоминание заполнить трудоёмкости. Вот оно!"
             user.set_remind_time(None)
     else:

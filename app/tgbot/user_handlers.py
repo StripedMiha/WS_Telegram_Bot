@@ -5,20 +5,20 @@ from typing import Union
 
 import sqlalchemy.exc
 from aiogram import Bot, Dispatcher, types
-from aiogram.utils.callback_data import CallbackData
-from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.utils.callback_data import CallbackData
 
 from app.KeyboardDataClass import KeyboardData
-from app.exceptions import FutureDate
-from app.tgbot.auth import TUser
+# from app.tgbot.auth import TUser
 from app.create_log import setup_logger
-from app.tgbot.main import see_days_costs, update_day_costs, get_about_user_info, menu_buttons, days_costs_for_remove, \
-    remove_costs, remove_cost, text_count_removed_costs, bookmarks_for_remove, remove_bookmark_from_user, \
-    get_project_list, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, select_task, \
-    get_text_add_costs, remind_settings_button, get_text_menu_notification, fast_date_keyboard
+from app.db.structure_of_db import User, Bookmark
+from app.exceptions import FutureDate
 from app.tgbot.admin_handlers import get_keyboard_admin
-
+from app.tgbot.main import see_days_costs, update_day_costs, get_about_user_info, menu_buttons, days_costs_for_remove, \
+    remove_costs, remove_cost, text_count_removed_costs, bookmarks_for_remove, \
+    get_project_list, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, \
+    get_text_add_costs, remind_settings_button, get_text_menu_notification, fast_date_keyboard
 
 bot: Bot
 user_logger: logging.Logger = setup_logger("App.Bot.user", "app/log/user.log")
@@ -133,7 +133,7 @@ async def get_remove_keyboard(list_data: list[KeyboardData],
 # Вывод списка команд
 async def request_help(message: types.Message):
     user_logger.info("%s %s %s" % (message.from_user.full_name, message.from_user.id, message.text))
-    user = TUser(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
+    user: User = User.get_user(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
     if not user.has_access:
         if user.blocked:
             return None
@@ -164,16 +164,16 @@ async def lets_start(message: types.Message):
         user_logger.info("Пользователь %s с id%s пытается запустить бота в групповом чате"
                          % (message.from_user.full_name, message.from_user.id))
         return None
-    user = TUser(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
-    if user.blocked:
+    user = User.get_user(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
+    if user.blocked():
         return None
     elif user.get_status() == 'wait':
         await message.answer('Заявка ушла админу. Ждите.')
         data_for_keyboard = [KeyboardData('Добавить пользователя', user.user_id, 'known_user'),
                              KeyboardData('Игнорировать пользователя', user.user_id, 'black_user')]
         keyboard = get_keyboard_admin(data_for_keyboard, width=2, enable_cancel=False)
-        await bot.send_message(int(TUser.get_admin_id()), f"Этот перец пишет мне: {user.full_name}\n"
-                                                          f"Пишет вот что: {message.text}", reply_markup=keyboard)
+        await bot.send_message(User.get_admin_id(), f"Этот перец пишет мне: {user.full_name()}\n"
+                                                    f"Пишет вот что: {message.text}", reply_markup=keyboard)
         return None
     answer = [f"Наталья, морская пехота",
               f"Стартуем, <i>{user.first_name}!</i>",
@@ -191,9 +191,9 @@ async def choice_cancel(call: types.CallbackQuery):
 
 # Ввели команду /menu
 async def menu(message: types.Message):
-    user = TUser(message.from_user.id)
-    user_logger.info("Пользователь %s ввёл команду /menu" % user.full_name)
-    if not user.has_access:
+    user: User = User.get_user(message.from_user.id)
+    user_logger.info("Пользователь %s ввёл команду /menu" % user.full_name())
+    if not user.has_access():
         return None
     buttons = menu_buttons(user)
     await message.answer('Доступные действия:', reply_markup=get_keyboard(buttons, 2))
@@ -203,10 +203,10 @@ async def menu(message: types.Message):
 # Нажали кнопку в меню
 async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     action = callback_data.get('action')
-    user = TUser(call.from_user.id)
-    user_logger.info("%s выбрал кнопку %s" % (user.full_name, action))
+    user: User = User.get_user(call.from_user.id)
+    user_logger.info("%s выбрал кнопку %s" % (user.full_name(), action))
     date = 'сегодня' if user.get_date() == 'today' else user.get_date()
-    if action == 'set email':  # or action == 'change email':
+    if action == 'set email' or action == 'change email':
         await call.message.edit_text('Введите вашу корпоративную почту:\n'
                                      'Введите "Отмена" для отмены ввода')
         await OrderMenu.wait_for_email.set()
@@ -241,11 +241,11 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
 
 # Ожидание ввода даты
 async def wait_date(message: types.Message, state: FSMContext):
-    user = TUser(message.from_user.id)
-    user_logger.info("%s Вводит дату: %s" % (user.full_name, message.text))
+    user: User = User.get_user(message.from_user.id)
+    user_logger.info("%s Вводит дату: %s" % (user.full_name(), message.text))
     if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
         await message.answer('Отменён ввод даты.\n', reply_markup=types.ReplyKeyboardRemove())
-        user_logger.info("%s Отменяет ввод даты" % user.full_name)
+        user_logger.info("%s Отменяет ввод даты" % user.full_name())
         await state.finish()
     elif message.text.lower() == 'сегодня' or message.text.lower() == 'today':
         user.change_date('today')
@@ -273,15 +273,15 @@ async def wait_date(message: types.Message, state: FSMContext):
 
 # Ожидание ввода почты
 async def wait_email(message: types.Message, state: FSMContext):
-    user = TUser(message.from_user.id)
-    user_logger.info("%s Вводит почту: %s" % (user.full_name, message.text))
+    user = User.get_user(message.from_user.id)
+    user_logger.info("%s Вводит почту: %s" % (user.full_name(), message.text))
     if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru|[a-z]\d@s-t.studio', message.text):
         user.change_mail(message.text)
         answer = message.from_user.full_name + ', вы установили почту: ' + user.get_email()
         await message.answer(answer)
     elif message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
         await message.answer('Отменён ввод почты.\n')
-        user_logger.info("%s Отменяет ввод почты" % user.full_name)
+        user_logger.info("%s Отменяет ввод почты" % user.full_name())
         await state.finish()
     else:
         await message.answer('Почта введена в неверном формате.\n'
@@ -300,16 +300,16 @@ async def wait_offer(message: types.Message, state: FSMContext):
         return
     user_logger.info("%s Вводит предложений/замечаний: %s" % (message.from_user.full_name, message.text))
     text = ''.join([message.from_user.full_name, ' воспользовался кнопкой предложений/замечаний.\n',
-                    '#Отзыв_SMDE_WS_bot\n\n',  message.text])
-    await bot.send_message(TUser.get_admin_id(), text)
+                    '#Отзыв_SMDE_WS_bot\n\n', message.text])
+    await bot.send_message(User.get_admin_id(), text)
     await message.answer('Улетело админу, спасибо :)')
     await state.finish()
 
 
 # Меню выбора способа поиска задачи
 async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
-    user = TUser(call.from_user.id)
-    user_logger.info("%s выбирает способ поиска задачи" % user.full_name)
+    user = User.get_user(call.from_user.id)
+    user_logger.info("%s выбирает способ поиска задачи" % user.full_name())
     buttons = [['Через поиск', 'via search'],
                ['❤️ Через закладки', 'via bookmarks'],
                ['Ввести id задачи', 'task id input'],
@@ -319,19 +319,19 @@ async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
 
 # Меню выбора способа поиска задачи
 async def type_of_selection_message(message: types.Message):
-    user = TUser(message.from_user.id)
-    user_logger.info("%s выбирает способ поиска задачи" % user.full_name)
+    user: User = User.get_user(message.from_user.id)
+    user_logger.info("%s выбирает способ поиска задачи" % user.full_name())
     buttons = [['Через поиск', 'via search'],
                ['❤️ Через закладки', 'via bookmarks'],
                ['Ввести id задачи', 'task id input'],
                ['Задача по умолчанию', 'fast input']]
-    await bot.send_message(user.user_id,'Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
+    await bot.send_message(user.user_id, 'Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
 
 
 # Выбран способ поиска задачи - введение ID задачи
 async def task_id_input(call: types.CallbackQuery, callback_data: dict):
-    user = TUser(call.from_user.id)
-    user_logger.info("%s выбрал поиск задачи через ввод id задачи" % user.full_name)
+    user: User = User.get_user(call.from_user.id)
+    user_logger.info("%s выбрал поиск задачи через ввод id задачи" % user.full_name())
     await call.message.edit_text('Введите ID задачи из WorkSection')
     await call.message.answer('Введите "отмена" для отмены ввода', reply_markup=get_fast_keyboard(CANCEL_BUTTON))
     await OrderMenu.waiting_for_task_id.set()
@@ -339,8 +339,8 @@ async def task_id_input(call: types.CallbackQuery, callback_data: dict):
 
 # Ожидание ввода ID задачи
 async def wait_task_id(message: types.Message, state: FSMContext):
-    user = TUser(message.from_user.id)
-    user_logger.info("%s ввёл id задачи: %s" % (user.full_name, message.text))
+    user: User = User.get_user(message.from_user.id)
+    user_logger.info("%s ввёл id задачи: %s" % (user.full_name(), message.text))
     if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
         await message.answer('Отменён ввод ID задачи.\n', reply_markup=types.ReplyKeyboardRemove())
         user_logger.info("%s Отменяет ввод ID задачи" % message.from_user.full_name)
@@ -358,8 +358,8 @@ async def wait_task_id(message: types.Message, state: FSMContext):
 
 # Выбран способ поиска задачи - через поиск
 async def search_project_via_search(call: types.CallbackQuery, callback_data: dict):
-    user = TUser(call.from_user.id)
-    user_logger.info("%s начинает поиск задачи через через поиск. Получил список проектов" % user.full_name)
+    user: User = User.get_user(call.from_user.id)
+    user_logger.info("%s начинает поиск задачи через через поиск. Получил список проектов" % user.full_name())
     user_projects = await get_project_list(user)
     keyboard = await get_remove_keyboard(user_projects, width=2)
     await call.message.edit_text('Выберите проект', reply_markup=keyboard)
@@ -380,28 +380,32 @@ async def search_task_via_bookmarks(call: types.CallbackQuery, callback_data: di
 async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     user_logger.info("%s поиск задачи через через закладки. Получает список задач/подзадач" % call.from_user.full_name)
     project_id: str = callback_data['id']
-    print(project_id)
     await call.message.edit_text('Идёт поиск всех задач. Секундочку подождите')
+    # try:
     tasks = get_tasks(project_id, call.from_user.id)
     if isinstance(tasks, str):
         await start_comment_input(state, tasks, call.from_user.id, callback_data['id'], call)
         return None
     keyboard = await get_remove_keyboard(tasks, width=2)
     await call.message.edit_text('Выберите задачу', reply_markup=keyboard)
+    # except Exception as e:
+    #     await call.message.edit_text("Ошибка.\nБыло сообщено куда следует.")
+    #     await call.message.answer_sticker("CAACAgIAAxkBAAED9xBiD5m7P2yNcjqvs3y5LhHVJGcfxAACjgADfI5YFQLQ025DM_NRIwQ")
+    #     await bot.send_message(User.get_admin_id(), f"У {call.from_user.full_name} ошибка:\n{e.args}")
 
 
 # Задача выбрана. Запуск ожидания ввода трудоёмкости
 async def task_found(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     user_logger.info("%s выбрал задачу" % call.from_user.full_name)
     task_id: str = str(callback_data['id'])
-    text = get_text_add_costs(task_id, TUser(call.from_user.id))
+    text = get_text_add_costs(task_id, User.get_user(call.from_user.id))
     await start_comment_input(state, text, call.from_user.id, task_id, call)
 
 
 # Быстрый ввод трудоёмкости
 async def fast_input(message: types.Message, state: FSMContext):
     await message.answer("Да-да?")
-    user = TUser(message.from_user.id)
+    user: User = User.get_user(message.from_user.id)
     if user.selected_task is None:
         await message.answer('Задача не выбрана, выбери её через поиск')
         return
@@ -411,7 +415,7 @@ async def fast_input(message: types.Message, state: FSMContext):
 
 async def fast_input_call(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     await call.message.edit_text("Да-да?")
-    user = TUser(call.from_user.id)
+    user: User = User.get_user(call.from_user.id)
     if user.selected_task is None:
         await call.message.edit_text('Задача не выбрана, выбери её через поиск')
         return
@@ -434,33 +438,33 @@ async def start_comment_input(state: FSMContext, text: str, user_id: int, task_i
 
 # Ожидание ввода трудоёмкости
 async def wait_hours(message: types.Message, state: FSMContext):
-    user = TUser(message.from_user.id)
-    user_logger.info("%s вводит трудоёмкость" % user.full_name)
+    user: User = User.get_user(message.from_user.id)
+    user_logger.info("%s вводит трудоёмкость" % user.full_name())
     data = await state.get_data()
     text = message.text
     if 'отмена' in text.lower() or 'cancel' in text.lower():
-        user_logger.info("%s отменяет ввод трудоёмкости" % user.full_name)
+        user_logger.info("%s отменяет ввод трудоёмкости" % user.full_name())
         await message.answer('Отмена ввода', reply_markup=types.ReplyKeyboardRemove())
         await state.finish()
         return
     elif 'добавить закладку' in text.lower():
-        user_logger.info("%s добавляет данную задачу в закладки" % user.full_name)
-        task_id = data['id']
-        await message.answer(add_bookmark(user.user_id, task_id), reply_markup=types.ReplyKeyboardRemove())
+        user_logger.info("%s добавляет данную задачу в закладки" % user.full_name())
+        task_ws_id = data['id']
+        await message.answer(add_bookmark(user.user_id, task_ws_id), reply_markup=types.ReplyKeyboardRemove())
         await state.finish()
     elif 'выбрать' in text.lower() or 'select' in text.lower() or 'выбрать по умолчанию' in text.lower():
-        user_logger.info("%s выбирает данную задачу задачей по умолчанию" % user.full_name)
-        await message.answer(select_task(user.user_id, data['id']), reply_markup=types.ReplyKeyboardRemove())
+        user_logger.info("%s выбирает данную задачу задачей по умолчанию" % user.full_name())
+        await message.answer(user.change_default_task(data['id']), reply_markup=types.ReplyKeyboardRemove())
         await state.finish()
         return
     elif 'ничего не понял' in text.lower() or '!' not in text.lower():
-        user_logger.info("%s не понимает что происходит (при вводе трудоёмкости)" % user.full_name)
+        user_logger.info("%s не понимает что происходит (при вводе трудоёмкости)" % user.full_name())
         await message.answer(INPUT_COST_EXAMPLE, reply_markup=types.ReplyKeyboardRemove())
         return
     else:
-        user_logger.info("%s отправил трудоёмкость" % user.full_name)
+        user_logger.info("%s отправил трудоёмкость" % user.full_name())
         for i_status in add_costs(text, data):
-            user_logger.info("%s %s" % (user.full_name, i_status))
+            user_logger.info("%s %s" % (user.full_name(), i_status))
             await message.answer(i_status)
         await message.answer('Внесение завершено', reply_markup=types.ReplyKeyboardRemove())
         await state.finish()
@@ -470,7 +474,10 @@ async def wait_hours(message: types.Message, state: FSMContext):
 # Удаление закладки
 async def remove_user_bookmark(call: types.CallbackQuery, callback_data: dict):
     user_logger.info("%s удаляет закладку %s" % (call.from_user.full_name, callback_data['id']))
-    remove_bookmark_from_user(callback_data['id'])
+    user: User = User.get_user(call.from_user.id)
+    bookmark: Bookmark = Bookmark.get_bookmark_by_id(callback_data['id'])
+    user.remove_bookmark(bookmark)
+    # remove_bookmark_from_user(callback_data['id'])
     await call.message.edit_text('Закладка удалена')
 
 
@@ -490,7 +497,7 @@ async def remove_comments(call: types.CallbackQuery, callback_data: dict):
     elif action == "remove_costs":
         user_logger.info("%s удаляет все свои трудоёмкости" % call.from_user.full_name)
         await call.message.edit_text(text_count_removed_costs(call.from_user.id))
-        for i_status in remove_costs(TUser(call.from_user.id)):
+        for i_status in remove_costs(User.get_user(call.from_user.id)):
             user_logger.info("%s получает результат удаления: %s" % (call.from_user.full_name, i_status))
             await call.message.answer(i_status)
         await call.message.answer('Удаление завершено')
@@ -499,31 +506,32 @@ async def remove_comments(call: types.CallbackQuery, callback_data: dict):
 
 # Меню настроек напоминаний
 async def setting_notification_menu(call: types.CallbackQuery, callback_data: dict):
-    user_logger.info("%s выбрал кнопку настроек напоминаний" % TUser(call.from_user.id).full_name)
-    text = get_text_menu_notification(TUser(call.from_user.id).notification_status)
+    user: User = User.get_user(call.from_user.id)
+    user_logger.info("%s выбрал кнопку настроек напоминаний" % user.full_name())
+    text = get_text_menu_notification(User.notification_status)
     await call.message.edit_text(text, reply_markup=get_keyboard(remind_settings_button, width=1))
 
 
 # Настройки напоминаний
 async def setting_notification(call: types.CallbackQuery, callback_data: dict):
     action: str = callback_data["action"]
-    user: TUser = TUser(call.from_user.id)
+    user: User = User.get_user(call.from_user.id)
     if action == "toggle_notifications":
         user.toggle_notification_status()
-        user_logger.info("%s переключил статус напоминаний на %s" % (user.full_name, user.notification_status))
+        user_logger.info("%s переключил статус напоминаний на %s" % (user.full_name(), user.notification_status))
         status = "Уведомления включены" if user.notification_status else "Уведомления выключены"
         await call.message.edit_text(status)
     elif action == "Set_notification_time":
-        user_logger.info("%s запускает ввод времени для уведомлений" % user.full_name)
+        user_logger.info("%s запускает ввод времени для уведомлений" % user.full_name())
         await call.message.edit_text("Введите время для уведомлений в формате ЧЧ:MM")
         await OrderMenu.wait_for_notification_time.set()
 
 
 async def wait_notification_time(message: types.Message, state: FSMContext):
-    user: TUser = TUser(message.from_user.id)
+    user: User = User.get_user(message.from_user.id)
     if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
         await message.answer('Отменён ввод времени.\n')
-        user_logger.info("%s Отменяет ввод времени" % user.full_name)
+        user_logger.info("%s Отменяет ввод времени" % user.full_name())
         await state.finish()
     elif re.match(r'^(([0-1][0-9])|(2[0-3])):([0-5][0-9])$', message.text):
         in_time = message.text.strip(' ').split(":")
@@ -538,7 +546,7 @@ async def wait_notification_time(message: types.Message, state: FSMContext):
 
 # Выбор обеда с клавиатуры
 async def get_dinner(message: types.Message):
-    user = TUser(message.from_user.id)
+    user: User = User.get_user(message.from_user.id)
     if not user.has_access:
         if user.get_status() == 'black' or user.get_status == 'wait':
             return None

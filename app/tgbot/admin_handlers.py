@@ -9,9 +9,9 @@ from aiogram.dispatcher import FSMContext
 
 from app.KeyboardDataClass import KeyboardData
 from app.create_log import setup_logger
+from app.db.structure_of_db import User
 from app.tgbot.fix import fix_parent
 from app.tgbot.main import get_users_of_list
-from app.tgbot.auth import TUser
 
 
 bot: Bot
@@ -73,19 +73,19 @@ LIST_ATTRIBUTES: dict = {
 
 async def user_decide(call: types.CallbackQuery, callback_data: dict):
     case = callback_data['action']
-    user = TUser(callback_data['data'])
-    admin_logger.info("%s выбрал %s для переноса в список %s" % (call.from_user.full_name, user.full_name, case))
+    user: User = User.get_user(callback_data['data'])
+    admin_logger.info("%s выбрал %s для переноса в список %s" % (call.from_user.full_name, user.full_name(), case))
     user.change_status(LIST_ATTRIBUTES[case]["new_status"])
     await call.answer(LIST_ATTRIBUTES[case]["text_for_alarm"], show_alert=True)
     await call.answer()
-    await call.message.edit_text(LIST_ATTRIBUTES[case]["text_for_admin"] % user.full_name)
+    await call.message.edit_text(LIST_ATTRIBUTES[case]["text_for_admin"] % user.full_name())
     try:
         await bot.send_message(user.user_id, LIST_ATTRIBUTES[case]["text_for_user"])
-        admin_logger.info("%s получил уведомление о смене статуса" % user.full_name)
+        admin_logger.info("%s получил уведомление о смене статуса" % user.full_name())
     except aiogram.utils.exceptions.ChatNotFound:
-        await bot.send_message(TUser.get_admin_id(),
+        await bot.send_message(User.get_admin_id(),
                                'Пользователь не получил уведомления, так как не имеет диалога с ботом')
-        admin_logger.info("%s НЕ получил уведомление о смене статуса" % user.full_name)
+        admin_logger.info("%s НЕ получил уведомление о смене статуса" % user.full_name())
 
 
 async def add_cancel(call: types.CallbackQuery, state: FSMContext):

@@ -7,9 +7,8 @@ import collections
 from app.api.work_calendar import is_work_day
 from app.db.db_access import get_all_costs_for_period, get_the_user_projects_time_cost_per_period, \
     get_user_costs_per_week
-from app.db.structure_of_db import Comment
+from app.db.structure_of_db import Comment, User
 from app.exceptions import EmptyCost
-from app.tgbot.auth import TUser
 
 
 def sum_period_time_costs(first_day: str) -> dict:
@@ -25,17 +24,13 @@ def get_zero_time() -> timedelta:
     return timedelta(hours=0)
 
 
-def sum_project_time_costs_for_week(first_day: str, user: TUser) -> collections.defaultdict:
+def sum_project_time_costs_for_week(first_day: str, user: User) -> collections.defaultdict:
     users = get_the_user_projects_time_cost_per_period(first_day, user)
     users_sum: collections.defaultdict = collections.defaultdict(get_zero_time)
     for i, j in users:
         users_sum[i] += timedelta(hours=int(j.split(':')[0]),
                                   minutes=int(j.split(':')[1]))
     return users_sum
-
-
-def sum_time_costs(user: TUser) -> float:
-    pass
 
 
 def get_first_months_day() -> str:
@@ -73,7 +68,7 @@ def current_week_stat() -> dict:
     return users_sum
 
 
-def user_project_week_stat(user: TUser) -> dict:
+def user_project_week_stat(user: User) -> dict:
     first_day: str = get_first_week_day()
     project_sum: collections.defaultdict = sum_project_time_costs_for_week(first_day, user)
     return project_sum
@@ -95,7 +90,7 @@ def short_project_name(long_name: str) -> str:
     return short_name
 
 
-def projects_report(user: TUser) -> float:
+def projects_report(user: User) -> float:
     now_time: str = datetime.now().strftime("%Y-%m-%d %H:%M")
     # time: list = show_week_projects_report(user)
     # if user.get_notification_time() == now_time:
@@ -122,7 +117,7 @@ def get_list_times() -> list:
     return [get_zero_time(), get_zero_time()]
 
 
-def user_week_data(user: TUser) -> collections.defaultdict:
+def user_week_data(user: User) -> collections.defaultdict:
     first_day: str = get_first_week_day()
     comments: list[Comment] = get_user_costs_per_week(first_day, user)
     week_comments: collections.defaultdict = collections.defaultdict(get_list_times)
@@ -146,7 +141,7 @@ def user_week_data(user: TUser) -> collections.defaultdict:
 
 def show_month_gist():
     data = current_month_stat()
-    users = [TUser(i).first_name for i in data.keys()]
+    users: list[str] = [User.get_user(i).first_name for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
@@ -170,7 +165,7 @@ def show_month_gist():
 
 def show_week_gist():
     data = current_week_stat()
-    users = [TUser(i).first_name for i in data.keys()]
+    users: list[str] = [User.get_user(i).first_name for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
@@ -189,7 +184,7 @@ def show_week_gist():
     plt.savefig('app/db/png/2')
 
 
-def show_week_projects_report(user: TUser):
+def show_week_projects_report(user: User):
     data = user_project_week_stat(user)
     projects = [short_project_name(i) for i in data.keys()]
     time = [to_float(i) for i in data.values()]
@@ -199,11 +194,11 @@ def show_week_projects_report(user: TUser):
     plt.plot(kind='pie', subplots=True, figsize=(8, 8), dpi=80)
     plt.pie(time, labels=projects)
     plt.title("Распределение за неделю")
-    plt.savefig('app/db/png/%s_%s' % ('week', user.full_name))
+    plt.savefig('app/db/png/%s_%s' % ('week', user.full_name()))
     return time
 
 
-def show_week_report(user: TUser):
+def show_week_report(user: User):
     coms = user_week_data(user)
     days: list = [i[0] for i in coms]
     via_bot: list = [to_float(i[1]) for i in coms]
@@ -223,4 +218,4 @@ def show_week_report(user: TUser):
     plt.title("Заполнение за неделю")
     plt.legend()
     plt.grid(axis="y", linestyle=":")
-    plt.savefig('app/db/png/%s_%s.png' % ('report', user.full_name))
+    plt.savefig('app/db/png/%s_%s.png' % ('report', user.full_name()))

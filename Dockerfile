@@ -6,6 +6,7 @@ WORKDIR /MigTeleBot/
 RUN pip install -r requirements.txt
 COPY . /MigTeleBot/
 
+ENV IS_DOCKER Yes
 #EXPOSE 5000
 
 CMD ["python", "Bot.py"]

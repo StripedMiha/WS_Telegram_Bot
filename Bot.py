@@ -7,6 +7,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from app.config_reader import load_config
 from app.create_log import setup_logger
+from app.start_type import start_from_docker
 
 from app.tgbot.admin_handlers import register_handlers_admin
 from app.tgbot.time_handlers import time_scanner, register_handlers_time
@@ -22,8 +23,10 @@ async def main_bot():
     main_logger.error("Starting bot")
 
     # парсинг файла конфигурации
-    config = load_config("/run/secrets/bot")
-    # config = load_config("app/keys/bot.ini")
+    if start_from_docker:
+        config = load_config("/run/secrets/bot")
+    else:
+        config = load_config("app/keys/bot.ini")
 
     # Объявление и инициализация объектов бота и диспетчера
     bot = Bot(token=config['tg_bot']['token'], parse_mode=types.ParseMode.HTML)

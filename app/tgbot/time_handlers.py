@@ -12,9 +12,9 @@ from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
 from app.db.db_access import get_the_user_costs_for_period
 from app.db.stat import projects_report
+from app.db.structure_of_db import User
 from app.exceptions import EmptyCost, WrongTime, EmptyDayCosts, NotUserTime, NoRemindNotification
-from app.tgbot.auth import TUser
-from app.tgbot.main import get_time_user_notification, get_users_of_list, see_days_costs, set_remind, update_day_costs, \
+from app.tgbot.main import get_users_of_list, see_days_costs, set_remind, update_day_costs, \
     get_text_for_empty_costs, day_report_message
 
 bot: Bot
@@ -52,53 +52,52 @@ def get_remind_keyboard(list_data: list[list], width: int = 2,
 
 async def week_report(a=1):
     time_logger.info("Пятничный отчёт")
-    users: list[TUser] = [TUser(i.id) for i in get_users_of_list('user')] + \
-                         [TUser(i.id) for i in get_users_of_list('admin')]
+    users: list[User] = [User.get_user(i.id) for i in get_users_of_list('user')] + \
+                        [User.get_user(i.id) for i in get_users_of_list('admin')]
     try:
         min_dates = min(set([i.get_date() for i in users]))
         time_logger.info("Обновляем трудочасы начиная с даты: %s" % min_dates)
         await update_day_costs(min_dates)
     except:
         time_logger.error("Ошибка пятничной статы")
-        await bot.send_message(TUser.get_admin_id(), "Ошибка пятничной статы")
+        await bot.send_message(User.get_admin_id(), "Ошибка пятничной статы")
     for user in users:
-        print(user.full_name)
         if user.notification_status:
-            time_logger.info("Пользователь %s не отключал уведомления" % user.full_name)
+            time_logger.info("Пользователь %s не отключал уведомления" % user.full_name())
             try:
-                time_logger.info("Генерируем график и получаем часы для %s" % user.full_name)
+                time_logger.info("Генерируем график и получаем часы для %s" % user.full_name())
                 sum_costs = projects_report(user)
-                time_logger.info("Пользователь %s оформил %s часов" % (user.full_name, sum_costs))
-                time_logger.info("Отправляем пользователю %s его стату за неделю" % user.full_name)
-                await bot.send_photo(user.user_id, types.InputFile('app/db/png/week_%s.png' % user.full_name),
+                time_logger.info("Пользователь %s оформил %s часов" % (user.full_name(), sum_costs))
+                time_logger.info("Отправляем пользователю %s его стату за неделю" % user.full_name())
+                await bot.send_photo(user.user_id, types.InputFile('app/db/png/week_%s.png' % user.full_name()),
                                      caption='Распределение ваших %s часов по проектам за неделю' % sum_costs)
             except EmptyCost:
-                time_logger.info("Пользователь %s оформил ничего не заполнил" % user.full_name)
+                time_logger.info("Пользователь %s оформил ничего не заполнил" % user.full_name())
                 try:
-                    time_logger.info("Отправляем пользователю %s сообщение о незаполненности часов" % user.full_name)
+                    time_logger.info("Отправляем пользователю %s сообщение о незаполненности часов" % user.full_name())
                     await bot.send_message(user.user_id, "Вы не заполняли на этой неделе. Нипорядок!")
                 except ChatNotFound:
-                    time_logger.error("Чат с пользователем %s не найден" % user.full_name)
+                    time_logger.error("Чат с пользователем %s не найден" % user.full_name())
                     pass
                 except BotBlocked:
-                    time_logger.error("Пользователь %s заблокировал бота" % user.full_name)
+                    time_logger.error("Пользователь %s заблокировал бота" % user.full_name())
                     pass
             except WrongTime:
                 pass
             except ChatNotFound:
-                time_logger.error("Чат с пользователем %s не найден" % user.full_name)
+                time_logger.error("Чат с пользователем %s не найден" % user.full_name())
                 pass
             except BotBlocked:
-                time_logger.error("Пользователь %s заблокировал бота" % user.full_name)
+                time_logger.error("Пользователь %s заблокировал бота" % user.full_name())
                 pass
         else:
-            time_logger.info("Пользователь %s отключил уведомления" % user.full_name)
+            time_logger.info("Пользователь %s отключил уведомления" % user.full_name())
 
 
 async def day_report():
     if is_work_day(datetime.now()):
-        users: list[TUser] = [TUser(i.id) for i in get_users_of_list('user')] + \
-                             [TUser(i.id) for i in get_users_of_list('admin')]
+        users: list[User] = [User.get_user(i.id) for i in get_users_of_list('user')] + \
+                            [User.get_user(i.id) for i in get_users_of_list('admin')]
         for user in users:
             try:
                 text, sum_costs = await day_report_message(user)
@@ -156,10 +155,6 @@ async def delay_remind(call: types.CallbackQuery, callback_data: dict):
     mes_text = call.message.text
     await call.message.edit_text(mes_text)
     await call.message.answer(text)
-
-
-async def get_time():
-    return await get_time_user_notification()
 
 
 async def time_scanner():
