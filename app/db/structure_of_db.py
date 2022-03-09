@@ -10,7 +10,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, DateTime, Table  # , Table, , Numeric
 from sqlalchemy import ForeignKey  # , UniqueConstraint, ForeignKeyConstraint, PrimaryKeyConstraint, CheckConstraint, \
 #   values, insert, select, create_engine
-from sqlalchemy.orm import Session, relationship
+from sqlalchemy.orm import Session, relationship, registry #  , declarative_base
 
 from app.KeyboardDataClass import KeyboardData
 from app.config_reader import load_config
@@ -28,10 +28,12 @@ password = config["db"]["password"]
 bd_name = config["db"]["bd_name"]
 host = config["db"]["host"]
 
-engine = sqlalchemy.create_engine(f"postgresql+psycopg2://{psql_user}:{password}@{host}/{bd_name}",
-                                  echo=False, pool_size=6, max_overflow=10, encoding='latin1')
+bd_url = f"postgresql+psycopg2://{psql_user}:{password}@{host}/{bd_name}"
 
+engine = sqlalchemy.create_engine(bd_url, echo=False, pool_size=6, max_overflow=10, encoding='latin1')
+# mapper_registry = registry()
 Base = declarative_base()
+# Base = mapper_registry.generate_base()
 metadata = MetaData()
 
 
@@ -45,6 +47,7 @@ session = get_session()
 
 class Project(Base):
     __tablename__ = 'projects'
+    Base.metadata = metadata
     project_id = Column(String(15), primary_key=True, nullable=False)
     project_name = Column(Text(), nullable=False)
     project_path = Column(String(40), nullable=False)
@@ -73,11 +76,12 @@ class Project(Base):
 
 class Task(Base):
     __tablename__ = 'tasks'
+    Base.metadata = metadata
     task_id = Column(Integer(), primary_key=True, nullable=False)
     task_path = Column(String(40), nullable=False)
     project_id = Column(String(15), ForeignKey('projects.project_id'), nullable=False)
     task_name = Column(Text())
-    task_ws_id = Column(String(15), nullable=False)
+    task_ws_id = Column(String(15), nullable=False, unique=True)
     parent_id = Column(Integer())
     status = Column(String(10), default='active')
 
@@ -134,6 +138,7 @@ class Task(Base):
 
 class Bookmark(Base):
     __tablename__ = 'bookmarks'
+    Base.metadata = metadata
     bookmark_id = Column(Integer(), primary_key=True, nullable=False)
     task_id = Column(Integer(), ForeignKey('tasks.task_id'), nullable=False)
     bookmark_name = Column(Text(), nullable=False)
@@ -171,33 +176,71 @@ user_bookmark = Table('user_bookmark', Base.metadata,
                       )
 
 
+user_status = Table("user_status", Base.metadata,
+                    Column("user_id", Integer(), ForeignKey("users.user_id"), nullable=False),
+                    Column("status_id", Integer(), ForeignKey("statuses.status_id"), nullable=False)
+                    )
+
+
+class Status(Base):
+    __tablename__ = "statuses"
+    Base.metadata = metadata
+    status_id = Column(Integer(), primary_key=True, nullable=False)
+    status_name = Column(String(20), nullable=False)
+
+    def __repr__(self):
+        return f'{self.status_name}'
+
+    @staticmethod
+    def get_users(status: str) -> list:
+        searched_status: Status = Status.get_status(status)
+        return [i for i in session.query(User).all() if searched_status in i.statuses]
+
+    @staticmethod
+    def get_status(status: str):
+        return session.query(Status).filter(Status.status_name == status).one()
+
+
 class User(Base):
     __tablename__ = 'users'
+    Base.metadata = metadata
     user_id = Column(Integer(), primary_key=True, nullable=False)
     email = Column(String(30))
     first_name: str = Column(String(50))
     last_name = Column(String(50))
     date_of_input = Column(String(15))
-    status = Column(String(20), nullable=False)
-    selected_task = Column(String(15), ForeignKey('tasks.task_ws_id'), nullable=True)
+    selected_task = Column(String(15), ForeignKey('tasks.task_ws_id'), nullable=True, unique=False)
     notification_status = Column(Boolean, default=True)
     notification_time = Column(DateTime, default='')
     remind_notification = Column(DateTime)
 
     default_task: Task = relationship("Task", uselist=False)
+
+    statuses: list[Status] = relationship("Status", secondary=user_status)
     bookmarks: list[Bookmark] = relationship("Bookmark", secondary=user_bookmark)
 
+    def __repr__(self):
+        return f"---\n{self.statuses} {self.full_name()}, id{self.user_id}\nЗадача по умолчанию: id" \
+               f"{self.default_task.task_ws_id if self.default_task else 'не установлена'} - " \
+               f"{self.default_task.task_name if self.default_task else 'не установлена'} " \
+               f"на дату {self.date_of_input}\n" \
+               f"Статус уведомлений - {self.notification_status} на {self.notification_time} или " \
+               f"{self.remind_notification}\n---"
+
     def blocked(self) -> bool:
-        return True if self.status == "black" else False
+        b_status = Status.get_status('black')
+        return True if b_status in self.statuses else False
 
     def is_admin(self) -> bool:
-        return True if self.status == "admin" else False
+        a_status = Status.get_status('admin')
+        return True if a_status in self.statuses and not self.blocked() else False
 
     def has_access(self) -> bool:
-        return True if self.status == "user" or self.status == "admin" else False
+        u_status = Status.get_status('user')
+        return True if u_status in self.statuses and not self.blocked() else False
 
-    def get_status(self) -> str:
-        return self.status
+    def get_status(self) -> list[str]:
+        return self.statuses
 
     def get_date(self) -> str:
         return self.date_of_input
@@ -215,7 +258,7 @@ class User(Base):
 
     @classmethod
     def get_admin_id(cls):
-        admin_id: int = session.query(User.user_id).filter(User.status == 'admin').first()[0]
+        admin_id: int = session.query(User.user_id).filter(User.statuses == 'admin').first()[0]
         session.close()
         return admin_id
 
@@ -238,8 +281,13 @@ class User(Base):
         self.email = new_email
         session.commit()
 
-    def change_status(self, new_status: str):
-        self.status = new_status
+    def change_status(self, new_status: str, old_status: Union[str, None] = None):
+        n_status: Status = Status.get_status(new_status)
+        self.statuses.append(n_status)
+        if old_status:
+            o_status: Status = Status.get_status(old_status)
+            self.statuses.remove(o_status)
+        session.add(self)
         session.commit()
 
     def change_default_task(self, new_default_task_id: str) -> str:
@@ -258,11 +306,13 @@ class User(Base):
     def get_remind_notification_time(self) -> str:
         if isinstance(self.remind_notification, type(None)):
             raise NoRemindNotification
-        return self.remind_notification.strftime("%Y-%m-%d %H:%M")
+        return self.remind_notification.strftime("%H:%M")
 
     def set_remind_time(self, new_time: Union[datetime, None]):
+        print(self)
         self.remind_notification = new_time
         session.commit()
+        print(self)
 
     def add_bookmark(self, bookmark: Bookmark):
         self.bookmarks.append(bookmark)
@@ -311,6 +361,8 @@ class User(Base):
 
 class Comment(Base):
     __tablename__ = 'comments'
+    Base.metadata = metadata
+
     comment_id = Column(Integer(), primary_key=True, nullable=False)
     user_id = Column(Integer(), ForeignKey('users.user_id'))
     task_id = Column(Integer(), ForeignKey('tasks.task_id'))
@@ -371,4 +423,4 @@ def date_to_db_format(str_date: str) -> str:
         return str_date
 
 
-Base.metadata.create_all(engine)
+# Base.metadata.create_all(engine)

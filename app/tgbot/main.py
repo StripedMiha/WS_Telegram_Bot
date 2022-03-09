@@ -7,7 +7,7 @@ from typing import Union
 from app.KeyboardDataClass import KeyboardData
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
-from app.db.structure_of_db import User, Comment, Bookmark, Task, Project
+from app.db.structure_of_db import User, Comment, Bookmark, Task, Project, Status
 from app.exceptions import NotUserTime, EmptyDayCosts
 from app.db.db_access import get_user_days_costs, check_comments, get_all_user_day_costs, get_the_user_costs_for_period
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks, \
@@ -106,19 +106,13 @@ def text_count_removed_costs(user_id: int) -> str:
 
 
 def get_users_of_list(selected_list: str) -> list[KeyboardData]:
-    all_users = User.get_users_list()
-    selected_users = [u for u in all_users if u.status == selected_list]
-    users: list[User] = []
-    for i in selected_users:
-        users.append(User.get_user(i.user_id))
+    users: list[User] = Status.get_users(selected_list)
     data_for_keyboard: list[KeyboardData] = []
-    action = ''
-    if selected_list == 'user':
-        action: str = 'black_user'
-    elif selected_list == 'black':
-        action: str = 'known_user'
+    action_dict: dict = {"user": "black_user",
+                         "black": "known_user",
+                         "admin": ''}
     for i in users:
-        data_for_keyboard.append(KeyboardData(i.full_name(), i.user_id, action))
+        data_for_keyboard.append(KeyboardData(i.full_name(), i.user_id, action_dict[selected_list]))
     return data_for_keyboard
 
 
@@ -534,8 +528,8 @@ async def day_report_message(user: User) -> tuple[str, float]:
             main_logger.info("Пользователь %s откладывал напоминание. Присылаем." % user.full_name())
             text = "Вы отложили напоминание заполнить трудоёмкости. Вот оно!"
             user.set_remind_time(None)
-    else:
-        raise NotUserTime
+        else:
+            raise NotUserTime
     if day_cost_hours <= 0:
         raise EmptyDayCosts
     return text, day_cost_hours

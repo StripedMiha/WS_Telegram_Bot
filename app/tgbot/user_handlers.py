@@ -548,7 +548,7 @@ async def wait_notification_time(message: types.Message, state: FSMContext):
 async def get_dinner(message: types.Message):
     user: User = User.get_user(message.from_user.id)
     if not user.has_access:
-        if user.get_status() == 'black' or user.get_status == 'wait':
+        if any(('black', 'wait')) in user.get_status():
             return None
         await message.answer('Нет доступа\nНапиши /start в личку боту, чтобы запросить доступ')
         return None
