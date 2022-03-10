@@ -97,7 +97,6 @@ async def week_report(a=1):
 async def day_report():
     if is_work_day(datetime.now()):
         users: list[User] = Status.get_users('user')
-        pprint(users)
         for user in users:
             try:
                 text, sum_costs = await day_report_message(user)

@@ -530,8 +530,8 @@ async def day_report_message(user: User) -> tuple[str, float]:
             user.set_remind_time(None)
         else:
             raise NotUserTime
-    if day_cost_hours <= 0:
-        raise EmptyDayCosts
+        if day_cost_hours <= 0:
+            raise EmptyDayCosts
     return text, day_cost_hours
 
 
