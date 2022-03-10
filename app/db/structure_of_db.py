@@ -220,12 +220,12 @@ class User(Base):
     bookmarks: list[Bookmark] = relationship("Bookmark", secondary=user_bookmark)
 
     def __repr__(self):
-        return f"---\n{self.statuses} {self.full_name()}, id{self.user_id}\nЗадача по умолчанию: id" \
-               f"{self.default_task.task_ws_id if self.default_task else 'не установлена'} - " \
-               f"{self.default_task.task_name if self.default_task else 'не установлена'} " \
+        return f"\n{self.statuses} {self.full_name()}, id{self.user_id}\nЗадача по умолчанию: id" \
+               f"{self.default_task.task_ws_id if self.default_task else 'NONE'} - " \
+               f"{self.default_task.task_name if self.default_task else ''} " \
                f"на дату {self.date_of_input}\n" \
                f"Статус уведомлений - {self.notification_status} на {self.notification_time} или " \
-               f"{self.remind_notification}\n---"
+               f"{self.remind_notification}"
 
     def blocked(self) -> bool:
         b_status = Status.get_status('black')
@@ -305,14 +305,12 @@ class User(Base):
 
     def get_remind_notification_time(self) -> str:
         if isinstance(self.remind_notification, type(None)):
-            raise NoRemindNotification
+            return 'XX:XX'
         return self.remind_notification.strftime("%H:%M")
 
     def set_remind_time(self, new_time: Union[datetime, None]):
-        print(self)
         self.remind_notification = new_time
         session.commit()
-        print(self)
 
     def add_bookmark(self, bookmark: Bookmark):
         self.bookmarks.append(bookmark)
