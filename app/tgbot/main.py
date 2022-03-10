@@ -513,7 +513,7 @@ def get_work_date_for_report(notification_time) -> str:
 
 async def day_report_message(user: User) -> tuple[str, float]:
     now_time: str = datetime.now().strftime("%H:%M")
-    text: str = ' '
+    # text: str = ' '
     day_cost_hours: float = 0.0
     if user.notification_status:
         notif_time = user.get_notification_time().split(" ")[1]
@@ -532,6 +532,8 @@ async def day_report_message(user: User) -> tuple[str, float]:
             raise NotUserTime
         if day_cost_hours <= 0:
             raise EmptyDayCosts
+    else:
+        raise NotUserTime # Не надо отправлять
     return text, day_cost_hours
 
 
