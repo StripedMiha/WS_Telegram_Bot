@@ -1,5 +1,6 @@
-# import datetime
+
 import logging
+import re
 from datetime import datetime, timedelta
 from pprint import pprint
 from typing import Union
@@ -8,7 +9,7 @@ from app.KeyboardDataClass import KeyboardData
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
 from app.db.structure_of_db import User, Comment, Bookmark, Task, Project, Status
-from app.exceptions import NotUserTime, EmptyDayCosts
+from app.exceptions import NotUserTime, EmptyDayCosts, CancelInput, WrongDate, FutureDate
 from app.db.db_access import get_user_days_costs, check_comments, get_all_user_day_costs, get_the_user_costs_for_period
 from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks, \
     get_task_info, add_cost, get_the_cost_for_check
@@ -25,22 +26,6 @@ INPUT_COSTS = """
 
 Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> ! <i>Сборка печатного прототипа</i>
 """
-
-# Для выбора задачи для быстрого ввода введите '<i>выбрать</i>'
-# Для отмены введите '<i>отмена</i>'
-# Для более подробного описания введите '<i>Ничего не понял</i>'
-# Для добавления задачи в закладки введите '<i>Добавить закладку</i>'
-
-# "\n\n"
-# "Пример№2:\n<i>0.5</i>! <i>Печать деталей корпуса</i> \n"
-# "<i>2.5</i>! <i>Сборка печатного прототипа</i>\n\n"
-# "В первом примере в бот разделит указанное количество часов на количество задач,"
-# "в данном случае в WS улетит две записи по полтора часа.\n"
-# "Во втором примере в WS улетит 3 записи:\n"
-# "Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся"
-# "на две записи: на запись с двумя часами и запись с получасом."
-# """
-
 
 INPUT_COST_EXAMPLE = """
 Дробную и целую часть часа можно разделить '.', ','
@@ -83,7 +68,7 @@ def format_time(time: str) -> str:
     return ' '.join([f_hours, f_minutes])
 
 
-def format_date(date: str) -> str:
+def to_ru_today_date(date: str) -> str:
     f_date = 'сегодня' if date == 'today' else date
     return f_date
 
@@ -121,7 +106,7 @@ def menu_buttons(user: User) -> list[list[str]]:
         buttons = [['Обо мне', 'about me'],
                    ['Установить почту', 'set email']]
     else:
-        buttons = [[f"📃 Отчёт за {format_date(user.get_date())}", 'daily report'],
+        buttons = [[f"📃 Отчёт за {to_ru_today_date(user.get_date())}", 'daily report'],
                    ['🔍 Найти задачу', 'get tasks list'],
                    ['❌🕓 Удалить трудоёмкость', 'remove time cost'],
                    ['❌🧷 Удалить закладку', 'remove book'],
@@ -135,7 +120,7 @@ def menu_buttons(user: User) -> list[list[str]]:
 
 def get_about_user_info(user: User) -> str:
     status = 'Администратор' if user.is_admin() else 'Пользователь'
-    date = format_date(user.get_date())
+    date = to_ru_today_date(user.get_date())
     notif_status = "включены" if user.notification_status else "выключены"
     answer = [f"Ваше имя - {user.full_name()}",
               f"Ваша почта - {user.get_email()}",
@@ -190,7 +175,7 @@ async def see_days_costs(user: User, date: str = "0") -> str:
                 prev_task_name = cur_task_name
                 prev_proj_name = cur_proj_name
             total_time.append(cur_time)
-        tot_row = f"\nОбщее время за {format_date(date)}: {format_time(sum_time(total_time))}"
+        tot_row = f"\nОбщее время за {to_ru_today_date(date)}: {format_time(sum_time(total_time))}"
         answer = '\n'.join([answer, tot_row])
     return answer
 
@@ -283,7 +268,7 @@ def update_task_parent(parent_id: str) -> None:
 
 def get_text_add_costs(task_id: str, user: User) -> str:
     task = Task.get_task_via_ws_id(task_id)
-    date = f'Установленная дата - {format_date(user.get_date())}'
+    date = f'Установленная дата - {to_ru_today_date(user.get_date())}'
     answer: str = '\n'.join([task.full_name(), date, INPUT_COSTS])
     return answer
 
@@ -448,6 +433,30 @@ async def set_remind(user: User, time: str, message_time: datetime) -> str:
     remind_time: timedelta = timedelta(hours=int(hours), minutes=int(minutes))
     user.set_remind_time(message_time + remind_time)
     return "Напоминание будет в %s" % user.remind_notification.strftime("%H:%M")
+
+
+DATE_PATTERN = r'(0[1-9]|[1-2][0-9]|3[0-1])[., :](0[1-9]|1[0-2])[., :](20[2-9][0-9])'
+
+
+async def change_date(user: User, new_date: str) -> str:
+    if any([i == new_date for i in ("отмена", "cancel")]) :
+        raise CancelInput
+    elif any([i == new_date for i in ("сегодня", "today")]):
+        user.change_date(new_date)
+        return "Теперь бот будет записывать на текущий день"
+    elif any([i == new_date for i in ("вчера", "yesterday")]):
+        new_date = (datetime.today() - timedelta(days=1)).strftime("%d.%m.%Y")
+        user.change_date(new_date)
+        return "Установлена вчерашняя дата"
+    elif re.match(DATE_PATTERN, new_date):
+        date = re.match(DATE_PATTERN, new_date)
+        format_date = f"{date.group(1)}.{date.group(2)}.{date.group(3)}"
+        if datetime(year=int(date.group(3)), month=int(date.group(2)), day=int(date.group(1))) > datetime.now():
+            raise FutureDate
+        user.change_date(format_date)
+        return f'Установлена дата: {user.get_date()}'
+    else:
+        raise WrongDate
 
 
 DATE_BUTTONS = ["Вчера", "Сегодня", "Отмена"]

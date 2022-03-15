@@ -10,15 +10,14 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils.callback_data import CallbackData
 
 from app.KeyboardDataClass import KeyboardData
-# from app.tgbot.auth import TUser
 from app.create_log import setup_logger
 from app.db.structure_of_db import User, Bookmark
-from app.exceptions import FutureDate
+from app.exceptions import FutureDate, CancelInput, WrongDate
 from app.tgbot.admin_handlers import get_keyboard_admin
 from app.tgbot.main import see_days_costs, update_day_costs, get_about_user_info, menu_buttons, days_costs_for_remove, \
     remove_costs, remove_cost, text_count_removed_costs, bookmarks_for_remove, \
     get_project_list, get_tasks, get_list_bookmark, add_costs, INPUT_COST_EXAMPLE, add_bookmark, \
-    get_text_add_costs, remind_settings_button, get_text_menu_notification, fast_date_keyboard
+    get_text_add_costs, remind_settings_button, get_text_menu_notification, fast_date_keyboard, change_date
 
 bot: Bot
 user_logger: logging.Logger = setup_logger("App.Bot.user", "app/log/user.log")
@@ -243,32 +242,21 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
 async def wait_date(message: types.Message, state: FSMContext):
     user: User = User.get_user(message.from_user.id)
     user_logger.info("%s Вводит дату: %s" % (user.full_name(), message.text))
-    if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
+    try:
+        answer: str = await change_date(user, message.text.lower().strip(" "))
+        await message.answer(answer, reply_markup=types.ReplyKeyboardRemove())
+        await type_of_selection_message(message)
+    except CancelInput:
         await message.answer('Отменён ввод даты.\n', reply_markup=types.ReplyKeyboardRemove())
         user_logger.info("%s Отменяет ввод даты" % user.full_name())
         await state.finish()
-    elif message.text.lower() == 'сегодня' or message.text.lower() == 'today':
-        user.change_date('today')
-        await message.answer('Теперь бот будет записывать на текущий день', reply_markup=types.ReplyKeyboardRemove())
-        await type_of_selection_message(message)
-    elif message.text.lower() == 'вчера' or message.text.lower() == 'yesterday':
-        user.change_date('yesterday')
-        await message.answer('Установлена вчерашняя дата', reply_markup=types.ReplyKeyboardRemove())
-        await type_of_selection_message(message)
-    elif re.match(r'(((0[1-9])|([1-2][0-9])|(3[0-1]))[., :]((0[1-9])|(1[0-2]))[., :]20[2-9][0-9])', message.text):
-        date = message.text.strip(' ')
-        try:
-            user.change_date(date)
-            await message.answer(f'Установлена дата: {user.get_date()}', reply_markup=types.ReplyKeyboardRemove())
-            await type_of_selection_message(message)
-        except FutureDate:
-            await message.answer("Не всем дано смотреть в завтрашний день\nВведи дату не в будущем")
-            return
-    else:
+    except FutureDate:
+        await message.answer("Не всем дано смотреть в завтрашний день\nВведи дату не в будущем")
+        return
+    except WrongDate:
         await message.answer('Дата введена в неверном формате.')
         return
     await state.finish()
-    return
 
 
 # Ожидание ввода почты
@@ -381,17 +369,17 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
     user_logger.info("%s поиск задачи через через закладки. Получает список задач/подзадач" % call.from_user.full_name)
     project_id: str = callback_data['id']
     await call.message.edit_text('Идёт поиск всех задач. Секундочку подождите')
-    # try:
-    tasks = get_tasks(project_id, call.from_user.id)
-    if isinstance(tasks, str):
-        await start_comment_input(state, tasks, call.from_user.id, callback_data['id'], call)
-        return None
-    keyboard = await get_remove_keyboard(tasks, width=2)
-    await call.message.edit_text('Выберите задачу', reply_markup=keyboard)
-    # except Exception as e:
-    #     await call.message.edit_text("Ошибка.\nБыло сообщено куда следует.")
-    #     await call.message.answer_sticker("CAACAgIAAxkBAAED9xBiD5m7P2yNcjqvs3y5LhHVJGcfxAACjgADfI5YFQLQ025DM_NRIwQ")
-    #     await bot.send_message(User.get_admin_id(), f"У {call.from_user.full_name} ошибка:\n{e.args}")
+    try:
+        tasks = get_tasks(project_id, call.from_user.id)
+        if isinstance(tasks, str):
+            await start_comment_input(state, tasks, call.from_user.id, callback_data['id'], call)
+            return None
+        keyboard = await get_remove_keyboard(tasks, width=2)
+        await call.message.edit_text('Выберите задачу', reply_markup=keyboard)
+    except Exception as e:
+        await call.message.edit_text("Ошибка.\nБыло сообщено куда следует.")
+        await call.message.answer_sticker("CAACAgIAAxkBAAED9xBiD5m7P2yNcjqvs3y5LhHVJGcfxAACjgADfI5YFQLQ025DM_NRIwQ")
+        await bot.send_message(User.get_admin_id(), f"У {call.from_user.full_name} ошибка:\n{e.args}")
 
 
 # Задача выбрана. Запуск ожидания ввода трудоёмкости

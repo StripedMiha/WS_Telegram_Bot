@@ -1,21 +1,19 @@
 from datetime import datetime, date, time, timedelta
 import time
 from pprint import pprint
-from typing import Union
+from typing import Optional
 
 import sqlalchemy
 from sqlalchemy.exc import NoResultFound
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, DateTime, Table  # , Table, , Numeric
-from sqlalchemy import ForeignKey  # , UniqueConstraint, ForeignKeyConstraint, PrimaryKeyConstraint, CheckConstraint, \
-#   values, insert, select, create_engine
-from sqlalchemy.orm import Session, relationship, registry #  , declarative_base
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Session, relationship
 
 from app.KeyboardDataClass import KeyboardData
 from app.config_reader import load_config
 
-from app.exceptions import FutureDate, NoRemindNotification
 from app.start_type import start_from_docker
 
 if start_from_docker:
@@ -31,9 +29,7 @@ host = config["db"]["host"]
 bd_url = f"postgresql+psycopg2://{psql_user}:{password}@{host}/{bd_name}"
 
 engine = sqlalchemy.create_engine(bd_url, echo=False, pool_size=6, max_overflow=10, encoding='latin1')
-# mapper_registry = registry()
 Base = declarative_base()
-# Base = mapper_registry.generate_base()
 metadata = MetaData()
 
 
@@ -263,17 +259,6 @@ class User(Base):
         return admin_id
 
     def change_date(self, new_date: str):
-        if new_date == 'yesterday':
-            new_date = (date.today() - timedelta(days=1)).strftime("%d.%m.%Y")
-        elif new_date == 'today':
-            pass
-        else:
-            for i in [' ', ',', ':']:
-                temp = new_date.split(i)
-                new_date = '.'.join(temp)
-            temp = new_date.split('.')
-            if datetime(year=int(temp[2]), month=int(temp[1]), day=int(temp[0])) > datetime.now():
-                raise FutureDate
         self.date_of_input = new_date
         session.commit()
 
@@ -281,7 +266,7 @@ class User(Base):
         self.email = new_email
         session.commit()
 
-    def change_status(self, new_status: str, old_status: Union[str, None] = None):
+    def change_status(self, new_status: str, old_status: Optional[str] = None):
         n_status: Status = Status.get_status(new_status)
         self.statuses.append(n_status)
         if old_status:
@@ -308,7 +293,7 @@ class User(Base):
             return 'XX:XX'
         return self.remind_notification.strftime("%H:%M")
 
-    def set_remind_time(self, new_time: Union[datetime, None]):
+    def set_remind_time(self, new_time: Optional[datetime]):
         self.remind_notification = new_time
         session.commit()
 

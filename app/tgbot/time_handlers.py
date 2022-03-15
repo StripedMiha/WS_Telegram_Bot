@@ -11,12 +11,10 @@ from aiogram import Bot, Dispatcher, types
 
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
-from app.db.db_access import get_the_user_costs_for_period
 from app.db.stat import projects_report
 from app.db.structure_of_db import User, Status
 from app.exceptions import EmptyCost, WrongTime, EmptyDayCosts, NotUserTime, NoRemindNotification
-from app.tgbot.main import get_users_of_list, see_days_costs, set_remind, update_day_costs, \
-    get_text_for_empty_costs, day_report_message
+from app.tgbot.main import set_remind, update_day_costs, get_text_for_empty_costs, day_report_message
 
 bot: Bot
 time_logger: logging.Logger = setup_logger("App.Bot.time", "app/log/time.log")

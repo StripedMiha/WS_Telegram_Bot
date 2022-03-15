@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 
 from sqlalchemy import select
 
@@ -21,7 +20,6 @@ def date_to_db_format(date: str) -> str:
 
 def dec_get_session(func):
     session = get_session()
-
     def decorated(*arg):
         query = func(session, arg)
         return query

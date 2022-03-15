@@ -24,3 +24,7 @@ class NotUserTime(WrongTime):
 
 class NoRemindNotification(ValueError):
     pass
+
+
+class CancelInput(Exception):
+    pass
