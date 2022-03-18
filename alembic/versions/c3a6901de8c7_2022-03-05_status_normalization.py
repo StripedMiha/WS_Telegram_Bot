@@ -39,8 +39,8 @@ class Status(Base):
     status_name = Column(String(20), nullable=False)
 
 
-class User_update(User):
-    status = Column(Integer(), nullable=False)
+# class User_update(User):
+#     status = Column(Integer(), nullable=False)
 
 
 def upgrade():
@@ -97,7 +97,7 @@ def downgrade():
     for i in range(len(list_stat)):
         id, stat_name = list_stat[i]
         if id not in already:
-            stmt = update(User_update).where(User.user_id == id).values(status=statuses_dict[stat_name])
+            stmt = update(User).where(User.user_id == id).values(status=statuses_dict[stat_name])
             conn.execute(stmt)
             already.add(id)
     op.drop_table('user_status')
