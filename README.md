@@ -1,6 +1,6 @@
 # WS_Telegram_Bot
 
-технологии: python, asyncio, postgresql, sqlalchemy, alembic, unittest, git, docker, 
+технологии: python, asyncio, postgresql, sqlalchemy, alembic, unittest, git, docker
 ____
 ### Telegram-bot помощник
 
