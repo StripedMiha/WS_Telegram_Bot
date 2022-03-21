@@ -146,7 +146,7 @@ async def remind_cancel(call: types.CallbackQuery, callback_data: dict):
 
 
 async def delay_remind(call: types.CallbackQuery, callback_data: dict):
-    user: User = User.get_user(call.from_user.id)
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
     text = await set_remind(user, callback_data.get("time"), call.message.date)
     mes_text = call.message.text
     await call.message.edit_text(mes_text)

@@ -1,3 +1,5 @@
+
+
 from datetime import datetime, date, time, timedelta
 import time
 from pprint import pprint
@@ -44,7 +46,8 @@ session = get_session()
 class Project(Base):
     __tablename__ = 'projects'
     Base.metadata = metadata
-    project_id = Column(String(15), primary_key=True, nullable=False)
+    project_id = Column(Integer(), primary_key=True)
+    project_ws_id = Column(String(15), nullable=False)
     project_name = Column(Text(), nullable=False)
     project_path = Column(String(40), nullable=False)
 
@@ -62,8 +65,8 @@ class Project(Base):
         session.commit()
 
     @staticmethod
-    def get_project(project_id: str):
-        return session.query(Project).filter(Project.project_id == project_id).one()
+    def get_project_by_ws(project_ws_id: str):
+        return session.query(Project).filter(Project.project_id == project_ws_id).one()
 
     @classmethod
     def get_all_projects_id_from_db(cls) -> set[int]:
@@ -74,10 +77,10 @@ class Task(Base):
     __tablename__ = 'tasks'
     Base.metadata = metadata
     task_id = Column(Integer(), primary_key=True, nullable=False)
-    task_path = Column(String(40), nullable=False)
-    project_id = Column(String(15), ForeignKey('projects.project_id'), nullable=False)
+    task_ws_id = Column(Integer())
+    task_path = Column(String(40), nullable=True)
+    project_id = Column(Integer(), ForeignKey("projects.project_id"), nullable=False)
     task_name = Column(Text())
-    task_ws_id = Column(String(15), nullable=False, unique=True)
     parent_id = Column(Integer())
     status = Column(String(10), default='active')
 
@@ -125,7 +128,8 @@ class Task(Base):
             print("Task is not exists")
 
     @staticmethod
-    def get_task_via_ws_id(task_ws_id: str):
+    def get_task_by_ws_id(task_ws_id: str):
+        print(task_ws_id)
         try:
             return session.query(Task).filter(Task.task_ws_id == task_ws_id).one()
         except NoResultFound:
@@ -147,10 +151,10 @@ class Bookmark(Base):
     @staticmethod
     def get_bookmark(task_id: int):
         try:
-            task: Task = Task.get_task_via_ws_id(str(task_id))
+            task: Task = Task.get_task_by_ws_id(str(task_id))
             return session.query(Bookmark).filter(Bookmark.task_id == task.task_id).one()
         except NoResultFound:
-            task: Task = Task.get_task_via_ws_id(str(task_id))
+            task: Task = Task.get_task_by_ws_id(str(task_id))
             bookmark_name = f"{task.task_name} | {task.project.project_name}"
             new_bookmark = Bookmark(task_id=task.task_id,
                                     bookmark_name=bookmark_name)
@@ -178,6 +182,12 @@ user_status = Table("user_status", Base.metadata,
                     )
 
 
+user_project = Table("user_project", Base.metadata,
+                     Column("user_id", Integer(), ForeignKey("users.user_id"), nullable=False),
+                     Column("project_id", Integer(), ForeignKey("projects.project_id"), nullable=False)
+                     )
+
+
 class Status(Base):
     __tablename__ = "statuses"
     Base.metadata = metadata
@@ -200,18 +210,21 @@ class Status(Base):
 class User(Base):
     __tablename__ = 'users'
     Base.metadata = metadata
+    telegram_id = Column(Integer())
     user_id = Column(Integer(), primary_key=True, nullable=False)
+    ws_id = Column(Integer(), nullable=True)
     email = Column(String(30))
     first_name: str = Column(String(50))
     last_name = Column(String(50))
     date_of_input = Column(String(15))
-    selected_task = Column(String(15), ForeignKey('tasks.task_ws_id'), nullable=True, unique=False)
+    selected_task = Column(String(15), ForeignKey("tasks.task_id"), nullable=True, unique=False)
     notification_status = Column(Boolean, default=True)
     notification_time = Column(DateTime, default='')
     remind_notification = Column(DateTime)
 
     default_task: Task = relationship("Task", uselist=False)
 
+    projects: list[Project] = relationship("Project", secondary=user_project)
     statuses: list[Status] = relationship("Status", secondary=user_status)
     bookmarks: list[Bookmark] = relationship("Bookmark", secondary=user_bookmark)
 
@@ -307,27 +320,30 @@ class User(Base):
         session.commit()
 
     @staticmethod
-    def get_user(user_id: int, *args):
+    def new_user(user_id: int, *args):
+        first_name, last_name = args
+        user = User(
+            user_id=user_id,
+            first_name=first_name,
+            last_name=last_name,
+            email=None,
+            date_of_input='today',
+            status='wait',
+            selected_task=None,
+            notification_status=True,
+            notification_time=time(hour=18, minute=30),
+            remind_notification=None
+        )
+        session.add(user)
+        session.commit()
 
+    @staticmethod
+    def get_user_by_telegram_id(user_id: int, *args):
         try:
-            return session.query(User).filter(User.user_id == user_id).one()
+            return session.query(User).filter(User.telegram_id == user_id).one()
         except NoResultFound:
-            first_name, last_name = args
-            user = User(
-                user_id=user_id,
-                first_name=first_name,
-                last_name=last_name,
-                email=None,
-                date_of_input='today',
-                status='wait',
-                selected_task=None,
-                notification_status=True,
-                notification_time=time(hour=18, minute=30),
-                remind_notification=None
-            )
-            session.add(user)
-            session.commit()
-            return User.get_user(user_id)
+            User.new_user(user_id, args)
+            return User.get_user_by_telegram_id(user_id)
 
     @classmethod
     def get_users_list(cls):
@@ -346,6 +362,7 @@ class Comment(Base):
     __tablename__ = 'comments'
     Base.metadata = metadata
 
+    comment_ws_id = Column(Integer(), nullable=True)
     comment_id = Column(Integer(), primary_key=True, nullable=False)
     user_id = Column(Integer(), ForeignKey('users.user_id'))
     task_id = Column(Integer(), ForeignKey('tasks.task_id'))

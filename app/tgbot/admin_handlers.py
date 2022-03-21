@@ -74,7 +74,7 @@ LIST_ATTRIBUTES: dict = {
 async def user_decide(call: types.CallbackQuery, callback_data: dict):
     case = callback_data['action']
     old_case = 'known_user' if case == 'black_user' else "black_user"
-    user: User = User.get_user(callback_data['data'])
+    user: User = User.get_user_by_telegram_id(callback_data['data'])
     admin_logger.info("%s выбрал %s для переноса в список %s" % (call.from_user.full_name, user.full_name(), case))
     user.change_status(LIST_ATTRIBUTES[case]["new_status"], LIST_ATTRIBUTES[old_case]["new_status"])
     await call.answer(LIST_ATTRIBUTES[case]["text_for_alarm"], show_alert=True)

@@ -81,7 +81,7 @@ def sum_time(times: list[str]) -> str:
 
 
 def text_count_removed_costs(user_id: int) -> str:
-    user = User.get_user(user_id)
+    user = User.get_user_by_telegram_id(user_id)
     count = len(get_user_days_costs(user.user_id, user.get_date()))
     if 2 <= count <= 4:
         word = 'записи'
@@ -224,7 +224,7 @@ def remove_costs(user: User):
     comments = get_user_days_costs(user.user_id, user.get_date())
     id_comments = [i[-1] for i in comments]
     for i in id_comments:
-        yield remove_cost(i)  # TODO удалить из бд трудоёмкости которые были удалены через сам WS
+        yield remove_cost(i)
 
 
 async def get_project_list(user: User) -> list[KeyboardData]:
@@ -237,47 +237,49 @@ async def get_project_list(user: User) -> list[KeyboardData]:
     return projects
 
 
-def update_task_parent(parent_id: str) -> None:
-    project: Project = Project.get_project(str(parent_id))
-    project_tasks = search_tasks(f'/project/{project.project_id}/')
-    all_db_task_id: set = {task.task_ws_id for task in project.tasks}
-    all_ws_task_id: set = set()
-    for key, value in project_tasks.items():
-        all_ws_task_id.add(key)
-        task: Task = Task.get_task_via_ws_id(key)
-        if key not in all_db_task_id:
-            page = f'/project/{project.project_id}/{key}/'
-            task_info = get_task_info(page)
-            Task.new_task(task_info.get('data'))
-        elif task.parent_id != value.get("parent") or isinstance(task.parent_id, type(None)):
-            task.update(value.get("parent"))
-        if value.get('child') is not None:
-            for sub_key, sub_value in value.get('child').items():
-                all_ws_task_id.add(sub_key)
-                sub_task: Task = Task.get_task_via_ws_id(sub_key)
-                if sub_key not in all_db_task_id:
-                    sub_page = f'/project/{project.project_id}/{key}/{sub_key}/'
-                    subtask_info = get_task_info(sub_page)
-                    Task.new_task(subtask_info.get('data'), key)
-                elif Task.get_task_via_ws_id(sub_key).parent_id != sub_value.get("parent"):
-                    sub_task.update(sub_value.get("parent"))
-    # Пометить удалёнными в дб задачи, которые были удалены из ws
-    for i in all_db_task_id - all_ws_task_id:
-        Task.get_task_via_ws_id(i).mark_remove()
+# def update_task_parent(parent_id: str) -> None:
+#     project: Project = Project.get_project(str(parent_id))
+#     project_tasks = search_tasks(f'/project/{project.project_id}/')
+#     all_db_task_id: set = {task.task_ws_id for task in project.tasks}
+#     all_ws_task_id: set = set()
+#     for key, value in project_tasks.items():
+#         all_ws_task_id.add(key)
+#         task: Task = Task.get_task_via_ws_id(key)
+#         if key not in all_db_task_id:
+#             page = f'/project/{project.project_id}/{key}/'
+#             task_info = get_task_info(page)
+#             Task.new_task(task_info.get('data'))
+#         elif task.parent_id != value.get("parent") or isinstance(task.parent_id, type(None)):
+#             task.update(value.get("parent"))
+#         if value.get('child') is not None:
+#             for sub_key, sub_value in value.get('child').items():
+#                 all_ws_task_id.add(sub_key)
+#                 sub_task: Task = Task.get_task_via_ws_id(sub_key)
+#                 if sub_key not in all_db_task_id:
+#                     sub_page = f'/project/{project.project_id}/{key}/{sub_key}/'
+#                     subtask_info = get_task_info(sub_page)
+#                     Task.new_task(subtask_info.get('data'), key)
+#                 elif Task.get_task_via_ws_id(sub_key).parent_id != sub_value.get("parent"):
+#                     sub_task.update(sub_value.get("parent"))
+#     # Пометить удалёнными в дб задачи, которые были удалены из ws
+#     for i in all_db_task_id - all_ws_task_id:
+#         Task.get_task_via_ws_id(i).mark_remove()
 
 
 def get_text_add_costs(task_id: str, user: User) -> str:
-    task = Task.get_task_via_ws_id(task_id)
+    print(task_id)
+    task_ws_id = task_id.strip("/").split("/")[-1]
+    task = Task.get_task_by_ws_id(task_ws_id)
     date = f'Установленная дата - {to_ru_today_date(user.get_date())}'
     answer: str = '\n'.join([task.full_name(), date, INPUT_COSTS])
     return answer
 
 
 def get_tasks(parent_id: str, user_id: int) -> Union[list[KeyboardData], str]:
-    user = User.get_user(user_id)
+    user = User.get_user_by_telegram_id(user_id)
     projects_id: set[int] = Project.get_all_projects_id_from_db()
-    if parent_id in projects_id:
-        update_task_parent(parent_id)
+    # if parent_id in projects_id:
+        # update_task_parent(parent_id)
     subtasks: list[Task] = Task.get_subtasks(parent_id)
 
     if len(subtasks) == 0:
@@ -285,7 +287,7 @@ def get_tasks(parent_id: str, user_id: int) -> Union[list[KeyboardData], str]:
     else:
         child_tasks: list[KeyboardData] = []
         if parent_id not in projects_id:
-            task_name = ' '.join([f'🗂', Task.get_task_via_ws_id(parent_id).task_name])
+            task_name = ' '.join([f'🗂', Task.get_task_by_ws_id(parent_id).task_name])
             child_tasks += [KeyboardData(task_name, int(parent_id), 'input_here')]
         child_tasks += [KeyboardData(task.task_name, task.task_ws_id, "search_task")
                         for task in subtasks]
@@ -298,7 +300,7 @@ def get_tasks(parent_id: str, user_id: int) -> Union[list[KeyboardData], str]:
 
 
 def get_list_bookmark(user_id: int) -> Union[list[KeyboardData], str]:
-    user: User = User.get_user(user_id)
+    user: User = User.get_user_by_telegram_id(user_id)
     user_list_bookmark: list[KeyboardData] = [KeyboardData(bookmark.bookmark_name, bookmark.task.task_ws_id)
                                               for bookmark in user.bookmarks]
     # user_list_bookmark: list[KeyboardData] = get_list_user_bookmark(user_id)
@@ -310,12 +312,13 @@ def get_list_bookmark(user_id: int) -> Union[list[KeyboardData], str]:
 
 
 def add_costs(message: str, data: dict) -> str:
-    user: User = User.get_user(data.get('user_id'))
+    user: User = User.get_user_by_telegram_id(data.get('user_id'))
     date: str = user.get_date()
     email: str = user.get_email()
-    path: str = Task.get_task_via_ws_id(data.get('id')).task_path
+    path: str = data.get('id')
     list_comments: list[list[str, timedelta]] = parse_input_comments(message)
     for comments_text, comments_time in list_comments:
+        print(path, email, comments_text, comments_time, date)
         req = add_cost(page=path,
                        user_email=email,
                        comment=comments_text,
@@ -329,7 +332,8 @@ def add_costs(message: str, data: dict) -> str:
             check_data = [comment_id, path, email, comments_text, comments_time, f_date]
             check = check_adding(check_data)
             if check:
-                task_db_id: int = Task.get_task_via_ws_id(data.get('id')).task_id
+                task_ws_id: str = data.get('id').strip("/").split("/")[-1]
+                task_db_id: int = Task.get_task_by_ws_id(task_ws_id).task_id
                 Comment.add_comment_in_db(int(comment_id), user.user_id, task_db_id, comments_time, comments_text, date)
                 yield 'Успешно внесено'
             else:
@@ -399,7 +403,7 @@ def parse_input_comments(message: str) -> list[list[str, timedelta]]:
 
 
 def add_bookmark(user_id: int, task_id: str) -> str:
-    user: User = User.get_user(user_id)
+    user: User = User.get_user_by_telegram_id(user_id)
     if task_id in [bookmark.task.task_ws_id for bookmark in user.bookmarks]:
         return "Такая закладка уже есть. Отмена"
     else:

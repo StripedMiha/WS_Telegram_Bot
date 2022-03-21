@@ -45,7 +45,7 @@ async def stat_week(message: types.Message):
 
 async def get_week_report(message: types.Message):
     stat_logger.info("%s ввёл команду /report" % message.from_user.full_name)
-    user: User = User.get_user(message.from_user.id)
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
     try:
         await get_week_report_gist(user)
     except Exception as err:

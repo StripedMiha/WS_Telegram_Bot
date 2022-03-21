@@ -132,7 +132,7 @@ async def get_remove_keyboard(list_data: list[KeyboardData],
 # Вывод списка команд
 async def request_help(message: types.Message):
     user_logger.info("%s %s %s" % (message.from_user.full_name, message.from_user.id, message.text))
-    user: User = User.get_user(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
+    user: User = User.get_user_by_telegram_id(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
     if not user.has_access:
         if user.blocked:
             return None
@@ -163,7 +163,7 @@ async def lets_start(message: types.Message):
         user_logger.info("Пользователь %s с id%s пытается запустить бота в групповом чате"
                          % (message.from_user.full_name, message.from_user.id))
         return None
-    user = User.get_user(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
+    user = User.get_user_by_telegram_id(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
     if user.blocked():
         return None
     elif user.get_status() == 'wait':
@@ -190,7 +190,7 @@ async def choice_cancel(call: types.CallbackQuery):
 
 # Ввели команду /menu
 async def menu(message: types.Message):
-    user: User = User.get_user(message.from_user.id)
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("Пользователь %s ввёл команду /menu" % user.full_name())
     if not user.has_access():
         return None
@@ -202,7 +202,7 @@ async def menu(message: types.Message):
 # Нажали кнопку в меню
 async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     action = callback_data.get('action')
-    user: User = User.get_user(call.from_user.id)
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
     user_logger.info("%s выбрал кнопку %s" % (user.full_name(), action))
     date = 'сегодня' if user.get_date() == 'today' else user.get_date()
     if action == 'set email' or action == 'change email':
@@ -240,7 +240,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
 
 # Ожидание ввода даты
 async def wait_date(message: types.Message, state: FSMContext):
-    user: User = User.get_user(message.from_user.id)
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("%s Вводит дату: %s" % (user.full_name(), message.text))
     try:
         answer: str = await change_date(user, message.text.lower().strip(" "))
@@ -261,7 +261,7 @@ async def wait_date(message: types.Message, state: FSMContext):
 
 # Ожидание ввода почты
 async def wait_email(message: types.Message, state: FSMContext):
-    user = User.get_user(message.from_user.id)
+    user = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("%s Вводит почту: %s" % (user.full_name(), message.text))
     if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru|[a-z]\d@s-t.studio', message.text):
         user.change_mail(message.text)
@@ -296,7 +296,7 @@ async def wait_offer(message: types.Message, state: FSMContext):
 
 # Меню выбора способа поиска задачи
 async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
-    user = User.get_user(call.from_user.id)
+    user = User.get_user_by_telegram_id(call.from_user.id)
     user_logger.info("%s выбирает способ поиска задачи" % user.full_name())
     buttons = [['Через поиск', 'via search'],
                ['❤️ Через закладки', 'via bookmarks'],
@@ -307,7 +307,7 @@ async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
 
 # Меню выбора способа поиска задачи
 async def type_of_selection_message(message: types.Message):
-    user: User = User.get_user(message.from_user.id)
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("%s выбирает способ поиска задачи" % user.full_name())
     buttons = [['Через поиск', 'via search'],
                ['❤️ Через закладки', 'via bookmarks'],
@@ -318,7 +318,7 @@ async def type_of_selection_message(message: types.Message):
 
 # Выбран способ поиска задачи - введение ID задачи
 async def task_id_input(call: types.CallbackQuery, callback_data: dict):
-    user: User = User.get_user(call.from_user.id)
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
     user_logger.info("%s выбрал поиск задачи через ввод id задачи" % user.full_name())
     await call.message.edit_text('Введите ID задачи из WorkSection')
     await call.message.answer('Введите "отмена" для отмены ввода', reply_markup=get_fast_keyboard(CANCEL_BUTTON))
@@ -327,7 +327,7 @@ async def task_id_input(call: types.CallbackQuery, callback_data: dict):
 
 # Ожидание ввода ID задачи
 async def wait_task_id(message: types.Message, state: FSMContext):
-    user: User = User.get_user(message.from_user.id)
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("%s ввёл id задачи: %s" % (user.full_name(), message.text))
     if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
         await message.answer('Отменён ввод ID задачи.\n', reply_markup=types.ReplyKeyboardRemove())
@@ -346,7 +346,7 @@ async def wait_task_id(message: types.Message, state: FSMContext):
 
 # Выбран способ поиска задачи - через поиск
 async def search_project_via_search(call: types.CallbackQuery, callback_data: dict):
-    user: User = User.get_user(call.from_user.id)
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
     user_logger.info("%s начинает поиск задачи через через поиск. Получил список проектов" % user.full_name())
     user_projects = await get_project_list(user)
     keyboard = await get_remove_keyboard(user_projects, width=2)
@@ -386,14 +386,14 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
 async def task_found(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     user_logger.info("%s выбрал задачу" % call.from_user.full_name)
     task_id: str = str(callback_data['id'])
-    text = get_text_add_costs(task_id, User.get_user(call.from_user.id))
+    text = get_text_add_costs(task_id, User.get_user_by_telegram_id(call.from_user.id))
     await start_comment_input(state, text, call.from_user.id, task_id, call)
 
 
 # Быстрый ввод трудоёмкости
 async def fast_input(message: types.Message, state: FSMContext):
     await message.answer("Да-да?")
-    user: User = User.get_user(message.from_user.id)
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
     if user.selected_task is None:
         await message.answer('Задача не выбрана, выбери её через поиск')
         return
@@ -403,7 +403,7 @@ async def fast_input(message: types.Message, state: FSMContext):
 
 async def fast_input_call(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     await call.message.edit_text("Да-да?")
-    user: User = User.get_user(call.from_user.id)
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
     if user.selected_task is None:
         await call.message.edit_text('Задача не выбрана, выбери её через поиск')
         return
@@ -426,7 +426,7 @@ async def start_comment_input(state: FSMContext, text: str, user_id: int, task_i
 
 # Ожидание ввода трудоёмкости
 async def wait_hours(message: types.Message, state: FSMContext):
-    user: User = User.get_user(message.from_user.id)
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("%s вводит трудоёмкость" % user.full_name())
     data = await state.get_data()
     text = message.text
@@ -462,7 +462,7 @@ async def wait_hours(message: types.Message, state: FSMContext):
 # Удаление закладки
 async def remove_user_bookmark(call: types.CallbackQuery, callback_data: dict):
     user_logger.info("%s удаляет закладку %s" % (call.from_user.full_name, callback_data['id']))
-    user: User = User.get_user(call.from_user.id)
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
     bookmark: Bookmark = Bookmark.get_bookmark_by_id(callback_data['id'])
     user.remove_bookmark(bookmark)
     # remove_bookmark_from_user(callback_data['id'])
@@ -485,7 +485,7 @@ async def remove_comments(call: types.CallbackQuery, callback_data: dict):
     elif action == "remove_costs":
         user_logger.info("%s удаляет все свои трудоёмкости" % call.from_user.full_name)
         await call.message.edit_text(text_count_removed_costs(call.from_user.id))
-        for i_status in remove_costs(User.get_user(call.from_user.id)):
+        for i_status in remove_costs(User.get_user_by_telegram_id(call.from_user.id)):
             user_logger.info("%s получает результат удаления: %s" % (call.from_user.full_name, i_status))
             await call.message.answer(i_status)
         await call.message.answer('Удаление завершено')
@@ -494,7 +494,7 @@ async def remove_comments(call: types.CallbackQuery, callback_data: dict):
 
 # Меню настроек напоминаний
 async def setting_notification_menu(call: types.CallbackQuery, callback_data: dict):
-    user: User = User.get_user(call.from_user.id)
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
     user_logger.info("%s выбрал кнопку настроек напоминаний" % user.full_name())
     text = get_text_menu_notification(User.notification_status)
     await call.message.edit_text(text, reply_markup=get_keyboard(remind_settings_button, width=1))
@@ -503,7 +503,7 @@ async def setting_notification_menu(call: types.CallbackQuery, callback_data: di
 # Настройки напоминаний
 async def setting_notification(call: types.CallbackQuery, callback_data: dict):
     action: str = callback_data["action"]
-    user: User = User.get_user(call.from_user.id)
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
     if action == "toggle_notifications":
         user.toggle_notification_status()
         user_logger.info("%s переключил статус напоминаний на %s" % (user.full_name(), user.notification_status))
@@ -516,7 +516,7 @@ async def setting_notification(call: types.CallbackQuery, callback_data: dict):
 
 
 async def wait_notification_time(message: types.Message, state: FSMContext):
-    user: User = User.get_user(message.from_user.id)
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
     if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
         await message.answer('Отменён ввод времени.\n')
         user_logger.info("%s Отменяет ввод времени" % user.full_name())
@@ -534,7 +534,7 @@ async def wait_notification_time(message: types.Message, state: FSMContext):
 
 # Выбор обеда с клавиатуры
 async def get_dinner(message: types.Message):
-    user: User = User.get_user(message.from_user.id)
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
     if not user.has_access:
         if any(('black', 'wait')) in user.get_status():
             return None

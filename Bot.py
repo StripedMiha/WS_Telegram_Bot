@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import os
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import BotCommand
@@ -67,4 +68,5 @@ async def start():
 
 # проверка запуска
 if __name__ == "__main__":
+    os.system("alembic upgrade head")
     asyncio.run(start())

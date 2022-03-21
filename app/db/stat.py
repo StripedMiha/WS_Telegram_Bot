@@ -141,7 +141,7 @@ def user_week_data(user: User) -> collections.defaultdict:
 
 def show_month_gist():
     data = current_month_stat()
-    users: list[str] = [User.get_user(i).first_name for i in data.keys()]
+    users: list[str] = [User.get_user_by_telegram_id(i).first_name for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
@@ -165,7 +165,7 @@ def show_month_gist():
 
 def show_week_gist():
     data = current_week_stat()
-    users: list[str] = [User.get_user(i).first_name for i in data.keys()]
+    users: list[str] = [User.get_user_by_telegram_id(i).first_name for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost

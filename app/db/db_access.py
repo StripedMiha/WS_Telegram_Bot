@@ -120,7 +120,7 @@ async def check_comment(com: dict, session, query_project: set, query_task: set,
             task_db_id = session.query(Task.task_id).filter(Task.task_ws_id == com.get('task').get('id')).one()[0]
             db_logger.info("comment don't find")
             Comment.add_comment_in_db(int(com.get('id')), search_user.user_id, task_db_id, com.get('time'),
-                                         com.get('comment'), com.get('date'), False)
+                                      com.get('comment'), com.get('date'), False)
             db_logger.info("add comment with id%s" % com.get('id'))
 
 
