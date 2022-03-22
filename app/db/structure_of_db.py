@@ -50,6 +50,8 @@ class Project(Base):
     project_ws_id = Column(String(15), nullable=False)
     project_name = Column(Text(), nullable=False)
     project_path = Column(String(40), nullable=False)
+    project_status = Column(String(15), nullable=False)
+    project_description = Column(Text(), nullable=True)
 
     def __repr__(self):
         return f"{self.project_id}, {self.project_name}, {self.project_path}"
@@ -203,8 +205,8 @@ class Status(Base):
         return [i for i in session.query(User).all() if searched_status in i.statuses]
 
     @staticmethod
-    def get_status(status: str):
-        return session.query(Status).filter(Status.status_name == status).one()
+    def get_status(status_name: str):
+        return session.query(Status).filter(Status.status_name == status_name).one()
 
 
 class User(Base):
@@ -229,7 +231,7 @@ class User(Base):
     bookmarks: list[Bookmark] = relationship("Bookmark", secondary=user_bookmark)
 
     def __repr__(self):
-        return f"\n{self.statuses} {self.full_name()}, id{self.user_id}\nЗадача по умолчанию: id" \
+        return f"\n{self.statuses} {self.full_name()}, id{self.user_id} с почтой {self.email}\nЗадача по умолчанию: id" \
                f"{self.default_task.task_ws_id if self.default_task else 'NONE'} - " \
                f"{self.default_task.task_name if self.default_task else ''} " \
                f"на дату {self.date_of_input}\n" \
@@ -344,6 +346,14 @@ class User(Base):
         except NoResultFound:
             User.new_user(user_id, args)
             return User.get_user_by_telegram_id(user_id)
+
+    @staticmethod
+    def get_user_by_email(user_email: str):
+        return session.query(User).filter(User.email == user_email).one()
+
+    @staticmethod
+    def get_user_by_ws_id(user_ws_id: str):
+        return session.query(User).filter(User.ws_id == user_ws_id).one()
 
     @classmethod
     def get_users_list(cls):
