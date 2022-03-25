@@ -20,7 +20,7 @@ from WS_Telegram_Bot.app.start_type import start_from_docker
 if start_from_docker:
     config = load_config("/run/secrets/db")
 else:
-    config = load_config("app/keys/db.ini")
+    config = load_config("WS_Telegram_Bot/app/keys/db.ini")
 
 psql_user = config["db"]["user"]
 password = config["db"]["password"]
@@ -76,6 +76,10 @@ class Project(Base):
     @staticmethod
     def get_project_by_name(name:str):
          return session.query(Project).filter(Project.project_name == name).one()
+
+    @staticmethod
+    def get_full_name(name:str)-> str:
+        return 
 
 
 class Task(Base):
