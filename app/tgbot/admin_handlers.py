@@ -9,7 +9,7 @@ from aiogram.dispatcher import FSMContext
 
 from app.KeyboardDataClass import KeyboardData
 from app.create_log import setup_logger
-from app.db.structure_of_db import User
+from app.db.structure_of_db import User, Status
 from app.tgbot.fix import fix_parent
 from app.tgbot.main import get_users_of_list
 
@@ -143,12 +143,12 @@ async def wait_for_news(message: types.Message):
 
 async def news_to_users(message: types.Message, state: FSMContext):
     admin_logger.info("%s отправил новость" % message.from_user.full_name)
-    users: list[list[str, int]] = [[i.text, i.id] for i in get_users_of_list('user')]
-    for name, user_id in users:
+    users: list[list[str, int]] = [[i.full_name(), i.telegram_id] for i in Status.get_users("user") if i.telegram_id]
+    for name, telegram_id in users:
         news = message.text
         text = f'{name}, Это новости бота 🙃\n\n{news}'
         try:
-            await bot.send_message(user_id, text)
+            await bot.send_message(telegram_id, text)
             admin_logger.info("%s получил новость" % name)
         except aiogram.utils.exceptions.ChatNotFound:
             admin_logger.error("%s НЕ получил новость" % name)
