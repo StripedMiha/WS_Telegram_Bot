@@ -1,5 +1,7 @@
 import re
 from datetime import datetime, timedelta
+from pprint import pprint
+
 import matplotlib.pyplot as plt
 import numpy as np
 import collections
@@ -64,7 +66,9 @@ def current_month_stat() -> dict:
 
 def current_week_stat() -> dict:
     first_day: str = get_first_week_day()
+    print(first_day)
     users_sum: dict = sum_period_time_costs(first_day)
+    pprint(users_sum)
     return users_sum
 
 
@@ -141,7 +145,7 @@ def user_week_data(user: User) -> collections.defaultdict:
 
 def show_month_gist():
     data = current_month_stat()
-    users: list[str] = [User.get_user_by_telegram_id(i).first_name for i in data.keys()]
+    users: list[str] = [User.get_user(i).first_name for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
@@ -165,7 +169,7 @@ def show_month_gist():
 
 def show_week_gist():
     data = current_week_stat()
-    users: list[str] = [User.get_user_by_telegram_id(i).first_name for i in data.keys()]
+    users: list[str] = [User.get_user(i).first_name for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost

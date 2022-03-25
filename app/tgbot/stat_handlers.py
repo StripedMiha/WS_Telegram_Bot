@@ -54,5 +54,5 @@ async def get_week_report(message: types.Message):
         await bot.send_message(User.get_admin_id(), "У %s ошибка графика недельного отчёта" % user.full_name())
         stat_logger.error("Ошибка %s" % err)
         return
-    await bot.send_photo(user.user_id, types.InputFile("app/db/png/%s_%s.png" % ('report', user.full_name())))
+    await bot.send_photo(user.telegram_id, types.InputFile("app/db/png/%s_%s.png" % ('report', user.full_name())))
     stat_logger.info("%s Успешно получил отчёт за неделю" % user.full_name())
