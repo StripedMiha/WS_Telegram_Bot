@@ -12,10 +12,10 @@ from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, D
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Session, relationship
 
-from app.KeyboardDataClass import KeyboardData
-from app.config_reader import load_config
+from WS_Telegram_Bot.app.KeyboardDataClass import KeyboardData
+from WS_Telegram_Bot.app.config_reader import load_config
 
-from app.start_type import start_from_docker
+from WS_Telegram_Bot.app.start_type import start_from_docker
 
 if start_from_docker:
     config = load_config("/run/secrets/db")
@@ -72,6 +72,10 @@ class Project(Base):
     @classmethod
     def get_all_projects_id_from_db(cls) -> set[int]:
         return {i[0] for i in session.query(Project.project_id).all()}
+
+    @staticmethod
+    def get_project_by_name(name:str):
+         return session.query(Project).filter(Project.project_name == name).one()
 
 
 class Task(Base):
@@ -421,8 +425,8 @@ class Comment(Base):
     comment_text = Column(Text())
     date = Column(Date)
     via_bot = Column(Boolean)
-
-    task: Task = relationship("Task")
+    user: User = relationship("User", uselist=False)
+    task: Task = relationship("Task", backref="comments")
 
     def __repr__(self):
         return f"comment_id - {self.comment_id}, user_id - {self.user_id}, task_id - {self.task_id}," \
