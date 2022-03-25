@@ -14,7 +14,7 @@ from app.create_log import setup_logger
 from app.db.stat import projects_report
 from app.db.structure_of_db import User, Status
 from app.exceptions import EmptyCost, WrongTime, EmptyDayCosts, NotUserTime, NoRemindNotification
-from app.tgbot.main import set_remind, update_day_costs, get_text_for_empty_costs, day_report_message
+from app.tgbot.main import set_remind, get_text_for_empty_costs, day_report_message
 
 bot: Bot
 time_logger: logging.Logger = setup_logger("App.Bot.time", "app/log/time.log")
@@ -52,13 +52,7 @@ def get_remind_keyboard(list_data: list[list], width: int = 2,
 async def week_report(a=1):
     time_logger.info("Пятничный отчёт")
     users: list[User] = Status.get_users('user')
-    try:
-        min_dates = min(set([i.get_date() for i in users]))
-        time_logger.info("Обновляем трудочасы начиная с даты: %s" % min_dates)
-        await update_day_costs(min_dates)
-    except:
-        time_logger.error("Ошибка пятничной статистики")
-        await bot.send_message(User.get_admin_id(), "Ошибка пятничной статистики")
+
     for user in users:
         if user.notification_status:
             time_logger.info("Пользователь %s не отключал уведомления" % user.full_name())
@@ -73,7 +67,7 @@ async def week_report(a=1):
                 time_logger.info("Пользователь %s оформил ничего не заполнил" % user.full_name())
                 try:
                     time_logger.info("Отправляем пользователю %s сообщение о незаполненности часов" % user.full_name())
-                    await bot.send_message(user.user_id, "Вы не заполняли на этой неделе. Нипорядок!")
+                    await bot.send_message(user.telegram_id, "Вы не заполняли на этой неделе. Нипорядок!")
                 except ChatNotFound:
                     time_logger.error("Чат с пользователем %s не найден" % user.full_name())
                     pass
@@ -101,17 +95,17 @@ async def day_report():
                 if 0 < sum_costs < 8:
                     time_logger.info("Пользователь %s заполнил меньше 8 часов" % user.full_name)
                     keyboard = get_remind_keyboard(REMIND_BUTTON)
-                    await bot.send_message(user.user_id, text, reply_markup=keyboard)
+                    await bot.send_message(user.telegram_id, text, reply_markup=keyboard)
                 else:
                     time_logger.info("Пользователь %s заполнил" % user.full_name)
-                    await bot.send_message(user.user_id, text)
+                    await bot.send_message(user.telegram_id, text)
             except NotUserTime:
                 continue
             except EmptyDayCosts:
                 time_logger.info("Пользователь %s не заполнил" % user.full_name)
                 keyboard = get_remind_keyboard(REMIND_BUTTON)
                 try:
-                    await bot.send_message(user.user_id, get_text_for_empty_costs(user.get_date()),
+                    await bot.send_message(user.telegram_id, get_text_for_empty_costs(user.get_date()),
                                            reply_markup=keyboard)
                 except ChatNotFound:
                     time_logger.error("Чат с пользователем %s не найден" % user.full_name)
@@ -125,17 +119,6 @@ async def day_report():
                 time_logger.error("Сообщение пользователю %s пустое" % user.full_name)
             except NoRemindNotification:
                 continue
-
-
-async def check_costs():
-    print('start sinc', datetime.now())
-    if datetime.now().isoweekday() < 6:
-        users: list[User] = Status.get_users('user')
-        for user in users:
-            print('sinc user ', user.user_id, user.full_name, datetime.now())
-            await update_day_costs(user.get_date())
-            await asyncio.sleep(5)
-    print('end sinc', datetime.now())
 
 
 async def remind_cancel(call: types.CallbackQuery, callback_data: dict):

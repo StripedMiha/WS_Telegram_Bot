@@ -24,29 +24,30 @@ wsapi_logger: logging.Logger = setup_logger("App.back.ws-api", "app/log/wsapi.lo
 
 
 async def get_all_project_for_user(email, status_filter='active') -> list[KeyboardData]:
-    action = 'get_projects'
-    hash_key = hashlib.md5(action.encode(ENCOD)+API_KEY.encode(ENCOD))
-
-    attributes_requests = {
-        'SMDE_URL': SMDE_URL,
-        'action': action,
-        'hash': hash_key.hexdigest(),
-        'filter': status_filter
-    }
-    if status_filter is None:
-        req = requests.get(
-            '{SMDE_URL}action={action}&hash={hash}&extra=users'.format(**attributes_requests))
-    else:
-        req = requests.get(
-            '{SMDE_URL}action={action}&filter={filter}&hash={hash}&extra=users'.format(**attributes_requests))
-    projects = req.json().get('data')
-    user_project = []
-    for i in projects:
-        list_email = [j.get('email') for j in i.get('users')]
-        if email in list_email:
-            project: KeyboardData = KeyboardData(i.get('name'), i.get('id'))
-            user_project.append(project)
-    return user_project
+    pass
+    # action = 'get_projects'
+    # hash_key = hashlib.md5(action.encode(ENCOD)+API_KEY.encode(ENCOD))
+    #
+    # attributes_requests = {
+    #     'SMDE_URL': SMDE_URL,
+    #     'action': action,
+    #     'hash': hash_key.hexdigest(),
+    #     'filter': status_filter
+    # }
+    # if status_filter is None:
+    #     req = requests.get(
+    #         '{SMDE_URL}action={action}&hash={hash}&extra=users'.format(**attributes_requests))
+    # else:
+    #     req = requests.get(
+    #         '{SMDE_URL}action={action}&filter={filter}&hash={hash}&extra=users'.format(**attributes_requests))
+    # projects = req.json().get('data')
+    # user_project = []
+    # for i in projects:
+    #     list_email = [j.get('email') for j in i.get('users')]
+    #     if email in list_email:
+    #         project: KeyboardData = KeyboardData(i.get('name'), i.get('id'))
+    #         user_project.append(project)
+    # return user_project
 
 
 def search_tasks(page, status_filter='active'):

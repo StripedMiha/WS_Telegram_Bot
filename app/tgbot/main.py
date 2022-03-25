@@ -5,14 +5,14 @@ from datetime import datetime, timedelta
 from pprint import pprint
 from typing import Union
 
+from sqlalchemy.exc import NoResultFound
+
 from app.KeyboardDataClass import KeyboardData
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
 from app.db.structure_of_db import User, Comment, Bookmark, Task, Project, Status
 from app.exceptions import NotUserTime, EmptyDayCosts, CancelInput, WrongDate, FutureDate
-from app.db.db_access import get_user_days_costs, check_comments, get_all_user_day_costs, get_the_user_costs_for_period
-from app.api.ws_api import get_day_costs_from_ws, remove_cost_ws, get_all_project_for_user, search_tasks, \
-    get_task_info, add_cost, get_the_cost_for_check
+from app.db.db_access import get_user_days_costs, get_the_user_costs_for_period
 from app.db.stat import show_month_gist, show_week_gist, get_first_week_day, show_week_report
 
 main_logger: logging.Logger = setup_logger("App.back.main", "app/log/main.log")
@@ -93,12 +93,21 @@ def text_count_removed_costs(user_id: int) -> str:
 def get_users_of_list(selected_list: str) -> list[KeyboardData]:
     users: list[User] = Status.get_users(selected_list)
     data_for_keyboard: list[KeyboardData] = []
-    action_dict: dict = {"user": "black_user",
-                         "black": "known_user",
+    action_dict: dict = {"user": "blocked_user",
+                         "blocked": "known_user",
                          "admin": ''}
     for i in users:
         data_for_keyboard.append(KeyboardData(i.full_name(), i.user_id, action_dict[selected_list]))
     return data_for_keyboard
+
+
+async def check_user(telegram_id: int) -> Union[User, list]:
+    try:
+        user: User = User.get_user_by_telegram_id(telegram_id)
+        return user
+    except NoResultFound:
+        return [("Я новый пользователь", "new_user"),
+                ("Пользовался WorkSection", "old_user")]
 
 
 def menu_buttons(user: User) -> list[list[str]]:
@@ -106,7 +115,7 @@ def menu_buttons(user: User) -> list[list[str]]:
         buttons = [['Обо мне', 'about me'],
                    ['Установить почту', 'set email']]
     else:
-        buttons = [[f"📃 Отчёт за {to_ru_today_date(user.get_date())}", 'daily report'],
+        buttons = [[f"📃 Отчёт за {user.get_date(True)}", 'daily report'],
                    ['🔍 Найти задачу', 'get tasks list'],
                    ['❌🕓 Удалить трудоёмкость', 'remove time cost'],
                    ['❌🧷 Удалить закладку', 'remove book'],
@@ -120,7 +129,7 @@ def menu_buttons(user: User) -> list[list[str]]:
 
 def get_about_user_info(user: User) -> str:
     status = 'Администратор' if user.is_admin() else 'Пользователь'
-    date = to_ru_today_date(user.get_date())
+    date = user.get_date(True)
     notif_status = "включены" if user.notification_status else "выключены"
     answer = [f"Ваше имя - {user.full_name()}",
               f"Ваша почта - {user.get_email()}",
@@ -139,21 +148,19 @@ def get_text_for_empty_costs(date: str) -> str:
 
 
 async def see_days_costs(user: User, date: str = "0") -> str:
-    if date != "0" and date != user.get_date():
-        await update_day_costs(date, True)
-    else:
+    if date == "0":
         date = user.get_date()
-    comments = get_user_days_costs(user.user_id, date)
+    comments: list[tuple] = get_user_days_costs(user.user_id, date)
     answer: str = ''
     if comments is None or len(comments) == 0:
-        answer = get_text_for_empty_costs(date)
+        answer: str = get_text_for_empty_costs(date)
     else:
         total_time: list[str] = []
         prev_proj_name, prev_task_name = comments[0][3], comments[0][2]
         now_proj = ' '.join(["Проект:", prev_proj_name])
         now_task = ' '.join(["  Задача:", prev_task_name])
         now_row = ' '.join(["    Потрачено:", format_time(comments[0][1]), "на", comments[0][0]])
-        answer = "\n".join([now_proj, now_task, now_row])
+        answer: str = "\n".join([now_proj, now_task, now_row])
         total_time.append(comments[0][1])
         for comment in comments[1:]:
             cur_proj_name, cur_task_name = comment[3], comment[2]
@@ -190,26 +197,15 @@ def days_costs_for_remove(user: User) -> list[KeyboardData]:
     return list_comments
 
 
-async def update_day_costs(date: str, one_day: bool = False) -> None:
-    main_logger.info('start update day cost')
-    db = [i[2] for i in await get_all_user_day_costs(date)]
-    ws_comments = await get_day_costs_from_ws(date, one_day)
-    ws = [int(comment['id']) for comment in ws_comments]
-    await check_comments(ws_comments)
-    db_for_remove = [Comment.get_comment(i) for i in list(set(db) - set(ws))]
-    for comment in db_for_remove:
-        comment.remove()
-    main_logger.info('end update day cost')
-
-
 def remove_cost(cost_id: int) -> str:
     comment = Comment.get_comment(cost_id)
-    req = remove_cost_ws(comment.task.task_path, comment.comment_id)
-    if req.get('status') == 'ok':
+    # req = remove_cost_ws(comment.task.task_path, comment.comment_id)
+    # if req.get('status') == 'ok':
+    try:
         comment.remove()
         return 'Успешно удалено'
-    else:
-        return 'Ошибка удаления из WorkSection'
+    except Exception as e:
+        return 'Ошибка удаления'
 
 
 def bookmarks_for_remove(user: User) -> list[KeyboardData]:
@@ -228,86 +224,52 @@ def remove_costs(user: User):
 
 
 async def get_project_list(user: User) -> list[KeyboardData]:
-    projects: list[KeyboardData] = await get_all_project_for_user(user.get_email())
-    projects_id: set[int] = Project.get_all_projects_id_from_db()  # get_projects_db()
-    for i in projects:
-        if i.id not in projects_id:
-            Project.new_project(i)
-        i.action = "search_task"
+    projects: list[KeyboardData] = [KeyboardData(i.project_name, i.project_id, "search_task") for i in user.projects]
+    # projects_id: set[int] = Project.get_all_projects_id_from_db()  # get_projects_db()
+    # for i in projects:
+    #     if i.id not in projects_id:
+    #         Project.new_project(i)
+    #     i.action = "search_task"
     return projects
 
 
-# def update_task_parent(parent_id: str) -> None:
-#     project: Project = Project.get_project(str(parent_id))
-#     project_tasks = search_tasks(f'/project/{project.project_id}/')
-#     all_db_task_id: set = {task.task_ws_id for task in project.tasks}
-#     all_ws_task_id: set = set()
-#     for key, value in project_tasks.items():
-#         all_ws_task_id.add(key)
-#         task: Task = Task.get_task_via_ws_id(key)
-#         if key not in all_db_task_id:
-#             page = f'/project/{project.project_id}/{key}/'
-#             task_info = get_task_info(page)
-#             Task.new_task(task_info.get('data'))
-#         elif task.parent_id != value.get("parent") or isinstance(task.parent_id, type(None)):
-#             task.update(value.get("parent"))
-#         if value.get('child') is not None:
-#             for sub_key, sub_value in value.get('child').items():
-#                 all_ws_task_id.add(sub_key)
-#                 sub_task: Task = Task.get_task_via_ws_id(sub_key)
-#                 if sub_key not in all_db_task_id:
-#                     sub_page = f'/project/{project.project_id}/{key}/{sub_key}/'
-#                     subtask_info = get_task_info(sub_page)
-#                     Task.new_task(subtask_info.get('data'), key)
-#                 elif Task.get_task_via_ws_id(sub_key).parent_id != sub_value.get("parent"):
-#                     sub_task.update(sub_value.get("parent"))
-#     # Пометить удалёнными в дб задачи, которые были удалены из ws
-#     for i in all_db_task_id - all_ws_task_id:
-#         Task.get_task_via_ws_id(i).mark_remove()
-
-
-def get_text_add_costs(task_id: str, user: User) -> str:
-    print(task_id)
-    task_ws_id = task_id.strip("/").split("/")[-1]
-    task = Task.get_task_by_ws_id(task_ws_id)
-    date = f'Установленная дата - {to_ru_today_date(user.get_date())}'
+def get_text_add_costs(task_id: int, user: User) -> str:
+    task = Task.get_task(task_id)
+    date = f'Установленная дата - {user.get_date(True)}'
     answer: str = '\n'.join([task.full_name(), date, INPUT_COSTS])
     return answer
 
 
-def get_tasks(parent_id: str, user_id: int) -> Union[list[KeyboardData], str]:
-    user = User.get_user_by_telegram_id(user_id)
-    projects_id: set[int] = Project.get_all_projects_id_from_db()
-    # if parent_id in projects_id:
-        # update_task_parent(parent_id)
-    subtasks: list[Task] = Task.get_subtasks(parent_id)
+def get_tasks(project_id: int, user_id: int) -> Union[list[KeyboardData], str]:
+    subtasks: list[Task] = Task.get_tasks(project_id)
+    child_tasks: list[KeyboardData] = [KeyboardData(task.task_name, task.task_id, "search_subtask")
+                                       for task in subtasks]
+    return child_tasks
 
+
+def get_subtasks(parent_id: int, user_id: int) -> Union[list[KeyboardData], str]:
+    user = User.get_user_by_telegram_id(user_id)
+    subtasks: list[Task] = Task.get_subtasks(parent_id)
     if len(subtasks) == 0:
         return get_text_add_costs(parent_id, user)
     else:
         child_tasks: list[KeyboardData] = []
-        if parent_id not in projects_id:
-            task_name = ' '.join([f'🗂', Task.get_task_by_ws_id(parent_id).task_name])
-            child_tasks += [KeyboardData(task_name, int(parent_id), 'input_here')]
-        child_tasks += [KeyboardData(task.task_name, task.task_ws_id, "search_task")
+        task_name = ' '.join([f'🗂', Task.get_task(parent_id).task_name])
+        child_tasks += [KeyboardData(task_name, int(parent_id), 'input_here')]
+        child_tasks += [KeyboardData(task.task_name, task.task_id, "search_subtask")
                         for task in subtasks]
-
-        # child_tasks.reverse()
-        # task_name = ' '.join([f'🗂', Task.get_task_via_ws_id(parent_id).task_name])
-        # child_tasks.append(KeyboardData(task_name, int(parent_id), 'input_here'))
-        # child_tasks.reverse()
     return child_tasks
 
 
 def get_list_bookmark(user_id: int) -> Union[list[KeyboardData], str]:
     user: User = User.get_user_by_telegram_id(user_id)
-    user_list_bookmark: list[KeyboardData] = [KeyboardData(bookmark.bookmark_name, bookmark.task.task_ws_id)
+    user_list_bookmark: list[KeyboardData] = [KeyboardData(bookmark.bookmark_name, bookmark.task.task_id)
                                               for bookmark in user.bookmarks]
     # user_list_bookmark: list[KeyboardData] = get_list_user_bookmark(user_id)
     if len(user_list_bookmark) == 0:
         return 'У вас нет закладок.\n Добавить закладки можно через кнопку "Найти задачу"'
     for i in user_list_bookmark:
-        i.action = "search_task"
+        i.action = "input_here"
     return user_list_bookmark  # TODO две подобные функции выдающие закладки
 
 
@@ -315,51 +277,16 @@ def add_costs(message: str, data: dict) -> str:
     user: User = User.get_user_by_telegram_id(data.get('user_id'))
     date: str = user.get_date()
     email: str = user.get_email()
-    path: str = data.get('id')
+    task_id: int = data.get('id')
     list_comments: list[list[str, timedelta]] = parse_input_comments(message)
     for comments_text, comments_time in list_comments:
-        print(path, email, comments_text, comments_time, date)
-        req = add_cost(page=path,
-                       user_email=email,
-                       comment=comments_text,
-                       time=comments_time,
-                       date=date)
-        status = req.get('status')
-        pprint(req)
-        if status == 'ok':
-            comment_id = req.get('id')
-            f_date = datetime.now().strftime("%d.%m.%Y") if date == 'today' else date
-            check_data = [comment_id, path, email, comments_text, comments_time, f_date]
-            check = check_adding(check_data)
-            if check:
-                task_ws_id: str = data.get('id').strip("/").split("/")[-1]
-                task_db_id: int = Task.get_task_by_ws_id(task_ws_id).task_id
-                Comment.add_comment_in_db(int(comment_id), user.user_id, task_db_id, comments_time, comments_text, date)
-                yield 'Успешно внесено'
-            else:
-                yield 'Ошибка проверки внесения'
-        else:
+        f_date = datetime.now().strftime("%d.%m.%Y") if date == 'today' else date
+        try:
+            print(comments_time, date)
+            Comment.add_comment_in_db(user.user_id, task_id, comments_time, comments_text, date)
+            yield 'Успешно внесено'
+        except Exception as e:
             yield 'Не внесено'
-
-
-def check_adding(data: list):
-    comment_id, path, email, comment_text, comment_time, date = data
-    req: dict = get_the_cost_for_check(date, path)
-    if req.get("status") == "ok":
-        costs = req.get("data")
-        the_cost = {}
-        for cost in costs:
-            if int(cost.get("id")) == comment_id:
-                the_cost = cost
-                break
-        if the_cost.get("comment") != comment_text \
-                or the_cost.get("task").get("page") != path \
-                or the_cost.get("user_from").get("email") != email \
-                or the_cost.get("comment") != comment_text \
-                or datetime.strptime(the_cost.get("date"), "%Y-%m-%d").strftime("%d.%m.%Y") != date:
-            return False
-        return True
-    return False
 
 
 def to_correct_time(time: str) -> timedelta:
@@ -402,12 +329,12 @@ def parse_input_comments(message: str) -> list[list[str, timedelta]]:
     return comment_with_time
 
 
-def add_bookmark(user_id: int, task_id: str) -> str:
-    user: User = User.get_user_by_telegram_id(user_id)
-    if task_id in [bookmark.task.task_ws_id for bookmark in user.bookmarks]:
-        return "Такая закладка уже есть. Отмена"
+def add_bookmark(user_id: int, task_id: int) -> str:
+    user: User = User.get_user(user_id)
+    if task_id in [bookmark.task.task_id for bookmark in user.bookmarks]:
+        return "Такая закладка уже есть. Отмена добавления."
     else:
-        bookmark: Bookmark = Bookmark.get_bookmark(int(task_id))
+        bookmark: Bookmark = Bookmark.get_bookmark(task_id)
         user.add_bookmark(bookmark)
         return "Закладка добавлена"
 
@@ -422,7 +349,6 @@ def get_week_stat():
 
 async def get_week_report_gist(user: User):
     first_week_day = get_first_week_day()
-    await update_day_costs(first_week_day)
     show_week_report(user)
 
 
@@ -458,7 +384,7 @@ async def change_date(user: User, new_date: str) -> str:
         if datetime(year=int(date.group(3)), month=int(date.group(2)), day=int(date.group(1))) > datetime.now():
             raise FutureDate
         user.change_date(format_date)
-        return f'Установлена дата: {user.get_date()}'
+        return f'Установлена дата: {user.get_date(True)}'
     else:
         raise WrongDate
 

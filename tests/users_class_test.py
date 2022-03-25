@@ -11,24 +11,24 @@ from app.tgbot.main import change_date
 class UserTest(TestCase):
 
     def test_get_user(self):
-        self.assertEqual(User.get_user_by_telegram_id(300617281).first_name, "Mikhail")
+        self.assertEqual(User.get_user_by_telegram_id(300617281).first_name, "Михаил")
 
     def test_get_wrong_user(self):
-        with self.assertRaises(ValueError) as e:
+        with self.assertRaises(sqlalchemy.exc.NoResultFound) as e:
             User.get_user_by_telegram_id(1234)
-        self.assertEqual("not enough values to unpack (expected 2, got 0)", e.exception.args[0])
+        self.assertEqual("No row was found when one was required", e.exception.args[0])
 
     def test_get_admin_status(self):
         status = Status.get_status("admin")
-        self.assertIn(status, User.get_user_by_telegram_id(300617281).get_status())
+        self.assertIn(status.status_name, User.get_user_by_telegram_id(300617281).get_status())
 
-    def test_get_black_status(self):
-        status = Status.get_status("black")
-        self.assertIn(status, User.get_user_by_telegram_id(582760668).get_status())
+    def test_get_blocked_status(self):
+        status = Status.get_status("blocked")
+        self.assertIn(status.status_name, User.get_user_by_telegram_id(582760668).get_status())
 
     def test_get_user_status(self):
         status = Status.get_status("user")
-        self.assertIn(status, User.get_user_by_telegram_id(833477860).get_status())
+        self.assertIn(status.status_name, User.get_user_by_telegram_id(833477860).get_status())
 
     def test_admin_is_admin(self):
         self.assertEqual(User.get_user_by_telegram_id(300617281).is_admin(), True)
@@ -36,7 +36,7 @@ class UserTest(TestCase):
     def test_user_is_admin(self):
         self.assertEqual(User.get_user_by_telegram_id(833477860).is_admin(), False)
 
-    def test_black_is_admin(self):
+    def test_blocked_is_admin(self):
         self.assertEqual(User.get_user_by_telegram_id(582760668).is_admin(), False)
 
     def test_admin_has_access(self):
@@ -45,7 +45,7 @@ class UserTest(TestCase):
     def test_user_has_access(self):
         self.assertEqual(User.get_user_by_telegram_id(833477860).has_access(), True)
 
-    def test_black_has_access(self):
+    def test_blocked_has_access(self):
         self.assertEqual(User.get_user_by_telegram_id(582760668).has_access(), False)
 
     def test_admin_blocked(self):
@@ -54,11 +54,11 @@ class UserTest(TestCase):
     def test_user_blocked(self):
         self.assertEqual(User.get_user_by_telegram_id(833477860).blocked(), False)
 
-    def test_black_blocked(self):
+    def test_blocked_blocked(self):
         self.assertEqual(User.get_user_by_telegram_id(582760668).blocked(), True)
 
     def test_full_name(self):
-        self.assertEqual(User.get_user_by_telegram_id(300617281).full_name(), "Mikhail Ignatenko")
+        self.assertEqual(User.get_user_by_telegram_id(300617281).full_name(), "Михаил Игнатенко")
 
     def test_get_email(self):
         self.assertEqual(User.get_user_by_telegram_id(300617281).get_email(), "m.ignatenko@smde.ru")
@@ -69,9 +69,9 @@ class UserTest(TestCase):
     def test_get_custom_date(self):
         self.assertEqual(User.get_user_by_telegram_id(432113264).get_date(), "11.02.2022")
 
-    def test_none_default_task(self):
-        with self.assertRaises(AttributeError):
-            self.assertEqual(User.get_user_by_telegram_id(226449626).default_task.task_name, None)
+    # def test_none_default_task(self):
+    #     with self.assertRaises(AssertionError):
+    #         self.assertEqual(User.get_user_by_telegram_id(226449626).default_task.task_name, None)
 
     def test_default_task(self):
         user: User = User.get_user_by_telegram_id(300617281)
@@ -79,9 +79,8 @@ class UserTest(TestCase):
 
     def test_set_default_task(self):
         user = User.get_user_by_telegram_id(226449626)
-        user.change_default_task("/project/243605/8297507/9835842/")
+        user.change_default_task(1)
         user = User.get_user_by_telegram_id(226449626)
-        print(user.default_task)
         self.assertEqual(user.default_task.task_name, 'Написание бота')
 
 

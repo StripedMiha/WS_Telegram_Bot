@@ -33,10 +33,12 @@ def register_handlers_admin(dp: Dispatcher, main_bot: Bot, admin_id: int):
     dp.register_message_handler(wait_for_news, IDFilter(user_id=admin_id), commands='news')
     dp.register_message_handler(log_for_admin, IDFilter(user_id=admin_id), commands='log')
     dp.register_callback_query_handler(user_decide, IDFilter(user_id=admin_id),
-                                       callback_auth.filter(action=['known_user', 'black_user']))
+                                       callback_auth.filter(action=['known_user', 'blocked_user']))
+    dp.register_callback_query_handler(user_fate, IDFilter(user_id=admin_id),
+                                       callback_auth.filter(action=['add_user', 'block_user']))
     dp.register_callback_query_handler(add_cancel, IDFilter(user_id=admin_id), callback_auth.filter(action='cancel'))
     dp.register_callback_query_handler(select_list, IDFilter(user_id=admin_id),
-                                       callback_auth.filter(action=['list_user', 'list_black']))
+                                       callback_auth.filter(action=['list_user', 'list_blocked']))
     dp.register_message_handler(news_to_users, IDFilter(user_id=admin_id), state=OrderMenu.wait_news)
 
 
@@ -62,8 +64,8 @@ LIST_ATTRIBUTES: dict = {
         "text_for_alarm": "Пользователь добавлен",
         "text_for_user": "Доступ разрешён. \nВведите /start чтобы начать."
     },
-    "black_user": {
-        "new_status": "black",
+    "blocked_user": {
+        "new_status": "blocked",
         "text_for_admin": "Пользователь %s добавлен в чёрный список",
         "text_for_alarm": "Пользователь добавлен в чёрный список",
         "text_for_user": "Вас добавили в чёрный список"
@@ -71,17 +73,37 @@ LIST_ATTRIBUTES: dict = {
 }
 
 
+async def user_fate(call: types.CallbackQuery, callback_data: dict):
+    fate = callback_data["action"].split("_")[0]
+    user_id: int = int(callback_data["data"])
+    user: User = User.get_user(user_id)
+    if fate == "add":
+        future_status = "user"
+    else:
+        future_status = "blocked"
+    user.change_status(future_status, "wait")
+    await call.answer(f"Пользователь теперь: {future_status}", show_alert=True)
+    await call.answer()
+    await call.message.edit_text(f"Пользователь добавлен в список: {future_status}")
+    try:
+        await bot.send_message(user.telegram_id, f"Вас добавили в список: {future_status}")
+    except aiogram.utils.exceptions.ChatNotFound:
+        await bot.send_message(User.get_admin_id(),
+                               'Пользователь не получил уведомления, так как не имеет диалога с ботом')
+        admin_logger.info("%s НЕ получил уведомление о смене статуса" % user.full_name())
+
+
 async def user_decide(call: types.CallbackQuery, callback_data: dict):
     case = callback_data['action']
-    old_case = 'known_user' if case == 'black_user' else "black_user"
-    user: User = User.get_user_by_telegram_id(callback_data['data'])
+    old_case = 'known_user' if case == 'blocked_user' else "blocked_user"
+    user: User = User.get_user(int(callback_data['data']))
     admin_logger.info("%s выбрал %s для переноса в список %s" % (call.from_user.full_name, user.full_name(), case))
     user.change_status(LIST_ATTRIBUTES[case]["new_status"], LIST_ATTRIBUTES[old_case]["new_status"])
     await call.answer(LIST_ATTRIBUTES[case]["text_for_alarm"], show_alert=True)
     await call.answer()
     await call.message.edit_text(LIST_ATTRIBUTES[case]["text_for_admin"] % user.full_name())
     try:
-        await bot.send_message(user.user_id, LIST_ATTRIBUTES[case]["text_for_user"])
+        await bot.send_message(user.telegram_id, LIST_ATTRIBUTES[case]["text_for_user"])
         admin_logger.info("%s получил уведомление о смене статуса" % user.full_name())
     except aiogram.utils.exceptions.ChatNotFound:
         await bot.send_message(User.get_admin_id(),
@@ -99,7 +121,7 @@ async def add_cancel(call: types.CallbackQuery, state: FSMContext):
 async def status_changer(message: types.Message):
     admin_logger.info("%s запрашивает списки пользователей" % message.from_user.full_name)
     data_for_keyboard = [KeyboardData('Пользователи', 0, 'list_user'),
-                         KeyboardData('Заблокированные',  0, 'list_black')]
+                         KeyboardData('Заблокированные',  0, 'list_blocked')]
     keyboard = get_keyboard_admin(data_for_keyboard)
     await message.answer('Выбери список для поиска пользователя, которому хочешь изменить статус',
                          reply_markup=keyboard)

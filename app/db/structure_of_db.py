@@ -1,7 +1,6 @@
 
 
 from datetime import datetime, date, time, timedelta
-import time
 from pprint import pprint
 from typing import Optional
 
@@ -118,9 +117,18 @@ class Task(Base):
         session.commit()
 
     @staticmethod
-    def get_subtasks(task_ws_is) -> list:
-        sub_tasks: list[Task] = session.query(Task).filter(Task.parent_id == task_ws_is, Task.status == "active").all()
+    def get_subtasks(parent_task_id: int) -> list:
+        print('get_subtasks')
+        print(parent_task_id)
+        sub_tasks: list[Task] = session.query(Task).filter(Task.parent_id == parent_task_id, Task.status == "active").all()
         return sub_tasks
+
+    @staticmethod
+    def get_tasks(project_id: int) -> list:
+        print('get_tasks')
+        tasks: list[Task] = session.query(Task)\
+            .filter(Task.project_id == project_id, Task.parent_id == None, Task.status == "active").all()
+        return tasks
 
     @staticmethod
     def get_task(task_id: int):
@@ -153,10 +161,10 @@ class Bookmark(Base):
     @staticmethod
     def get_bookmark(task_id: int):
         try:
-            task: Task = Task.get_task_by_ws_id(str(task_id))
+            task: Task = Task.get_task(task_id)
             return session.query(Bookmark).filter(Bookmark.task_id == task.task_id).one()
         except NoResultFound:
-            task: Task = Task.get_task_by_ws_id(str(task_id))
+            task: Task = Task.get_task(task_id)
             bookmark_name = f"{task.task_name} | {task.project.project_name}"
             new_bookmark = Bookmark(task_id=task.task_id,
                                     bookmark_name=bookmark_name)
@@ -219,7 +227,7 @@ class User(Base):
     first_name: str = Column(String(50))
     last_name = Column(String(50))
     date_of_input = Column(String(15))
-    selected_task = Column(String(15), ForeignKey("tasks.task_id"), nullable=True, unique=False)
+    selected_task: int = Column(Integer(), ForeignKey("tasks.task_id"), nullable=True, unique=False)
     notification_status = Column(Boolean, default=True)
     notification_time = Column(DateTime, default='')
     remind_notification = Column(DateTime)
@@ -239,21 +247,20 @@ class User(Base):
                f"{self.remind_notification}"
 
     def blocked(self) -> bool:
-        b_status = Status.get_status('black')
-        return True if b_status in self.statuses else False
+        return True if 'blocked' in self.get_status() else False
 
     def is_admin(self) -> bool:
-        a_status = Status.get_status('admin')
-        return True if a_status in self.statuses and not self.blocked() else False
+        return True if 'admin' in self.get_status() and not self.blocked() else False
 
     def has_access(self) -> bool:
-        u_status = Status.get_status('user')
-        return True if u_status in self.statuses and not self.blocked() else False
+        return True if 'user' in self.get_status() and not self.blocked() else False
 
     def get_status(self) -> list[str]:
-        return self.statuses
+        return [i.status_name for i in self.statuses]
 
-    def get_date(self) -> str:
+    def get_date(self, ru: bool = False) -> str:
+        if ru and self.date_of_input == "today":
+            return "сегодня"
         return self.date_of_input
 
     def get_email(self) -> str:
@@ -269,11 +276,13 @@ class User(Base):
 
     @classmethod
     def get_admin_id(cls):
-        admin_id: int = session.query(User.user_id).filter(User.statuses == 'admin').first()[0]
-        session.close()
+        admin_users: list[User] = Status.get_users("admin")
+        admin_id: int = admin_users[0].telegram_id
         return admin_id
 
     def change_date(self, new_date: str):
+        if new_date == "сегодня":
+            new_date = "today"
         self.date_of_input = new_date
         session.commit()
 
@@ -281,16 +290,23 @@ class User(Base):
         self.email = new_email
         session.commit()
 
-    def change_status(self, new_status: str, old_status: Optional[str] = None):
-        n_status: Status = Status.get_status(new_status)
-        self.statuses.append(n_status)
-        if old_status:
-            o_status: Status = Status.get_status(old_status)
-            self.statuses.remove(o_status)
+    def change_status(self, new_status: str, old_status: str):
+        self.remove_status(old_status)
+        self.add_status(new_status)
+
+    def add_status(self, status_name: str):
+        status: Status = Status.get_status(status_name)
+        self.statuses.append(status)
         session.add(self)
         session.commit()
 
-    def change_default_task(self, new_default_task_id: str) -> str:
+    def remove_status(self, status_name: str):
+        status: Status = Status.get_status(status_name)
+        self.statuses.remove(status)
+        session.add(self)
+        session.commit()
+
+    def change_default_task(self, new_default_task_id: int) -> str:
         self.selected_task = new_default_task_id
         session.commit()
         return '\n'.join(['Выбранная задача:', self.default_task.full_name()])
@@ -312,6 +328,10 @@ class User(Base):
         self.remind_notification = new_time
         session.commit()
 
+    def set_telegram_id(self, telegram_id: int):
+        self.telegram_id = telegram_id
+        session.commit()
+
     def add_bookmark(self, bookmark: Bookmark):
         self.bookmarks.append(bookmark)
         session.add(self)
@@ -322,15 +342,14 @@ class User(Base):
         session.commit()
 
     @staticmethod
-    def new_user(user_id: int, *args):
+    def new_user(telegram_id: int, *args):
         first_name, last_name = args
         user = User(
-            user_id=user_id,
+            telegram_id=telegram_id,
             first_name=first_name,
-            last_name=last_name,
+            last_name=last_name if last_name else "Snow",
             email=None,
             date_of_input='today',
-            status='wait',
             selected_task=None,
             notification_status=True,
             notification_time=time(hour=18, minute=30),
@@ -338,18 +357,30 @@ class User(Base):
         )
         session.add(user)
         session.commit()
+        new_user: User = User.get_user_by_telegram_id(telegram_id)
+        wait_status: Status = Status.get_status('wait')
+        new_user.statuses.append(wait_status)
+        session.add(new_user)
+        session.commit()
+        return new_user
+
+    @staticmethod
+    def get_user(user_id: int):
+        return session.query(User).filter(User.user_id == user_id).one()
 
     @staticmethod
     def get_user_by_telegram_id(user_id: int, *args):
-        try:
-            return session.query(User).filter(User.telegram_id == user_id).one()
-        except NoResultFound:
-            User.new_user(user_id, args)
-            return User.get_user_by_telegram_id(user_id)
+        # try:
+        return session.query(User).filter(User.telegram_id == user_id).one()
+        # except NoResultFound:
+            # User.new_user(user_id, args)
+            # return User.get_user_by_telegram_id(user_id)
+        # except Exception:
+        #     return None
 
     @staticmethod
     def get_user_by_email(user_email: str):
-        return session.query(User).filter(User.email == user_email).one()
+        return session.query(User).filter(User.email == user_email).first()
 
     @staticmethod
     def get_user_by_ws_id(user_ws_id: str):
@@ -359,6 +390,12 @@ class User(Base):
     def get_users_list(cls):
         q: list[User] = session.query(User).all()  # .user_id, User.first_name, User.last_name, User.__status
         return q
+
+    @staticmethod
+    def get_empty_email() -> list[str]:
+        emails: list[str] = session.query(User.email).filter(User.email != None, User.telegram_id == None).all()
+        # print(session.query(User.email).filter(User.email != None, User.telegram_id == None).all())
+        return [i[0] for i in emails]
 
 
 # class UserBookmark(Base):
@@ -388,12 +425,11 @@ class Comment(Base):
                f" via_bot - {self.via_bot}, date - {self.date}, time - {self.time}, text - {self.comment_text}"
 
     @staticmethod
-    def add_comment_in_db(comment_id: int, user_id: int, task_ws_id: int,
+    def add_comment_in_db( user_id: int, task_id: int,
                           comment_time: str, text: str, comment_date: str, via_bot: bool = True):
         comment = Comment(
-            comment_id=comment_id,
             user_id=user_id,
-            task_id=task_ws_id,
+            task_id=task_id,
             time=comment_time,
             comment_text=text,
             date=reformat_date(comment_date),
