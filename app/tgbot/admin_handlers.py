@@ -36,6 +36,8 @@ def register_handlers_admin(dp: Dispatcher, main_bot: Bot, admin_id: int):
                                        callback_auth.filter(action=['known_user', 'blocked_user']))
     dp.register_callback_query_handler(user_fate, IDFilter(user_id=admin_id),
                                        callback_auth.filter(action=['add_user', 'block_user']))
+    dp.register_callback_query_handler(auth_user, IDFilter(user_id=admin_id),
+                                       callback_auth.filter(action=['auth_user', 'unauth_user']))
     dp.register_callback_query_handler(add_cancel, IDFilter(user_id=admin_id), callback_auth.filter(action='cancel'))
     dp.register_callback_query_handler(select_list, IDFilter(user_id=admin_id),
                                        callback_auth.filter(action=['list_user', 'list_blocked']))
@@ -73,6 +75,36 @@ LIST_ATTRIBUTES: dict = {
 }
 
 
+async def auth_user(call: types.CallbackQuery, callback_data: dict):
+    data = callback_data.get("data")
+    telegram_id, email = data.split("_")
+    action = callback_data.get("action")
+    if action == "auth_user":
+        user: User = User.get_user_by_email(email)
+        wait_user: User = User.get_user_by_telegram_id(telegram_id)
+        wait_user.remove_self()
+        user.set_telegram_id(telegram_id)
+        answer = f"{user.full_name()}, вы авторизовались с почтой: {user.get_email()}"
+
+        await bot.send_message(user.telegram_id, answer)
+        await call.message.edit_text(f"Пользователь {user.full_name()} добавлен в список: user")
+        await call.answer(f"Пользователь {user.full_name()} теперь: user", show_alert=True)
+        await call.answer()
+
+    elif action == "unauth_user":
+        user: User = User.get_user_by_telegram_id(telegram_id)
+        user.change_status("blocked", "wait")
+        try:
+            await bot.send_message(user.telegram_id, f"Вас добавили в список: blocked")
+        except aiogram.utils.exceptions.ChatNotFound:
+            await bot.send_message(User.get_admin_id(),
+                                   'Пользователь не получил уведомления, так как не имеет диалога с ботом')
+            admin_logger.info("%s НЕ получил уведомление о смене статуса" % user.full_name())
+        await call.message.edit_text(f"Пользователь {user.full_name()} добавлен в список: blocked")
+        await call.answer(f"Пользователь {user.full_name()} теперь: blocked", show_alert=True)
+        await call.answer()
+
+
 async def user_fate(call: types.CallbackQuery, callback_data: dict):
     fate = callback_data["action"].split("_")[0]
     user_id: int = int(callback_data["data"])
@@ -82,9 +114,9 @@ async def user_fate(call: types.CallbackQuery, callback_data: dict):
     else:
         future_status = "blocked"
     user.change_status(future_status, "wait")
-    await call.answer(f"Пользователь теперь: {future_status}", show_alert=True)
+    await call.answer(f"Пользователь {user.full_name()} теперь: {future_status}", show_alert=True)
     await call.answer()
-    await call.message.edit_text(f"Пользователь добавлен в список: {future_status}")
+    await call.message.edit_text(f"Пользователь {user.full_name()} добавлен в список: {future_status}")
     try:
         await bot.send_message(user.telegram_id, f"Вас добавили в список: {future_status}")
     except aiogram.utils.exceptions.ChatNotFound:

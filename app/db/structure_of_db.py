@@ -341,6 +341,10 @@ class User(Base):
         self.bookmarks.remove(bookmark)
         session.commit()
 
+    def remove_self(self):
+        session.delete(self)
+        session.commit()
+
     @staticmethod
     def new_user(telegram_id: int, *args):
         first_name, last_name = args

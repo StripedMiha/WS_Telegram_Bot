@@ -224,7 +224,8 @@ def remove_costs(user: User):
 
 
 async def get_project_list(user: User) -> list[KeyboardData]:
-    projects: list[KeyboardData] = [KeyboardData(i.project_name, i.project_id, "search_task") for i in user.projects]
+    projects: list[KeyboardData] = [KeyboardData(i.project_name, i.project_id, "search_task") for i in user.projects
+                                    if i.project_status == "active"]
     # projects_id: set[int] = Project.get_all_projects_id_from_db()  # get_projects_db()
     # for i in projects:
     #     if i.id not in projects_id:

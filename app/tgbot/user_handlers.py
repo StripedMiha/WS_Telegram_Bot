@@ -173,7 +173,7 @@ async def lets_start(message: types.Message):
         keyboard = get_keyboard(user, width=1, enable_cancel=False)
         await message.answer("Вы бывали ранее в Worksection'e?", reply_markup=keyboard)
         return
-    if user.blocked():
+    if not user.has_access():
         return None
     answer = [f"Наталья, морская пехота",
               f"Стартуем, <i>{user.first_name}!</i>",
@@ -188,7 +188,7 @@ async def user_is_new_user(call: types.CallbackQuery):
     if "wait" in user.get_status():
         data_for_keyboard = [KeyboardData('Добавить пользователя', user.user_id, 'add_user'),
                              KeyboardData('Игнорировать пользователя', user.user_id, 'block_user')]
-        keyboard = get_keyboard_admin(data_for_keyboard, width=2, enable_cancel=False)
+        keyboard = get_keyboard_admin(data_for_keyboard, width=1, enable_cancel=False)
         await bot.send_message(User.get_admin_id(), f"Этот перец пишет мне: {user.full_name()}\n"
                                                     , reply_markup=keyboard)
         await call.message.edit_text('Заявка ушла админу. Ждите.')
@@ -207,10 +207,20 @@ async def wait_email_for_login(message: types.Message, state: FSMContext):
     email = message.text.strip(" ")
     # if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru|[a-z]\d@s-t.studio', email):
     if email in User.get_empty_email():
-        user = User.get_user_by_email(email)
-        user.set_telegram_id(message.from_user.id)
-        answer = message.from_user.full_name + ', вы авторизовались с почтой: ' + user.get_email()
-        await message.answer(answer)
+        un_auth_user = User.new_user(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
+        data = "_".join([str(un_auth_user.telegram_id), email])
+        data_for_keyboard = [KeyboardData('Добавить пользователя', data, 'auth_user'),
+                             KeyboardData('Игнорировать пользователя', data, 'unauth_user')]
+        keyboard = get_keyboard_admin(data_for_keyboard, width=1, enable_cancel=False)
+        exist_user: User = User.get_user_by_email(email)
+        await bot.send_message(User.get_admin_id(), f"Этот перец пишет мне: {un_auth_user.full_name()} "
+                                                    f"c id{un_auth_user.telegram_id} {message.from_user.username}\n"
+                                                    f"И утверждает, что он {exist_user.full_name()} и почта: {email} его"
+                               , reply_markup=keyboard)
+        await message.answer('Заявка ушла админу. Ждите.')
+        await state.finish()
+        return None
+
     elif message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
         await message.answer('Отменён ввод почты.\n')
         user_logger.info("%s Отменяет ввод почты" % message.from_user.full_name)
