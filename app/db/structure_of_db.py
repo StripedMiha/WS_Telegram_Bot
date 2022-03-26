@@ -12,10 +12,10 @@ from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, D
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Session, relationship
 
-from WS_Telegram_Bot.app.KeyboardDataClass import KeyboardData
-from WS_Telegram_Bot.app.config_reader import load_config
+from app.KeyboardDataClass import KeyboardData
+from app.config_reader import load_config
 
-from WS_Telegram_Bot.app.start_type import start_from_docker
+from app.start_type import start_from_docker
 
 if start_from_docker:
     config = load_config("/run/secrets/db")

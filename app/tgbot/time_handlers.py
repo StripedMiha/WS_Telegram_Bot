@@ -51,7 +51,7 @@ def get_remind_keyboard(list_data: list[list], width: int = 2,
 
 async def week_report(a=1):
     time_logger.info("Пятничный отчёт")
-    users: list[User] = Status.get_users('user')
+    users: list[User] = [user for user in Status.get_users('user') if user.telegram_id]
 
     for user in users:
         if user.notification_status:
@@ -61,7 +61,7 @@ async def week_report(a=1):
                 sum_costs = projects_report(user)
                 time_logger.info("Пользователь %s оформил %s часов" % (user.full_name(), sum_costs))
                 time_logger.info("Отправляем пользователю %s его статистику за неделю" % user.full_name())
-                await bot.send_photo(user.user_id, types.InputFile('app/db/png/week_%s.png' % user.full_name()),
+                await bot.send_photo(user.telegram_id, types.InputFile('app/db/png/week_%s.png' % user.full_name()),
                                      caption='Распределение ваших %s часов по проектам за неделю' % sum_costs)
             except EmptyCost:
                 time_logger.info("Пользователь %s оформил ничего не заполнил" % user.full_name())
