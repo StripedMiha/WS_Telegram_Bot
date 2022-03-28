@@ -10,11 +10,9 @@ from aiogram.dispatcher import FSMContext
 from app.KeyboardDataClass import KeyboardData
 from app.create_log import setup_logger
 from app.db.structure_of_db import User, Status
-from app.tgbot.fix import fix_parent
-from app.tgbot.main import get_users_of_list
+from app.back.main import get_users_of_list
+from app.tgbot.loader import dp, bot
 
-
-bot: Bot
 admin_logger: logging.Logger = setup_logger("App.Bot.admin", "app/log/admin.log")
 
 
@@ -23,25 +21,6 @@ class OrderMenu(StatesGroup):
 
 
 callback_auth = CallbackData("fab_auth", "data", "action")
-
-
-def register_handlers_admin(dp: Dispatcher, main_bot: Bot, admin_id: int):
-    global bot
-    bot = main_bot
-    dp.register_message_handler(fix_parent, IDFilter(user_id=admin_id), commands="fix")
-    dp.register_message_handler(status_changer, IDFilter(user_id=admin_id), commands="change_status")
-    dp.register_message_handler(wait_for_news, IDFilter(user_id=admin_id), commands='news')
-    dp.register_message_handler(log_for_admin, IDFilter(user_id=admin_id), commands='log')
-    dp.register_callback_query_handler(user_decide, IDFilter(user_id=admin_id),
-                                       callback_auth.filter(action=['known_user', 'blocked_user']))
-    dp.register_callback_query_handler(user_fate, IDFilter(user_id=admin_id),
-                                       callback_auth.filter(action=['add_user', 'block_user']))
-    dp.register_callback_query_handler(auth_user, IDFilter(user_id=admin_id),
-                                       callback_auth.filter(action=['auth_user', 'unauth_user']))
-    dp.register_callback_query_handler(add_cancel, IDFilter(user_id=admin_id), callback_auth.filter(action='cancel'))
-    dp.register_callback_query_handler(select_list, IDFilter(user_id=admin_id),
-                                       callback_auth.filter(action=['list_user', 'list_blocked']))
-    dp.register_message_handler(news_to_users, IDFilter(user_id=admin_id), state=OrderMenu.wait_news)
 
 
 def get_keyboard_admin(list_data: list[KeyboardData], width: int = 1, enable_cancel: bool = True) \
@@ -75,6 +54,8 @@ LIST_ATTRIBUTES: dict = {
 }
 
 
+@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
+                           callback_auth.filter(action=['auth_user', 'unauth_user']))
 async def auth_user(call: types.CallbackQuery, callback_data: dict):
     data = callback_data.get("data")
     telegram_id, email = data.split("_")
@@ -105,6 +86,8 @@ async def auth_user(call: types.CallbackQuery, callback_data: dict):
         await call.answer()
 
 
+@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
+                           callback_auth.filter(action=['add_user', 'block_user']))
 async def user_fate(call: types.CallbackQuery, callback_data: dict):
     fate = callback_data["action"].split("_")[0]
     user_id: int = int(callback_data["data"])
@@ -125,6 +108,8 @@ async def user_fate(call: types.CallbackQuery, callback_data: dict):
         admin_logger.info("%s НЕ получил уведомление о смене статуса" % user.full_name())
 
 
+@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
+                           callback_auth.filter(action=['known_user', 'blocked_user']))
 async def user_decide(call: types.CallbackQuery, callback_data: dict):
     case = callback_data['action']
     old_case = 'known_user' if case == 'blocked_user' else "blocked_user"
@@ -143,6 +128,8 @@ async def user_decide(call: types.CallbackQuery, callback_data: dict):
         admin_logger.info("%s НЕ получил уведомление о смене статуса" % user.full_name())
 
 
+@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
+                           callback_auth.filter(action='cancel'))
 async def add_cancel(call: types.CallbackQuery, state: FSMContext):
     admin_logger.info("%s Жмёт отмену" % call.from_user.full_name)
     await call.message.edit_text('Выбор отменён.')
@@ -150,15 +137,19 @@ async def add_cancel(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
 
 
+@dp.message_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
+                    commands="change_status")
 async def status_changer(message: types.Message):
     admin_logger.info("%s запрашивает списки пользователей" % message.from_user.full_name)
     data_for_keyboard = [KeyboardData('Пользователи', 0, 'list_user'),
-                         KeyboardData('Заблокированные',  0, 'list_blocked')]
+                         KeyboardData('Заблокированные', 0, 'list_blocked')]
     keyboard = get_keyboard_admin(data_for_keyboard)
     await message.answer('Выбери список для поиска пользователя, которому хочешь изменить статус',
                          reply_markup=keyboard)
 
 
+@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
+                           callback_auth.filter(action=['list_user', 'list_blocked']))
 async def select_list(call: types.CallbackQuery, callback_data: dict):
     selected_list = callback_data['action'].split('_')[1]
     admin_logger.info("%s запрашивает список %s" % (call.from_user.full_name, selected_list))
@@ -166,6 +157,7 @@ async def select_list(call: types.CallbackQuery, callback_data: dict):
     await call.message.edit_text('Выберите пользователя:', reply_markup=keyboard)
 
 
+@dp.message_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(), commands='news')
 async def wait_for_news(message: types.Message):
     admin_logger.info("%s вводит новость" % message.from_user.full_name)
     await message.answer('Введите новость:')
@@ -173,6 +165,7 @@ async def wait_for_news(message: types.Message):
     return
 
 
+@dp.message_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(), state=OrderMenu.wait_news)
 async def news_to_users(message: types.Message, state: FSMContext):
     admin_logger.info("%s отправил новость" % message.from_user.full_name)
     users: list[list[str, int]] = [[i.full_name(), i.telegram_id] for i in Status.get_users("user") if i.telegram_id]
@@ -190,6 +183,7 @@ async def news_to_users(message: types.Message, state: FSMContext):
     await message.answer('Отправлено')
 
 
+@dp.message_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(), commands='log')
 async def log_for_admin(message: types.Message):
     admin_logger.info("admin %s request %s" % (message.from_user.full_name, message.text))
     try:

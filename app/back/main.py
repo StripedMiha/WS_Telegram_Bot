@@ -128,15 +128,12 @@ def menu_buttons(user: User) -> list[list[str]]:
 
 
 def get_about_user_info(user: User) -> str:
-    status = 'Администратор' if user.is_admin() else 'Пользователь'
-    date = user.get_date(True)
-    notif_status = "включены" if user.notification_status else "выключены"
     answer = [f"Ваше имя - {user.full_name()}",
               f"Ваша почта - {user.get_email()}",
-              f"Ваш статус - {status}",
-              f"Указанная дата - {date}",
-              f"Задача по умолчанию - {user.default_task.full_name()}",
-              f"Статус напоминаний - {notif_status}",
+              f"Ваш статус - {', '.join([status.status_name for status in user.statuses])}",
+              f"Указанная дата - {user.get_date(True)}",
+              f"Задача по умолчанию - {user.default_task.full_name() if user.default_task else 'не установлена'}",
+              f"Статус напоминаний - {'включены' if user.notification_status else 'выключены'}",
               f"Время напоминаний - {user.get_notification_time()}"]
     return "\n".join(answer)
 
@@ -199,8 +196,6 @@ def days_costs_for_remove(user: User) -> list[KeyboardData]:
 
 def remove_cost(cost_id: int) -> str:
     comment = Comment.get_comment(cost_id)
-    # req = remove_cost_ws(comment.task.task_path, comment.comment_id)
-    # if req.get('status') == 'ok':
     try:
         comment.remove()
         return 'Успешно удалено'

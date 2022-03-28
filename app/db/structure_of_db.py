@@ -1,5 +1,4 @@
 
-
 from datetime import datetime, date, time, timedelta
 from pprint import pprint
 from typing import Optional
@@ -74,7 +73,7 @@ class Project(Base):
         return {i[0] for i in session.query(Project.project_id).all()}
 
     @staticmethod
-    def get_project_by_name(name:str):
+    def get_project_by_name(name :str):
          return session.query(Project).filter(Project.project_name == name).one()
 
 
@@ -122,14 +121,11 @@ class Task(Base):
 
     @staticmethod
     def get_subtasks(parent_task_id: int) -> list:
-        print('get_subtasks')
-        print(parent_task_id)
         sub_tasks: list[Task] = session.query(Task).filter(Task.parent_id == parent_task_id, Task.status == "active").all()
         return sub_tasks
 
     @staticmethod
     def get_tasks(project_id: int) -> list:
-        print('get_tasks')
         tasks: list[Task] = session.query(Task)\
             .filter(Task.project_id == project_id, Task.parent_id == None, Task.status == "active").all()
         return tasks
@@ -143,7 +139,6 @@ class Task(Base):
 
     @staticmethod
     def get_task_by_ws_id(task_ws_id: str):
-        print(task_ws_id)
         try:
             return session.query(Task).filter(Task.task_ws_id == task_ws_id).one()
         except NoResultFound:
@@ -217,6 +212,11 @@ class Status(Base):
         return [i for i in session.query(User).all() if searched_status in i.statuses]
 
     @staticmethod
+    def get_users_telegram_id(status: str) -> list[int]:
+        searched_status: Status = Status.get_status(status)
+        return [i[0] for i in session.query(User.telegram_id).all() if searched_status in i.statuses]
+
+    @staticmethod
     def get_status(status_name: str):
         return session.query(Status).filter(Status.status_name == status_name).one()
 
@@ -255,6 +255,9 @@ class User(Base):
 
     def is_admin(self) -> bool:
         return True if 'admin' in self.get_status() and not self.blocked() else False
+
+    def is_manager(self) -> bool:
+        return True if 'manager' in self.get_status() and not self.blocked() else False
 
     def has_access(self) -> bool:
         return True if 'user' in self.get_status() and not self.blocked() else False

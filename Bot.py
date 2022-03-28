@@ -2,18 +2,15 @@ import logging
 import asyncio
 import os
 
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot
 from aiogram.types import BotCommand
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from app.config_reader import load_config
 from app.create_log import setup_logger
 from app.start_type import start_from_docker
 
-from app.tgbot.admin_handlers import register_handlers_admin
-from app.tgbot.time_handlers import time_scanner, register_handlers_time
-from app.tgbot.stat_handlers import register_handlers_stat
-from app.tgbot.user_handlers import register_handlers_user, register_handlers_wait_input
+from app.tgbot.loader import bot
+from app.tgbot import *
 
 main_logger: logging.Logger = setup_logger("App.Bot.bot", "app/log/tgbot.log")
 bot_logger: logging.Logger = setup_logger("App.Bot", "app/log/bot.log")
@@ -22,23 +19,6 @@ app_logger: logging.Logger = setup_logger("App", "app/log/app.log")
 
 async def main_bot():
     main_logger.error("Starting bot")
-
-    # парсинг файла конфигурации
-    if start_from_docker:
-        config = load_config("/run/secrets/bot")
-    else:
-        config = load_config("app/keys/bot.ini")
-
-    # Объявление и инициализация объектов бота и диспетчера
-    bot = Bot(token=config['tg_bot']['token'], parse_mode=types.ParseMode.HTML)
-    dp = Dispatcher(bot, storage=MemoryStorage())
-
-    # Регистрация обработчиков
-    register_handlers_admin(dp, bot, config['tg_bot']['admin_id'])
-    register_handlers_user(dp)
-    register_handlers_wait_input(dp, bot, config['tg_bot']['admin_id'])
-    register_handlers_stat(dp, bot, config['tg_bot']['admin_id'])
-    register_handlers_time(dp, bot, config['tg_bot']['admin_id'])
 
     # Установка команд бота
     await set_commands(bot)
@@ -68,5 +48,6 @@ async def start():
 
 # проверка запуска
 if __name__ == "__main__":
+    from app.tgbot.handlers import dp
     os.system("alembic upgrade head")
     asyncio.run(start())

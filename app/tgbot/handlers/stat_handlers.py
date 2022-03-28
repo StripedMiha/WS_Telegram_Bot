@@ -1,26 +1,18 @@
 import logging
 
-from aiogram import Bot, Dispatcher, types
+from aiogram import types
 
 from app.create_log import setup_logger
 from app.db.structure_of_db import User
 from app.exceptions import EmptyCost
-from app.tgbot.main import get_month_stat, get_week_stat, get_week_report_gist
+from app.back.main import get_month_stat, get_week_stat, get_week_report_gist
+from app.tgbot.loader import dp, bot
 
-bot: Bot
 stat_logger: logging.Logger = setup_logger("App.Bot.stat", "app/log/stat.log")
 
 
-def register_handlers_stat(dp: Dispatcher, main_bot: Bot, admin_id: int):
-    global bot
-    bot = main_bot
-    dp.register_message_handler(stat_month, commands="month")
-    dp.register_message_handler(stat_week, commands="week")
-    dp.register_message_handler(get_week_report, commands="report")
-    # dp.register_message_handler(day_report, lambda message: message.text.lower() == "test")
-
-
 # Первая версия статистики
+@dp.message_handler(commands="month")
 async def stat_month(message: types.Message):
     stat_logger.info("%s ввёл команду /month" % message.from_user.full_name)
     try:
@@ -32,6 +24,7 @@ async def stat_month(message: types.Message):
                          caption='В графике отображены только те часы, которые были занесены через бота')
 
 
+@dp.message_handler(commands="week")
 async def stat_week(message: types.Message):
     stat_logger.info("%s ввёл команду /week" % message.from_user.full_name)
     try:
@@ -43,6 +36,7 @@ async def stat_week(message: types.Message):
                          caption='В графике отображены только те часы, которые были занесены через бота')
 
 
+@dp.message_handler(commands="report")
 async def get_week_report(message: types.Message):
     stat_logger.info("%s ввёл команду /report" % message.from_user.full_name)
     user: User = User.get_user_by_telegram_id(message.from_user.id)

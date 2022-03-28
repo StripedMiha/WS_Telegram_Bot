@@ -1,31 +1,22 @@
-from datetime import timedelta, datetime
+from datetime import datetime
 import logging
 import asyncio
-from pprint import pprint
 
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import ChatNotFound, MessageTextIsEmpty, BotBlocked
 import aioschedule
 
-from aiogram import Bot, Dispatcher, types
+from aiogram import types
 
+from app.tgbot.loader import bot, dp
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
 from app.db.stat import projects_report
 from app.db.structure_of_db import User, Status
 from app.exceptions import EmptyCost, WrongTime, EmptyDayCosts, NotUserTime, NoRemindNotification
-from app.tgbot.main import set_remind, get_text_for_empty_costs, day_report_message
+from app.back.main import set_remind, get_text_for_empty_costs, day_report_message
 
-bot: Bot
 time_logger: logging.Logger = setup_logger("App.Bot.time", "app/log/time.log")
-
-
-def register_handlers_time(dp: Dispatcher, main_bot: Bot, admin_id: int):
-    global bot
-    bot = main_bot
-    dp.register_message_handler(week_report, lambda message: message.text.lower() == "test")
-    dp.register_callback_query_handler(delay_remind, callback_time.filter(action="remind"))
-    dp.register_callback_query_handler(remind_cancel, callback_time.filter(action="cancel"))
 
 
 callback_time = CallbackData("fab_time", "action", "time")
@@ -49,6 +40,7 @@ def get_remind_keyboard(list_data: list[list], width: int = 2,
     return keyboard
 
 
+@dp.message_handler(lambda message: message.text.lower() == "test")
 async def week_report(a=1):
     time_logger.info("Пятничный отчёт")
     users: list[User] = [user for user in Status.get_users('user') if user.telegram_id]
@@ -121,6 +113,7 @@ async def day_report():
                 continue
 
 
+@dp.callback_query_handler(callback_time.filter(action="cancel"))
 async def remind_cancel(call: types.CallbackQuery, callback_data: dict):
     time_logger.info("%s не будет откладывать напоминание" % call.from_user.full_name)
     mes_text = call.message.text
@@ -128,6 +121,7 @@ async def remind_cancel(call: types.CallbackQuery, callback_data: dict):
     await call.message.answer("А вы рисковый!")
 
 
+@dp.callback_query_handler(callback_time.filter(action="remind"))
 async def delay_remind(call: types.CallbackQuery, callback_data: dict):
     user: User = User.get_user_by_telegram_id(call.from_user.id)
     text = await set_remind(user, callback_data.get("time"), call.message.date)
