@@ -7,7 +7,8 @@ import sqlalchemy
 from sqlalchemy.exc import NoResultFound
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, DateTime, Table  # , Table, , Numeric
+from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, DateTime, Table, \
+    select, insert  # , Table, , Numeric
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Session, relationship
 
@@ -45,24 +46,34 @@ class Project(Base):
     __tablename__ = 'projects'
     Base.metadata = metadata
     project_id = Column(Integer(), primary_key=True)
-    project_ws_id = Column(String(15), nullable=False)
-    project_name = Column(Text(), nullable=False)
-    project_path = Column(String(40), nullable=False)
+    project_ws_id = Column(String(15), nullable=True)
+    project_name = Column(Text(), nullable=False, unique=True)
+    project_path = Column(String(40), nullable=True)
     project_status = Column(String(15), nullable=False)
     project_description = Column(Text(), nullable=True)
 
     def __repr__(self):
-        return f"{self.project_id}, {self.project_name}, {self.project_path}"
+        return f"{self.project_id}, {self.project_name}, {self.project_description}"
 
     @staticmethod
-    def new_project(project_data: KeyboardData):
+    def new_project(project_name: str, project_description: str):
         project = Project(
-            project_id=project_data.id,
-            project_name=project_data.text,
-            project_path=f'/project/{str(project_data.id)}/'
+            project_status="active",
+            project_name=project_name,
+            project_description=project_description
         )
         session.add(project)
         session.commit()
+        returning_project = Project.get_project_by_name(project_name)
+        return returning_project
+
+    @staticmethod
+    def get_last_project():
+        return session.query(Project).all()
+
+    @staticmethod
+    def get_project(project_id: int):
+        return session.query(Project).filter(Project.project_id == project_id).one()
 
     @staticmethod
     def get_project_by_ws(project_ws_id: str):
@@ -73,8 +84,8 @@ class Project(Base):
         return {i[0] for i in session.query(Project.project_id).all()}
 
     @staticmethod
-    def get_project_by_name(name :str):
-         return session.query(Project).filter(Project.project_name == name).one()
+    def get_project_by_name(name: str):
+        return session.query(Project).filter(Project.project_name == name).one()
 
 
 class Task(Base):
@@ -238,7 +249,7 @@ class User(Base):
 
     default_task: Task = relationship("Task", uselist=False)
 
-    projects: list[Project] = relationship("Project", secondary=user_project)
+    projects: list[Project] = relationship("Project", secondary=user_project, backref="users")
     statuses: list[Status] = relationship("Status", secondary=user_status)
     bookmarks: list[Bookmark] = relationship("Bookmark", secondary=user_bookmark)
 
@@ -311,6 +322,14 @@ class User(Base):
         status: Status = Status.get_status(status_name)
         self.statuses.remove(status)
         session.add(self)
+        session.commit()
+
+    def add_project(self, project: Project):
+        self.projects.append(project)
+        session.commit()
+
+    def remove_project(self, project: Project):
+        self.projects.remove(project)
         session.commit()
 
     def change_default_task(self, new_default_task_id: int) -> str:

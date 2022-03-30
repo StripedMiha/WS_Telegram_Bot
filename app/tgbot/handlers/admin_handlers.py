@@ -1,8 +1,7 @@
 import logging
 
 import aiogram.utils.exceptions
-from aiogram import Bot, Dispatcher, types
-from aiogram.dispatcher.filters import IDFilter
+from aiogram import types
 from aiogram.utils.callback_data import CallbackData
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
@@ -54,8 +53,8 @@ LIST_ATTRIBUTES: dict = {
 }
 
 
-@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
-                           callback_auth.filter(action=['auth_user', 'unauth_user']))
+@dp.callback_query_handler(callback_auth.filter(action=['auth_user', 'unauth_user']),
+                           lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin())
 async def auth_user(call: types.CallbackQuery, callback_data: dict):
     data = callback_data.get("data")
     telegram_id, email = data.split("_")
@@ -86,8 +85,8 @@ async def auth_user(call: types.CallbackQuery, callback_data: dict):
         await call.answer()
 
 
-@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
-                           callback_auth.filter(action=['add_user', 'block_user']))
+@dp.callback_query_handler(callback_auth.filter(action=['add_user', 'block_user']),
+                           lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin())
 async def user_fate(call: types.CallbackQuery, callback_data: dict):
     fate = callback_data["action"].split("_")[0]
     user_id: int = int(callback_data["data"])
@@ -108,8 +107,8 @@ async def user_fate(call: types.CallbackQuery, callback_data: dict):
         admin_logger.info("%s НЕ получил уведомление о смене статуса" % user.full_name())
 
 
-@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
-                           callback_auth.filter(action=['known_user', 'blocked_user']))
+@dp.callback_query_handler(callback_auth.filter(action=['known_user', 'blocked_user']),
+                           lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin())
 async def user_decide(call: types.CallbackQuery, callback_data: dict):
     case = callback_data['action']
     old_case = 'known_user' if case == 'blocked_user' else "blocked_user"
@@ -128,8 +127,8 @@ async def user_decide(call: types.CallbackQuery, callback_data: dict):
         admin_logger.info("%s НЕ получил уведомление о смене статуса" % user.full_name())
 
 
-@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
-                           callback_auth.filter(action='cancel'))
+@dp.callback_query_handler(callback_auth.filter(action='cancel'),
+                           lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin())
 async def add_cancel(call: types.CallbackQuery, state: FSMContext):
     admin_logger.info("%s Жмёт отмену" % call.from_user.full_name)
     await call.message.edit_text('Выбор отменён.')
@@ -148,8 +147,8 @@ async def status_changer(message: types.Message):
                          reply_markup=keyboard)
 
 
-@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin(),
-                           callback_auth.filter(action=['list_user', 'list_blocked']))
+@dp.callback_query_handler(callback_auth.filter(action=['list_user', 'list_blocked']),
+                           lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin())
 async def select_list(call: types.CallbackQuery, callback_data: dict):
     selected_list = callback_data['action'].split('_')[1]
     admin_logger.info("%s запрашивает список %s" % (call.from_user.full_name, selected_list))

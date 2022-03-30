@@ -87,53 +87,6 @@ def get_user_costs_per_week(first_day: str, user: User) -> list:
     return comments
 
 
-async def check_project(com: dict, query_project: set):
-    if com.get('task').get('project').get('id') not in query_project:
-        db_logger.info("project don't find")
-        project_data: KeyboardData = KeyboardData(com.get('task').get('project').get('name'),
-                                                  com.get('task').get('project').get('id'))
-        Project.new_project(project_data)
-        db_logger.info('add project with id%s' % com.get('task').get('project').get('id'))
-    else:
-        db_logger.info('the project with id%s already exists' % com.get('task').get('project').get('id'))
-
-
-async def check_task(com: dict, query_task: set):
-    if com.get('task').get('id') not in query_task:
-        db_logger.info("task don't find")
-        parent_id: Task = com.get('task').get('page').strip("/").split("/")[-2]
-        Task.new_task(com.get('task'), parent_id)
-        db_logger.info('add task with id%s' % com.get('task').get('id'))
-    else:
-        db_logger.info('the task with id%s already exists' % com.get('task').get('id'))
-
-
-async def check_comment(com: dict, session, query_project: set, query_task: set, query_com: set):
-    db_logger.info('start comment check')
-    if int(com.get('id')) not in query_com:
-        await check_project(com, query_project)
-        await check_task(com, query_task)
-        db_logger.info('start user check')
-        search_user: User = session.query(User).filter(User.email == com.get('user_from').get('email')).first()
-        if search_user:
-            db_logger.info('user with id%s was found' % search_user.user_id)
-            task_db_id = session.query(Task.task_id).filter(Task.task_ws_id == com.get('task').get('id')).one()[0]
-            db_logger.info("comment don't find")
-            Comment.add_comment_in_db(int(com.get('id')), search_user.user_id, task_db_id, com.get('time'),
-                                      com.get('comment'), com.get('date'), False)
-            db_logger.info("add comment with id%s" % com.get('id'))
-
-
-async def check_comments(coms):
-    session = get_session()
-    db_logger.info('start comments check')
-    query_project = {i[0] for i in session.query(Project.project_id).all()}
-    query_task = {i[0] for i in session.query(Task.task_ws_id).all()}
-    query_com = {i[0] for i in session.query(Comment.comment_id).all()}
-    for com in coms:
-        await check_comment(com, session, query_project, query_task, query_com)
-
-
 # example = {'comment': 'обсуждение вопросов по сайту',
 #            'date': '2021-11-16',
 #            'id': '6424851',

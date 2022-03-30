@@ -159,7 +159,6 @@ async def user_is_new_user(call: types.CallbackQuery):
 @dp.callback_query_handler(callback_menu.filter(action="old_user"))
 async def user_is_old_user(call: types.CallbackQuery):
     await call.message.edit_text("Введите свою корпоративную почту")
-    # await bot.send_message(call.from_user.id, "Введите свою корпоративную почту")
     await OrderMenu.wait_for_email_for_login.set()
 
 
@@ -224,7 +223,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
     user: User = User.get_user_by_telegram_id(call.from_user.id)
     user_logger.info("%s выбрал кнопку %s" % (user.full_name(), action))
     date = user.get_date(True)
-    if action == 'set email' or action == 'change email':
+    if action == 'set email':  # or action == 'change email':
         await call.message.edit_text('Введите вашу корпоративную почту:\n'
                                      'Введите "Отмена" для отмены ввода')
         await OrderMenu.wait_for_email.set()
@@ -323,7 +322,7 @@ async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
     user_logger.info("%s выбирает способ поиска задачи" % user.full_name())
     buttons = [['Через поиск', 'via search'],
                ['❤️ Через закладки', 'via bookmarks'],
-               ['Ввести id задачи', 'task id input'],
+               # ['Ввести id задачи', 'task id input'],
                ['Задача по умолчанию', 'fast input']]
     await call.message.edit_text('Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
 
@@ -340,7 +339,7 @@ async def type_of_selection_message(message: types.Message):
 
 
 # Выбран способ поиска задачи - введение ID задачи
-@dp.callback_query_handler(callback_menu.filter(action='task id input'))
+# @dp.callback_query_handler(callback_menu.filter(action='task id input'))
 async def task_id_input(call: types.CallbackQuery, callback_data: dict):
     user: User = User.get_user_by_telegram_id(call.from_user.id)
     user_logger.info("%s выбрал поиск задачи через ввод id задачи" % user.full_name())

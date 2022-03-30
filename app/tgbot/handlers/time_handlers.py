@@ -11,7 +11,7 @@ from aiogram import types
 from app.tgbot.loader import bot, dp
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
-from app.db.stat import projects_report
+from app.back.stat import projects_report
 from app.db.structure_of_db import User, Status
 from app.exceptions import EmptyCost, WrongTime, EmptyDayCosts, NotUserTime, NoRemindNotification
 from app.back.main import set_remind, get_text_for_empty_costs, day_report_message
@@ -97,7 +97,7 @@ async def day_report():
                 time_logger.info("Пользователь %s не заполнил" % user.full_name)
                 keyboard = get_remind_keyboard(REMIND_BUTTON)
                 try:
-                    await bot.send_message(user.telegram_id, get_text_for_empty_costs(user.get_date()),
+                    await bot.send_message(user.telegram_id, get_text_for_empty_costs(user.get_date(True)),
                                            reply_markup=keyboard)
                 except ChatNotFound:
                     time_logger.error("Чат с пользователем %s не найден" % user.full_name)

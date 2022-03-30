@@ -66,9 +66,7 @@ def current_month_stat() -> dict:
 
 def current_week_stat() -> dict:
     first_day: str = get_first_week_day()
-    print(first_day)
     users_sum: dict = sum_period_time_costs(first_day)
-    pprint(users_sum)
     return users_sum
 
 
@@ -145,7 +143,7 @@ def user_week_data(user: User) -> collections.defaultdict:
 
 def show_month_gist():
     data = current_month_stat()
-    users: list[str] = [User.get_user(i).first_name for i in data.keys()]
+    users: list[str] = [f"{User.get_user(i).last_name} {User.get_user(i).first_name[0]}." for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
@@ -162,14 +160,14 @@ def show_month_gist():
     # plt.grid(visible=True)
     step: int = 5 if max_value < 100 else 10
     plt.yticks(np.arange(0, max(time) + 15 if max(time) > max_value else max_value + 15, step=step))
-    plt.xticks(rotation=0)
+    plt.xticks(rotation=0 if len(users) <= 6 else 10 + (len(users) % 2 * 5))
     plt.bar(users, time)
     plt.savefig('app/db/png/1')
 
 
 def show_week_gist():
     data = current_week_stat()
-    users: list[str] = [User.get_user(i).first_name for i in data.keys()]
+    users: list[str] = [f"{User.get_user(i).last_name} {User.get_user(i).first_name[0]}." for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
@@ -183,7 +181,7 @@ def show_week_gist():
     plt.legend(loc=1)
     plt.ylabel('часы')
     plt.yticks(np.arange(0, max(time) + 15 if max(time) > max_value else max_value + 15, step=5))
-    plt.xticks(rotation=0)
+    plt.xticks(rotation=0 if len(users) <= 6 else 10 + (len(users) % 2 * 5))
     plt.bar(users, time)
     plt.savefig('app/db/png/2')
 

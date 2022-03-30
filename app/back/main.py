@@ -2,7 +2,6 @@
 import logging
 import re
 from datetime import datetime, timedelta
-from pprint import pprint
 from typing import Union
 
 from sqlalchemy.exc import NoResultFound
@@ -10,10 +9,10 @@ from sqlalchemy.exc import NoResultFound
 from app.KeyboardDataClass import KeyboardData
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
-from app.db.structure_of_db import User, Comment, Bookmark, Task, Project, Status
+from app.db.structure_of_db import User, Comment, Bookmark, Task, Status
 from app.exceptions import NotUserTime, EmptyDayCosts, CancelInput, WrongDate, FutureDate
 from app.db.db_access import get_user_days_costs, get_the_user_costs_for_period
-from app.db.stat import show_month_gist, show_week_gist, get_first_week_day, show_week_report
+from app.back.stat import show_month_gist, show_week_gist, get_first_week_day, show_week_report
 
 main_logger: logging.Logger = setup_logger("App.back.main", "app/log/main.log")
 back_logger: logging.Logger = setup_logger("App.back", "app/log/back.log")
@@ -24,6 +23,8 @@ INPUT_COSTS = """
 В начале указываете количество часов, следом через '!' можно перечислить один или несколько комментариев.
 Можно ввести больше двух часов. Алгоритм сам разделит по два часа. Пробелы между '!' не важны
 
+Шаблон: 
+{число часов}!{описание деятельности}!{описание деятельности}
 Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> ! <i>Сборка печатного прототипа</i>
 """
 
@@ -38,9 +39,9 @@ INPUT_COST_EXAMPLE = """
 <i>2.5</i>! <i>Сборка печатного прототипа</i>
 
 В первом примере в бот разделит указанное количество часов на количество задач, 
-в данном случае в WS улетит две записи по полтора часа.
+в данном случае добавится две записи по полтора часа.
 
-Во втором примере в WS улетит 3 записи:
+Во втором примере добавится 3 записи:
 Полчаса по первому комментарию. А по второму комментарию 2,5 часа разделятся на две записи: 
 на запись с двумя часами и запись с получасом.
 """
@@ -98,6 +99,7 @@ def get_users_of_list(selected_list: str) -> list[KeyboardData]:
                          "admin": ''}
     for i in users:
         data_for_keyboard.append(KeyboardData(i.full_name(), i.user_id, action_dict[selected_list]))
+    data_for_keyboard.sort(key=lambda i: i.text)
     return data_for_keyboard
 
 
@@ -221,11 +223,7 @@ def remove_costs(user: User):
 async def get_project_list(user: User) -> list[KeyboardData]:
     projects: list[KeyboardData] = [KeyboardData(i.project_name, i.project_id, "search_task") for i in user.projects
                                     if i.project_status == "active"]
-    # projects_id: set[int] = Project.get_all_projects_id_from_db()  # get_projects_db()
-    # for i in projects:
-    #     if i.id not in projects_id:
-    #         Project.new_project(i)
-    #     i.action = "search_task"
+    projects.sort(key=lambda project: project.text)
     return projects
 
 

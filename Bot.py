@@ -2,7 +2,7 @@ import logging
 import asyncio
 import os
 
-from aiogram import Bot
+from aiogram import Bot, executor
 from aiogram.types import BotCommand
 
 from app.config_reader import load_config
