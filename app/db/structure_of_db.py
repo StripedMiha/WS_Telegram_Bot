@@ -109,13 +109,10 @@ class Task(Base):
         return f"{self.project.project_name} | {self.task_name}"
 
     @staticmethod
-    def new_task(task_info: dict, parent_id: str = None) -> None:
-        par_id = int(task_info.get('project').get('id')) if parent_id is None else parent_id
-        t = Task(task_path=task_info.get('page'),
-                 project_id=task_info.get('project').get('id'),
-                 task_name=task_info.get('name'),
-                 task_ws_id=task_info.get('id'),
-                 parent_id=par_id,
+    def new_task(task_name: str, project_id: int, parent_id: int = None) -> None:
+        t = Task(task_name=task_name,
+                 project_id=project_id,
+                 parent_id=parent_id,
                  status="active"
                  )
         session.add(t)

@@ -18,7 +18,7 @@ from app.tgbot.handlers.admin_handlers import get_keyboard_admin
 from app.back.main import see_days_costs, get_about_user_info, menu_buttons, days_costs_for_remove, remove_costs, \
     remove_cost, text_count_removed_costs, bookmarks_for_remove, get_project_list, get_tasks, get_list_bookmark, \
     add_costs, INPUT_COST_EXAMPLE, add_bookmark, get_text_add_costs, remind_settings_button, \
-    get_text_menu_notification, fast_date_keyboard, change_date, get_subtasks, check_user
+    get_text_menu_notification, fast_date_keyboard, change_date, get_subtasks, check_user, create_task
 
 user_logger: logging.Logger = setup_logger("App.Bot.user", "app/log/user.log")
 
@@ -31,6 +31,7 @@ class OrderMenu(StatesGroup):
     wait_for_offer = State()
     wait_for_date = State()
     wait_for_notification_time = State()
+    wait_for_task_name = State()
 
 
 # Набор кнопок выбора даты
@@ -495,6 +496,14 @@ async def wait_hours(message: types.Message, state: FSMContext):
         await message.answer(user.change_default_task(int(data['id'])), reply_markup=types.ReplyKeyboardRemove())
         await state.finish()
         return
+    elif "создать подзадачу" in text.lower():
+        project_id = None
+        parent_task_id = data.get("id")
+        await state.update_data(project_id=project_id,
+                                task_id=parent_task_id)
+        await message.answer("Введение трудоёмкости отменено", reply_markup=types.ReplyKeyboardRemove())
+        await message.answer("Введите название задачи")
+        await OrderMenu.wait_for_task_name.set()
     elif 'ничего не понял' in text.lower() or '!' not in text.lower():
         user_logger.info("%s не понимает что происходит (при вводе трудоёмкости)" % user.full_name())
         await message.answer(INPUT_COST_EXAMPLE)
@@ -586,3 +595,44 @@ async def wait_notification_time(message: types.Message, state: FSMContext):
     else:
         await message.answer('Время введено в неверном формате. Введите "отмена" для отмены ввода')
         return
+
+
+@dp.callback_query_handler(callback_remove.filter(action=["create_task", "create_subtask"]))
+async def start_create_task(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
+    action = callback_data.get("action")
+    parent_id = callback_data.get("id")
+    user_logger.info(f"{user.full_name()} нажимает кнопку {action} при родителе {parent_id}")
+    if action == "create_task":
+        project_id = parent_id
+        parent_task_id = None
+    else:
+        project_id = None
+        parent_task_id = parent_id
+    await state.update_data(project_id=project_id,
+                            task_id=parent_task_id)
+    await call.message.edit_text("Введите название задачи")
+    await OrderMenu.wait_for_task_name.set()
+
+
+@dp.message_handler(state=OrderMenu.wait_for_task_name)
+async def read_task_name(message: types.Message, state: FSMContext):
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    text = message.text
+    user_logger.info(f"{user.full_name()} при создании задачи вводит '{text}'")
+    if text.lower() == 'отмена' or text.lower() == 'cancel':
+        user_logger.info(f"{user.full_name()} отменил создание задачи")
+        await message.edit_text("Создание задачи отменено")
+        await state.finish()
+        return
+    data = await state.get_data()
+    await create_task(text, data)
+    await message.answer("Задача создана")
+    await state.finish()
+
+
+
+
+
+
+

@@ -9,7 +9,7 @@ from sqlalchemy.exc import NoResultFound
 from app.KeyboardDataClass import KeyboardData
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
-from app.db.structure_of_db import User, Comment, Bookmark, Task, Status
+from app.db.structure_of_db import User, Comment, Bookmark, Task, Status, Project
 from app.exceptions import NotUserTime, EmptyDayCosts, CancelInput, WrongDate, FutureDate
 from app.db.db_access import get_user_days_costs, get_the_user_costs_for_period
 from app.back.stat import show_month_gist, show_week_gist, get_first_week_day, show_week_report
@@ -238,6 +238,7 @@ def get_tasks(project_id: int, user_id: int) -> Union[list[KeyboardData], str]:
     subtasks: list[Task] = Task.get_tasks(project_id)
     child_tasks: list[KeyboardData] = [KeyboardData(task.task_name, task.task_id, "search_subtask")
                                        for task in subtasks]
+    child_tasks.append(KeyboardData("Создать задачу", project_id, "create_task"))
     return child_tasks
 
 
@@ -252,7 +253,16 @@ def get_subtasks(parent_id: int, user_id: int) -> Union[list[KeyboardData], str]
         child_tasks += [KeyboardData(task_name, int(parent_id), 'input_here')]
         child_tasks += [KeyboardData(task.task_name, task.task_id, "search_subtask")
                         for task in subtasks]
+    child_tasks.append(KeyboardData("Создать подзадачу", parent_id, "create_subtask"))
     return child_tasks
+
+
+async def create_task(name: str, data: dict):
+    project_id = data.get("project_id")
+    task_id = data.get("task_id")
+    if task_id:
+        project_id = Task.get_task(task_id).project_id
+    Task.new_task(name, project_id, task_id)
 
 
 def get_list_bookmark(user_id: int) -> Union[list[KeyboardData], str]:

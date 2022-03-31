@@ -160,7 +160,7 @@ def show_month_gist():
     # plt.grid(visible=True)
     step: int = 5 if max_value < 100 else 10
     plt.yticks(np.arange(0, max(time) + 15 if max(time) > max_value else max_value + 15, step=step))
-    plt.xticks(rotation=0 if len(users) <= 6 else 10 + (len(users) % 2 * 5))
+    plt.xticks(rotation=0 if len(users) <= 6 else 15)
     plt.bar(users, time)
     plt.savefig('app/db/png/1')
 
@@ -181,7 +181,7 @@ def show_week_gist():
     plt.legend(loc=1)
     plt.ylabel('часы')
     plt.yticks(np.arange(0, max(time) + 15 if max(time) > max_value else max_value + 15, step=5))
-    plt.xticks(rotation=0 if len(users) <= 6 else 10 + (len(users) % 2 * 5))
+    plt.xticks(rotation=0 if len(users) <= 6 else 15)
     plt.bar(users, time)
     plt.savefig('app/db/png/2')
 
