@@ -1,6 +1,4 @@
 import logging
-import re
-from datetime import datetime, timedelta
 from pprint import pprint
 from typing import Union
 
@@ -8,8 +6,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.callback_data import CallbackData
 from sqlalchemy.exc import NoResultFound
 
-from app.KeyboardDataClass import KeyboardData
-from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
 from app.db.structure_of_db import User, Comment, Bookmark, Task, Project, Status
 
@@ -67,6 +63,16 @@ def get_keyboard_2(list_data: list[tuple], width: int = 3, enable_cancel: bool =
     return keyboard
 
 
+async def get_manager_help() -> str:
+    """
+    Возвращает текст помощи для менеджера
+    :return:
+    """
+    text = [f"/manager_menu - выводит меню возможностей менеджера",
+            f"<b>Список кнопок:</b>"]
+    return "\n".join(text)
+
+
 async def get_manager_menu() -> InlineKeyboardMarkup:
     """
     Возвращает меню менеджерских команд
@@ -75,6 +81,7 @@ async def get_manager_menu() -> InlineKeyboardMarkup:
     buttons = [
         ("Назначить на проект", "add_to_project"),
         ("Редактировать проект", "manage_project"),
+        ("Отчёт по проекту", "report_project"),
         ("Создать проект", "create_project"),
         ("Информация о проекте", "project_list")
     ]
@@ -171,7 +178,45 @@ async def change_user_status_in_project(user: User, project: Project) -> str:
     return text
 
 
-async def finish_creating_project(manager: User, project_name: str, project_description: str):
-    new_project = Project.new_project(project_name, project_description)
+async def finish_creating_project(manager: User, project_name: str, project_description: str) -> str:
+    """
+    Создаёт новый проект. Возвращает текстовое сообщение о создании нового проекта
+    :param manager: экземпляр класса User которому будет добавлен свежесозданный проект
+    :param project_name: имя нового проекта
+    :param project_description: описание нового проекта
+    :return:
+    """
+    new_project: Project = Project.new_project(project_name, project_description)
     manager.add_project(new_project)
-    return new_project
+    text = f"Вы создали новый проект.\n" \
+           f"Имя проекта: {new_project.project_name}\n" \
+           f"Описание проекта: {new_project.project_description}" \
+           f"Проект доступен для управления."
+    return text
+
+
+async def get_keyboard_of_settings(project: Project) -> InlineKeyboardMarkup:
+    """
+    Возвращает клавиатуру изменения проекта
+    :param project: экземпляр класса Projects
+    :return:
+    """
+    buttons = [
+        ("Изменить название", project.project_id, "change_project_name"),  # TODO
+        ("Изменить описание", project.project_id, "change_project_description"),  # TODO
+        ("Отправить в архив", project.project_id, "archive_project"),
+    ]
+    keyboard: InlineKeyboardMarkup = get_keyboard_1(buttons, 1)
+    return keyboard
+
+
+async def archiving_project(project: Project) -> str:
+    project.archive_project()
+    return f"Проект {project.project_name} отправлен в архив."
+
+
+async def get_report() -> str:
+    text = f"Для формирования отчтётов существует отдельный бот Даниила Затерюкина\n" \
+           f"@SMDEmanage_bot вот он."
+    return text
+

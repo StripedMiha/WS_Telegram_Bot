@@ -26,6 +26,9 @@ INPUT_COSTS = """
 Шаблон: 
 {число часов}!{описание деятельности}!{описание деятельности}
 Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> ! <i>Сборка печатного прототипа</i>
+
+Для создания подзадачи введите 'создать подзадачу'.
+Для закрытия задачи введите 'задача выполнена'.
 """
 
 INPUT_COST_EXAMPLE = """
@@ -237,7 +240,7 @@ def get_text_add_costs(task_id: int, user: User) -> str:
 def get_tasks(project_id: int, user_id: int) -> Union[list[KeyboardData], str]:
     subtasks: list[Task] = Task.get_tasks(project_id)
     child_tasks: list[KeyboardData] = [KeyboardData(task.task_name, task.task_id, "search_subtask")
-                                       for task in subtasks]
+                                       for task in subtasks if task.status == "active"]
     child_tasks.append(KeyboardData("Создать задачу", project_id, "create_task"))
     return child_tasks
 
@@ -252,7 +255,7 @@ def get_subtasks(parent_id: int, user_id: int) -> Union[list[KeyboardData], str]
         task_name = ' '.join([f'🗂', Task.get_task(parent_id).task_name])
         child_tasks += [KeyboardData(task_name, int(parent_id), 'input_here')]
         child_tasks += [KeyboardData(task.task_name, task.task_id, "search_subtask")
-                        for task in subtasks]
+                        for task in subtasks if task.status == "active"]
     child_tasks.append(KeyboardData("Создать подзадачу", parent_id, "create_subtask"))
     return child_tasks
 

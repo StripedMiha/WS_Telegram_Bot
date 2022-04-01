@@ -49,13 +49,13 @@ class UserTest(TestCase):
         self.assertEqual(User.get_user_by_telegram_id(582760668).has_access(), False)
 
     def test_admin_blocked(self):
-        self.assertEqual(User.get_user_by_telegram_id(300617281).blocked(), False)
+        self.assertEqual(User.get_user_by_telegram_id(300617281).is_blocked(), False)
 
     def test_user_blocked(self):
-        self.assertEqual(User.get_user_by_telegram_id(833477860).blocked(), False)
+        self.assertEqual(User.get_user_by_telegram_id(833477860).is_blocked(), False)
 
     def test_blocked_blocked(self):
-        self.assertEqual(User.get_user_by_telegram_id(582760668).blocked(), True)
+        self.assertEqual(User.get_user_by_telegram_id(582760668).is_blocked(), True)
 
     def test_full_name(self):
         self.assertEqual(User.get_user_by_telegram_id(300617281).full_name(), "Михаил Игнатенко")

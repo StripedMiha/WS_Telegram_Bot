@@ -67,6 +67,10 @@ class Project(Base):
         returning_project = Project.get_project_by_name(project_name)
         return returning_project
 
+    def archive_project(self):
+        self.project_status = "archive"
+        session.commit()
+
     @staticmethod
     def get_last_project():
         return session.query(Project).all()
@@ -107,6 +111,10 @@ class Task(Base):
 
     def full_name(self):
         return f"{self.project.project_name} | {self.task_name}"
+
+    def complete_task(self):
+        self.status = "done"
+        session.commit()
 
     @staticmethod
     def new_task(task_name: str, project_id: int, parent_id: int = None) -> None:
@@ -258,17 +266,20 @@ class User(Base):
                f"Статус уведомлений - {self.notification_status} на {self.notification_time} или " \
                f"{self.remind_notification}"
 
-    def blocked(self) -> bool:
-        return True if 'blocked' in self.get_status() else False
-
-    def is_admin(self) -> bool:
-        return True if 'admin' in self.get_status() and not self.blocked() else False
-
-    def is_manager(self) -> bool:
-        return True if 'manager' in self.get_status() and not self.blocked() else False
+    def is_blocked(self) -> bool:
+        return True if "blocked" in self.get_status() else False
 
     def has_access(self) -> bool:
-        return True if 'user' in self.get_status() and not self.blocked() else False
+        return True if 'user' in self.get_status() and not self.is_blocked() else False
+
+    def is_manager(self) -> bool:
+        return True if "manager" in self.get_status() and not self.is_blocked() else False
+
+    def is_top_manager(self) -> bool:
+        return True if "topmanager" in self.get_status() and not self.is_blocked() else False
+
+    def is_admin(self) -> bool:
+        return True if "admin" in self.get_status() and not self.is_blocked() else False
 
     def get_status(self) -> list[str]:
         return [i.status_name for i in self.statuses]
@@ -414,7 +425,7 @@ class User(Base):
         return session.query(User).filter(User.ws_id == user_ws_id).one()
 
     @classmethod
-    def get_users_list(cls):
+    def get_all_users(cls):
         q: list[User] = session.query(User).all()  # .user_id, User.first_name, User.last_name, User.__status
         return q
 

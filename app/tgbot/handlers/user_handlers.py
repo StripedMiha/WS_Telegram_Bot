@@ -12,7 +12,7 @@ from aiogram.utils.callback_data import CallbackData
 from app.KeyboardDataClass import KeyboardData
 from app.tgbot.loader import dp, bot
 from app.create_log import setup_logger
-from app.db.structure_of_db import User, Bookmark
+from app.db.structure_of_db import User, Bookmark, Task
 from app.exceptions import FutureDate, CancelInput, WrongDate
 from app.tgbot.handlers.admin_handlers import get_keyboard_admin
 from app.back.main import see_days_costs, get_about_user_info, menu_buttons, days_costs_for_remove, remove_costs, \
@@ -98,12 +98,15 @@ async def request_help(message: types.Message):
     user: User = User.get_user_by_telegram_id(message.from_user.id, message.from_user.first_name,
                                               message.from_user.last_name)
     if not user.has_access:
-        if user.blocked:
+        if user.is_blocked:
             return None
         await message.answer('Нет доступа\nНапиши /start в личные сообщения боту, чтобы запросить доступ')
         return None
     text_help = [
-        f'<b>Список комманд:</b>',
+        f'/help - Список команд',
+        f'/help_manager - помощь по командам менеджеров',
+        f'/help_top - помощь по командам управления',
+        f'<b>Список команд:</b>',
         f'/menu - меню взаимодействия с WS  через бота',
         f'Перечень действий меню с описанием:',
         f'<b>Обо мне</b> - выводит информацию о вас: Имя, почта и статус',
@@ -112,7 +115,7 @@ async def request_help(message: types.Message):
         f'Через поиск по всем доступным вам проектам или через поиск по закладкам, которые вы оставили ранее',
         f'<b>Удалить закладку</b> - удаление закладок',
         f'<b>Отчёт за сегодня</b> - выводит отчёт по вашим введённым за сегодня трудоёмкостям',
-        f'<b>Удалить трудоёмкость</b> - удалить одну из сегодняшних трудоёмкостей, введёных по ошибке',
+        f'<b>Удалить трудоёмкость</b> - удалить одну из сегодняшних трудоёмкостей, введённых по ошибке',
         f'<b>Изменить почту</b> - изменить почту',
         f'<b>Предложение/отзыв о боте</b> - можно предложить фичу, доработку, оставить замечание по работе бота.'
     ]
@@ -504,6 +507,18 @@ async def wait_hours(message: types.Message, state: FSMContext):
         await message.answer("Введение трудоёмкости отменено", reply_markup=types.ReplyKeyboardRemove())
         await message.answer("Введите название задачи")
         await OrderMenu.wait_for_task_name.set()
+    elif "задача выполнена" in text.lower():
+        task: Task = Task.get_task(data.get("id"))
+        task.complete_task()
+        managers: list[User] = [user for user in task.project.users if user.is_manager()]
+        await message.answer("Задача выполнена.", reply_markup=types.ReplyKeyboardRemove())
+        await state.finish()
+        for manager in managers:
+            try:
+                await bot.send_message(manager.telegram_id, f"{user.full_name()} закрыл задачу {task.task_name} "
+                                                            f"в проекте {task.project.project_name}")
+            except Exception:
+                pass
     elif 'ничего не понял' in text.lower() or '!' not in text.lower():
         user_logger.info("%s не понимает что происходит (при вводе трудоёмкости)" % user.full_name())
         await message.answer(INPUT_COST_EXAMPLE)
