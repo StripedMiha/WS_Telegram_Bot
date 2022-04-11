@@ -407,14 +407,8 @@ class User(Base):
         return session.query(User).filter(User.user_id == user_id).one()
 
     @staticmethod
-    def get_user_by_telegram_id(user_id: int, *args):
-        # try:
+    def get_user_by_telegram_id(user_id: int):
         return session.query(User).filter(User.telegram_id == user_id).one()
-        # except NoResultFound:
-            # User.new_user(user_id, args)
-            # return User.get_user_by_telegram_id(user_id)
-        # except Exception:
-        #     return None
 
     @staticmethod
     def get_user_by_email(user_email: str):

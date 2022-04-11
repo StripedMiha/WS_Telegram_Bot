@@ -10,6 +10,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils.callback_data import CallbackData
 
 from app.KeyboardDataClass import KeyboardData
+from app.back.user_back import get_user_help, validate_old_user
 from app.tgbot.loader import dp, bot
 from app.create_log import setup_logger
 from app.db.structure_of_db import User, Bookmark, Task
@@ -94,33 +95,15 @@ async def get_remove_keyboard(list_data: list[KeyboardData],
 # Вывод списка команд
 @dp.message_handler(commands="help")
 async def request_help(message: types.Message):
+    """
+    Выводит пользователю помощь, при наличии у него доступа
+    :param message:
+    :return:
+    """
     user_logger.info("%s %s %s" % (message.from_user.full_name, message.from_user.id, message.text))
-    user: User = User.get_user_by_telegram_id(message.from_user.id, message.from_user.first_name,
-                                              message.from_user.last_name)
-    if not user.has_access:
-        if user.is_blocked:
-            return None
-        await message.answer('Нет доступа\nНапиши /start в личные сообщения боту, чтобы запросить доступ')
-        return None
-    text_help = [
-        f'/help - Список команд',
-        f'/help_manager - помощь по командам менеджеров',
-        f'/help_top - помощь по командам управления',
-        f'<b>Список команд:</b>',
-        f'/menu - меню взаимодействия с WS  через бота',
-        f'Перечень действий меню с описанием:',
-        f'<b>Обо мне</b> - выводит информацию о вас: Имя, почта и статус',
-        f'<b>Найти задачу</b> - открывает подменю выбора способа поиска проекта'
-        f' и задачи для внесения часов или добавления задачи в закладки. '
-        f'Через поиск по всем доступным вам проектам или через поиск по закладкам, которые вы оставили ранее',
-        f'<b>Удалить закладку</b> - удаление закладок',
-        f'<b>Отчёт за сегодня</b> - выводит отчёт по вашим введённым за сегодня трудоёмкостям',
-        f'<b>Удалить трудоёмкость</b> - удалить одну из сегодняшних трудоёмкостей, введённых по ошибке',
-        f'<b>Изменить почту</b> - изменить почту',
-        f'<b>Предложение/отзыв о боте</b> - можно предложить фичу, доработку, оставить замечание по работе бота.'
-    ]
-    answer = '\n'.join(text_help)
-    await message.answer(answer)
+    answer = await get_user_help(message.from_user.id)
+    if answer:
+        await message.answer(answer)
 
 
 # Мем версия /start
@@ -168,34 +151,22 @@ async def user_is_old_user(call: types.CallbackQuery):
 
 @dp.message_handler(state=OrderMenu.wait_for_email_for_login)
 async def wait_email_for_login(message: types.Message, state: FSMContext):
+    """
+    Реагирует на введёную почту при авторизации нового с уже существующим пользователем
+    :param message:
+    :param state:
+    :return:
+    """
     user_logger.info("%s Вводит почту: %s" % (message.from_user.full_name, message.text))
-    email = message.text.strip(" ")
-    # if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru|[a-z]\d@s-t.studio', email):
-    if email in User.get_empty_email():
-        un_auth_user = User.new_user(message.from_user.id, message.from_user.first_name, message.from_user.last_name)
-        data = "_".join([str(un_auth_user.telegram_id), email])
-        data_for_keyboard = [KeyboardData('Добавить пользователя', data, 'auth_user'),
-                             KeyboardData('Игнорировать пользователя', data, 'unauth_user')]
-        keyboard = get_keyboard_admin(data_for_keyboard, width=1, enable_cancel=False)
-        exist_user: User = User.get_user_by_email(email)
-        await bot.send_message(User.get_admin_id(), f"Этот перец пишет мне: {un_auth_user.full_name()} "
-                                                    f"c id{un_auth_user.telegram_id} {message.from_user.username}\n"
-                                                    f"И утверждает, что он {exist_user.full_name()} и почта: {email} его"
-                               , reply_markup=keyboard)
-        await message.answer('Заявка ушла админу. Ждите.')
+    answer_data = await validate_old_user(message)
+    user_logger.info(answer_data.get("to_log"))
+    if answer_data.get("to_admin"):
+        await bot.send_message(User.get_admin_id(),
+                               answer_data.get("to_admin"),
+                               reply_markup=answer_data.get("keyboard"))
+    await message.answer(answer_data.get("to_user"))
+    if answer_data.get("finish"):
         await state.finish()
-        return None
-
-    elif message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
-        await message.answer('Отменён ввод почты.\n')
-        user_logger.info("%s Отменяет ввод почты" % message.from_user.full_name)
-        # await state.finish()
-    else:
-        await message.answer('Почта введена в неверном формате.\n'
-                             'Введите "Отмена" для отмены ввода')
-        return
-    await state.finish()
-    return
 
 
 # Нажали кнопку отмены

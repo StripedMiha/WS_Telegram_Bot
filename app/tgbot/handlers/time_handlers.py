@@ -80,35 +80,35 @@ async def week_report(a=1):
 
 async def day_report():
     if is_work_day(datetime.now()):
-        users: list[User] = Status.get_users('user')
+        users: list[User] = [user for user in Status.get_users("user") if user.telegram_id]
         for user in users:
             try:
                 text, sum_costs = await day_report_message(user)
                 if 0 < sum_costs < 8:
-                    time_logger.info("Пользователь %s заполнил меньше 8 часов" % user.full_name)
+                    time_logger.info("Пользователь %s заполнил меньше 8 часов" % user.full_name())
                     keyboard = get_remind_keyboard(REMIND_BUTTON)
                     await bot.send_message(user.telegram_id, text, reply_markup=keyboard)
                 else:
-                    time_logger.info("Пользователь %s заполнил" % user.full_name)
+                    time_logger.info("Пользователь %s заполнил" % user.full_name())
                     await bot.send_message(user.telegram_id, text)
             except NotUserTime:
                 continue
             except EmptyDayCosts:
-                time_logger.info("Пользователь %s не заполнил" % user.full_name)
+                time_logger.info("Пользователь %s не заполнил" % user.full_name())
                 keyboard = get_remind_keyboard(REMIND_BUTTON)
                 try:
                     await bot.send_message(user.telegram_id, get_text_for_empty_costs(user.get_date(True)),
                                            reply_markup=keyboard)
                 except ChatNotFound:
-                    time_logger.error("Чат с пользователем %s не найден" % user.full_name)
+                    time_logger.error("Чат с пользователем %s не найден" % user.full_name())
                 except BotBlocked:
-                    time_logger.error("Пользователь %s заблокировал бота" % user.full_name)
+                    time_logger.error("Пользователь %s заблокировал бота" % user.full_name())
             except ChatNotFound:
-                time_logger.error("Чат с пользователем %s не найден" % user.full_name)
+                time_logger.error("Чат с пользователем %s не найден" % user.full_name())
             except BotBlocked:
-                time_logger.error("Пользователь %s заблокировал бота" % user.full_name)
+                time_logger.error("Пользователь %s заблокировал бота" % user.full_name())
             except MessageTextIsEmpty:
-                time_logger.error("Сообщение пользователю %s пустое" % user.full_name)
+                time_logger.error("Сообщение пользователю %s пустое" % user.full_name())
             except NoRemindNotification:
                 continue
 
