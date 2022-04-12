@@ -1,8 +1,7 @@
-
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Union
+from typing import Union, List, Tuple
 
 from sqlalchemy.exc import NoResultFound
 
@@ -223,10 +222,26 @@ def remove_costs(user: User):
         yield remove_cost(i)
 
 
-async def get_project_list(user: User) -> list[KeyboardData]:
+async def get_project_list(user: User, hide_archive: bool = True) -> list[KeyboardData]:
+    """
+    Возвращает набор данных для клавиатуры выбора проекта
+    :param user:
+    :param hide_archive: показывать ли архивные проекты
+    :return:
+    """
     projects: list[KeyboardData] = [KeyboardData(i.project_name, i.project_id, "search_task") for i in user.projects
                                     if i.project_status == "active"]
     projects.sort(key=lambda project: project.text)
+    if hide_archive:
+        projects.append(KeyboardData("📦Показать архивные", "---", "via_search_with_hided"))
+    else:
+        archive_projects: list[KeyboardData] = [KeyboardData("📦 " + i.project_name, i.project_id, "search_task") for i
+                                                in
+                                                user.projects
+                                                if i.project_status == "archive"]
+        for archive_project in archive_projects:
+            projects.append(archive_project)
+        projects.append(KeyboardData("Скрыть архивные", "---", "via_search"))
     return projects
 
 
@@ -237,15 +252,38 @@ def get_text_add_costs(task_id: int, user: User) -> str:
     return answer
 
 
-def get_tasks(project_id: int, user_id: int) -> Union[list[KeyboardData], str]:
+def get_tasks(project_id: int, user_id: int, statuses: List[str]) -> Union[list[KeyboardData], str]:
+    """
+    Возвращает набор данных для клавиатуры выбора задачи
+    :param project_id:
+    :param user_id:
+    :param statuses: показывать ли закрытые задачи
+    :return:
+    """
     subtasks: list[Task] = Task.get_tasks(project_id)
-    child_tasks: list[KeyboardData] = [KeyboardData(task.task_name, task.task_id, "search_subtask")
-                                       for task in subtasks if task.status == "active"]
-    child_tasks.append(KeyboardData("Создать задачу", project_id, "create_task"))
+    child_tasks: list[KeyboardData] = []
+    for status in statuses:
+        child_tasks += [KeyboardData("✅ " + task.task_name if task.status == "done" else task.task_name,
+                                     task.task_id,
+                                     "search_subtask")
+                        for task in subtasks if task.status == status]
+    child_tasks.append(KeyboardData("🛠Создать задачу", project_id, "create_task"))
+    if "done" in statuses:
+        child_tasks.append(KeyboardData("❌скрыть выполненные", project_id, "search_task"))
+    else:
+        child_tasks.append(KeyboardData("✅показать выполненные", project_id, "search_task_with_done"))
+
     return child_tasks
 
 
-def get_subtasks(parent_id: int, user_id: int) -> Union[list[KeyboardData], str]:
+def get_subtasks(parent_id: int, user_id: int, statuses: List[str]) -> Union[list[KeyboardData], str]:
+    """
+    Возвращает набор данных для клавиатуры выбора подзадачи
+    :param parent_id:
+    :param user_id:
+    :param statuses: показывать ли закрытые подзадачи
+    :return:
+    """
     user = User.get_user_by_telegram_id(user_id)
     subtasks: list[Task] = Task.get_subtasks(parent_id)
     if len(subtasks) == 0:
@@ -254,9 +292,16 @@ def get_subtasks(parent_id: int, user_id: int) -> Union[list[KeyboardData], str]
         child_tasks: list[KeyboardData] = []
         task_name = ' '.join([f'🗂', Task.get_task(parent_id).task_name])
         child_tasks += [KeyboardData(task_name, int(parent_id), 'input_here')]
-        child_tasks += [KeyboardData(task.task_name, task.task_id, "search_subtask")
-                        for task in subtasks if task.status == "active"]
-    child_tasks.append(KeyboardData("Создать подзадачу", parent_id, "create_subtask"))
+        for status in statuses:
+            child_tasks += [KeyboardData("✅ " + task.task_name if task.status == "done" else task.task_name,
+                                         task.task_id,
+                                         "search_subtask")
+                            for task in subtasks if task.status == status]
+    child_tasks.append(KeyboardData("🛠Создать подзадачу", parent_id, "create_subtask"))
+    if "done" in statuses:
+        child_tasks.append(KeyboardData("❌скрыть выполненные", parent_id, "search_subtask"))
+    else:
+        child_tasks.append(KeyboardData("✅показать выполненные", parent_id, "search_subtask_with_done"))
     return child_tasks
 
 
@@ -294,6 +339,39 @@ def add_costs(message: str, data: dict) -> str:
             yield 'Успешно внесено'
         except Exception as e:
             yield 'Не внесено'
+
+
+async def reactivate_task_keyboard(task_id: int) -> List[KeyboardData]:
+    """
+    возвращает набор данных для реактивации задачи
+    :param task_id:
+    :return:
+    """
+    buttons: List[KeyboardData] = [KeyboardData("Активировать задачу", task_id, "reactivate_task"),
+                                   KeyboardData("Оставить выполненной", task_id, "keep_completed")]
+    return buttons
+
+
+async def task_fate(user: User, task: Task, action: str) -> tuple[str, str]:
+    """
+    Подготовка сообщений для пользователя и менеджеров после реактивации(или нет) задачи
+    :param user:
+    :param task:
+    :param action:
+    :return:
+    """
+    to_user: str = ""
+    to_manager: str = ""
+    if action == "reactivate_task":
+        task.reactivate_task()
+        to_user = f"Задача {task.task_name} вновь активна"
+        to_manager = f"Пользователь {user.full_name()} внёс трудозатраты в неактивную задачу " \
+                     f"{task.task_name} и реактивировал её"
+    if action == "keep_completed":
+        to_user = f"Задача {task.task_name} осталась неактивной"
+        to_manager = f"Пользователь {user.full_name()} внёс трудозатраты в неактивную задачу " \
+                     f"{task.task_name} и не активировал её"
+    return to_user, to_manager
 
 
 def to_correct_time(time: str) -> timedelta:
@@ -376,7 +454,7 @@ DATE_PATTERN = r'(0[1-9]|[1-2][0-9]|3[0-1])[., :](0[1-9]|1[0-2])[., :](20[2-9][0
 
 
 async def change_date(user: User, new_date: str) -> str:
-    if any([i == new_date for i in ("отмена", "cancel")]) :
+    if any([i == new_date for i in ("отмена", "cancel")]):
         raise CancelInput
     elif any([i == new_date for i in ("сегодня", "today")]):
         user.change_date(new_date)
@@ -479,7 +557,7 @@ async def day_report_message(user: User) -> tuple[str, float]:
         if day_cost_hours <= 0:
             raise EmptyDayCosts
     else:
-        raise NotUserTime # Не надо отправлять
+        raise NotUserTime  # Не надо отправлять
     return text, day_cost_hours
 
 

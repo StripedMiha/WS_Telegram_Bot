@@ -6,8 +6,10 @@ from typing import Union
 import sqlalchemy.exc
 from aiogram import types
 from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils.callback_data import CallbackData
+from aiogram.utils.exceptions import ChatNotFound, BotBlocked, ChatIdIsEmpty
 
 from app.KeyboardDataClass import KeyboardData
 from app.back.user_back import get_user_help, validate_old_user
@@ -19,7 +21,8 @@ from app.tgbot.handlers.admin_handlers import get_keyboard_admin
 from app.back.main import see_days_costs, get_about_user_info, menu_buttons, days_costs_for_remove, remove_costs, \
     remove_cost, text_count_removed_costs, bookmarks_for_remove, get_project_list, get_tasks, get_list_bookmark, \
     add_costs, INPUT_COST_EXAMPLE, add_bookmark, get_text_add_costs, remind_settings_button, \
-    get_text_menu_notification, fast_date_keyboard, change_date, get_subtasks, check_user, create_task
+    get_text_menu_notification, fast_date_keyboard, change_date, get_subtasks, check_user, create_task, \
+    reactivate_task_keyboard, task_fate
 
 user_logger: logging.Logger = setup_logger("App.Bot.user", "app/log/user.log")
 
@@ -295,7 +298,7 @@ async def wait_offer(message: types.Message, state: FSMContext):
 async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
     user = User.get_user_by_telegram_id(call.from_user.id)
     user_logger.info("%s выбирает способ поиска задачи" % user.full_name())
-    buttons = [['Через поиск', 'via search'],
+    buttons = [['Через поиск', 'via_search'],
                ['❤️ Через закладки', 'via bookmarks'],
                # ['Ввести id задачи', 'task id input'],
                ['Задача по умолчанию', 'fast input']]
@@ -306,7 +309,7 @@ async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
 async def type_of_selection_message(message: types.Message):
     user: User = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("%s выбирает способ поиска задачи" % user.full_name())
-    buttons = [['Через поиск', 'via search'],
+    buttons = [['Через поиск', 'via_search'],
                ['❤️ Через закладки', 'via bookmarks'],
                # ['Ввести id задачи', 'task id input'],
                ['Задача по умолчанию', 'fast input']]
@@ -344,11 +347,25 @@ async def wait_task_id(message: types.Message, state: FSMContext):
 
 
 # Выбран способ поиска задачи - через поиск
-@dp.callback_query_handler(callback_menu.filter(action='via search'))
+@dp.callback_query_handler(callback_menu.filter(action="via_search"))
+@dp.callback_query_handler(callback_remove.filter(action="via_search"))
+@dp.callback_query_handler(callback_remove.filter(action="via_search_with_hided"))
 async def search_project_via_search(call: types.CallbackQuery, callback_data: dict):
+    """
+    Выводит клавиатуру проектов пользователя. Так же кнопки показать/скрыть архивные проекты
+    :param call:
+    :param callback_data:
+    :return:
+    """
     user: User = User.get_user_by_telegram_id(call.from_user.id)
-    user_logger.info("%s начинает поиск задачи через через поиск. Получил список проектов" % user.full_name())
-    user_projects: list[KeyboardData] = await get_project_list(user)
+    if callback_data.get("action") == "via_search_with_hided":
+        log: str = f"{user.full_name()} нажал кнопку 'Показать архивные проекты'. Получил список проектов"
+        hide_archive: bool = False
+    else:
+        log: str = f"{user.full_name()} начинает поиск задачи через через поиск. Получил список проектов"
+        hide_archive: bool = True
+    user_logger.info(log)
+    user_projects: list[KeyboardData] = await get_project_list(user, hide_archive)
     keyboard = await get_remove_keyboard(user_projects, width=2)
     await call.message.edit_text('Выберите проект', reply_markup=keyboard)
 
@@ -366,13 +383,24 @@ async def search_task_via_bookmarks(call: types.CallbackQuery, callback_data: di
 
 
 # Поиск задачи
-@dp.callback_query_handler(callback_remove.filter(action='search_task'))
+@dp.callback_query_handler(callback_remove.filter(action="search_task"))
+@dp.callback_query_handler(callback_remove.filter(action="search_task_with_done"))
 async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    """
+    Выводит клавиатуру задач пользователя. Так же кнопки показать/скрыть выполненный задачи
+    :param call:
+    :param callback_data:
+    :param state:
+    :return:
+    """
     user_logger.info("%s поиск задачи через поиск. Получает список задач" % call.from_user.full_name)
     project_id: int = int(callback_data['id'])
     await call.message.edit_text('Идёт поиск всех задач. Секундочку подождите')
     try:
-        tasks = get_tasks(project_id, int(call.from_user.id))
+        statuses: list[str] = ["active"]
+        if "done" in callback_data.get("action").split("_"):
+            statuses.append("done")
+        tasks = get_tasks(project_id, int(call.from_user.id), statuses)
         if isinstance(tasks, str):
             await start_comment_input(state, tasks, call.from_user.id, callback_data['id'], call)
             return None
@@ -385,13 +413,24 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
 
 
 # Поиск подзадачи
-@dp.callback_query_handler(callback_remove.filter(action='search_subtask'))
+@dp.callback_query_handler(callback_remove.filter(action="search_subtask"))
+@dp.callback_query_handler(callback_remove.filter(action="search_subtask_with_done"))
 async def search_subtasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    """
+    Выводит клавиатуру подзадач пользователя. Так же кнопки показать/скрыть выполненный подзадачи
+    :param call:
+    :param callback_data:
+    :param state:
+    :return:
+    """
     user_logger.info("%s поиск подзадачи через поиск. Получает список подзадач" % call.from_user.full_name)
     parent_task_id: int = int(callback_data['id'])
     await call.message.edit_text('Идёт поиск всех подзадач. Секундочку подождите')
     try:
-        tasks = get_subtasks(parent_task_id, int(call.from_user.id))
+        statuses: list[str] = ["active"]
+        if "done" in callback_data.get("action").split("_"):
+            statuses.append("done")
+        tasks = get_subtasks(parent_task_id, int(call.from_user.id), statuses)
         if isinstance(tasks, str):
             await start_comment_input(state, tasks, call.from_user.id, callback_data['id'], call)
             return None
@@ -448,60 +487,168 @@ async def start_comment_input(state: FSMContext, text: str, user_id: int, task_i
     await OrderMenu.waiting_for_time_comment.set()
 
 
+@dp.message_handler(lambda message: "добавить закладку" in message.text.lower(),
+                    state=OrderMenu.waiting_for_time_comment)
+async def handler_add_bookmark(message: types.Message, state: FSMContext):
+    """
+    Обработчик добавления закладки
+    :param message:
+    :param state:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    data = await state.get_data()
+    user_logger.info("%s добавляет данную задачу в закладки" % user.full_name())
+    await message.answer(add_bookmark(user.user_id, int(data['id'])),
+                         reply_markup=types.ReplyKeyboardRemove())
+    await state.finish()
+
+
+@dp.message_handler(lambda message: message.text.lower() in ["выбрать", "select", "выбрать по умолчанию"],
+                    state=OrderMenu.waiting_for_time_comment)
+async def handler_select_default_task(message: types.Message, state: FSMContext):
+    """
+    Обработчик выбора задачи по умолчанию для пользователя
+    :param message:
+    :param state:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    data = await state.get_data()
+    user_logger.info("%s выбирает данную задачу задачей по умолчанию" % user.full_name())
+    await message.answer(user.change_default_task(int(data['id'])), reply_markup=types.ReplyKeyboardRemove())
+    await state.finish()
+
+
+@dp.message_handler(lambda message: message.text.lower() in ["создать подзадачу", "create subtask"],
+                    state=OrderMenu.waiting_for_time_comment)
+async def handler_create_subtask(message: types.Message, state: FSMContext):
+    """
+    Обработчик начала создания подзадачи
+    :param message:
+    :param state:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    data = await state.get_data()
+    parent_task_id = data.get("id")
+    user_logger.info(f"{user.full_name()} создаёт подзадачу у задачи с ID{parent_task_id}")
+    await state.update_data(project_id=None,
+                            task_id=parent_task_id)
+    await message.answer("Введение трудоёмкости отменено", reply_markup=types.ReplyKeyboardRemove())
+    await message.answer("Введите название задачи")
+    await OrderMenu.wait_for_task_name.set()
+
+
+@dp.message_handler(lambda message: message.text.lower() in ["задача выполнена", "task complete"],
+                    state=OrderMenu.waiting_for_time_comment)
+async def handler_task_complete(message: types.Message, state: FSMContext):
+    """
+    Обработчик закрытия задачи
+    :param message:
+    :param state:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    data = await state.get_data()
+    task: Task = Task.get_task(data.get("id"))
+    task.complete_task()
+    user_logger.info(f"{user.full_name()} закрывает задачу с ID{task.task_id}")
+    managers: list[User] = [user for user in task.project.users if user.is_manager()]
+    await message.answer("Задача выполнена.", reply_markup=types.ReplyKeyboardRemove())
+    await state.finish()
+    for manager in managers:
+        try:
+            await bot.send_message(manager.telegram_id, f"{user.full_name()} закрыл задачу {task.task_name} "
+                                                        f"в проекте {task.project.project_name}")
+            user_logger.info(f"{manager.full_name()} получил(a) уведомление о закрытии задачи с ID{task.task_id}")
+        except (ChatNotFound, BotBlocked, ChatIdIsEmpty) as error:
+            reason: str = "заблокировал бота" if error is BotBlocked else "не зарегистрировался в боте"
+            answer: str = f"{manager.full_name()} по причине того что,{reason}, " \
+                          f"не получил(a) уведомления о закрытии задачи с ID{task.task_id}"
+            user_logger.error(answer)
+            await message.answer(answer)
+
+
+@dp.message_handler(lambda message: 'не понял' in message.text.lower() or '!' not in message.text.lower(),
+                    state=OrderMenu.waiting_for_time_comment)
+async def handler_input_help(message: types.Message, state: FSMContext):
+    """
+    Обработчик вывода шпаргалки при вводе
+    :param message:
+    :param state:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    user_logger.info("%s не понимает что происходит (при вводе трудоёмкости)" % user.full_name())
+    await message.answer(INPUT_COST_EXAMPLE)
+    return
+
+
+@dp.message_handler(lambda message: message.text.lower() in ["отмена", "cancel"],
+                    state=OrderMenu.waiting_for_time_comment)
+async def handler_input_help(message: types.Message, state: FSMContext):
+    """
+    Обработчик отмены ввода
+    :param message:
+    :param state:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    user_logger.info("%s отменяет ввод трудоёмкости" % user.full_name())
+    await message.answer('Отмена ввода', reply_markup=types.ReplyKeyboardRemove())
+    await state.finish()
+
+
 # Ожидание ввода трудоёмкости
 @dp.message_handler(state=OrderMenu.waiting_for_time_comment)
 async def wait_hours(message: types.Message, state: FSMContext):
+    """
+    Обработчик корректного ввода трудоёмкости.
+    Если задача была выполненной, то предлагает её реактивировать.
+    :param message:
+    :param state:
+    :return:
+    """
     user: User = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("%s вводит трудоёмкость" % user.full_name())
     data = await state.get_data()
     text = message.text
-    if 'отмена' in text.lower() or 'cancel' in text.lower():
-        user_logger.info("%s отменяет ввод трудоёмкости" % user.full_name())
-        await message.answer('Отмена ввода', reply_markup=types.ReplyKeyboardRemove())
-        await state.finish()
-        return
-    elif 'добавить закладку' in text.lower():
-        user_logger.info("%s добавляет данную задачу в закладки" % user.full_name())
-        task_id = int(data['id'])
-        await message.answer(add_bookmark(user.user_id, task_id), reply_markup=types.ReplyKeyboardRemove())
-        await state.finish()
-    elif 'выбрать' in text.lower() or 'select' in text.lower() or 'выбрать по умолчанию' in text.lower():
-        user_logger.info("%s выбирает данную задачу задачей по умолчанию" % user.full_name())
-        await message.answer(user.change_default_task(int(data['id'])), reply_markup=types.ReplyKeyboardRemove())
-        await state.finish()
-        return
-    elif "создать подзадачу" in text.lower():
-        project_id = None
-        parent_task_id = data.get("id")
-        await state.update_data(project_id=project_id,
-                                task_id=parent_task_id)
-        await message.answer("Введение трудоёмкости отменено", reply_markup=types.ReplyKeyboardRemove())
-        await message.answer("Введите название задачи")
-        await OrderMenu.wait_for_task_name.set()
-    elif "задача выполнена" in text.lower():
-        task: Task = Task.get_task(data.get("id"))
-        task.complete_task()
-        managers: list[User] = [user for user in task.project.users if user.is_manager()]
-        await message.answer("Задача выполнена.", reply_markup=types.ReplyKeyboardRemove())
-        await state.finish()
-        for manager in managers:
-            try:
-                await bot.send_message(manager.telegram_id, f"{user.full_name()} закрыл задачу {task.task_name} "
-                                                            f"в проекте {task.project.project_name}")
-            except Exception:
-                pass
-    elif 'ничего не понял' in text.lower() or '!' not in text.lower():
-        user_logger.info("%s не понимает что происходит (при вводе трудоёмкости)" % user.full_name())
-        await message.answer(INPUT_COST_EXAMPLE)
-        return
-    else:
-        user_logger.info("%s отправил трудоёмкость" % user.full_name())
-        for i_status in add_costs(text, data):
-            user_logger.info("%s %s" % (user.full_name(), i_status))
-            await message.answer(i_status)
-        await message.answer('Внесение завершено', reply_markup=types.ReplyKeyboardRemove())
-        await state.finish()
-        return
+    user_logger.info("%s отправил трудоёмкость" % user.full_name())
+    for i_status in add_costs(text, data):
+        user_logger.info("%s %s" % (user.full_name(), i_status))
+        await message.answer(i_status)
+    await message.answer('Внесение завершено', reply_markup=types.ReplyKeyboardRemove())
+    await state.finish()
+    task: Task = Task.get_task(data.get("id"))
+    if task.status == "done":
+        buttons: list[KeyboardData] = await reactivate_task_keyboard(task.task_id)
+        await message.answer("Желаете сделать задачу вновь активной?",
+                             reply_markup=await get_remove_keyboard(buttons, 2, False))
+
+
+@dp.callback_query_handler(callback_remove.filter(action=["reactivate_task", "keep_completed"]))
+async def handler_reactivate_task(call: types.CallbackQuery, callback_data: dict):
+    """
+    Обработчик кнопок выбора активации/неактивации неактивной задачи
+    :param call:
+    :param callback_data:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
+    task: Task = Task.get_task(callback_data.get("id"))
+    action: str = callback_data.get("action")
+    to_user, to_manager = await task_fate(user, task, action)
+    await call.message.edit_text(to_user)
+    managers: list[User] = [user for user in task.project.users if user.is_manager()]
+    user_logger.info(to_manager)
+    for manager in managers:
+        try:
+            await bot.send_message(manager.telegram_id, to_manager)
+            user_logger.info(f"{manager.full_name()} получил уведомление о внесении в неактивную задачу")
+        except (ChatNotFound, BotBlocked, ChatIdIsEmpty) as err:
+            user_logger.error(
+                f"{manager.full_name()} не получил уведомление о внесении в неактивную задачу потому что {err}")
 
 
 # Удаление закладки
@@ -511,7 +658,6 @@ async def remove_user_bookmark(call: types.CallbackQuery, callback_data: dict):
     user: User = User.get_user_by_telegram_id(call.from_user.id)
     bookmark: Bookmark = Bookmark.get_bookmark_by_id(callback_data['id'])
     user.remove_bookmark(bookmark)
-    # remove_bookmark_from_user(callback_data['id'])
     await call.message.edit_text('Закладка удалена')
 
 
@@ -608,17 +754,10 @@ async def read_task_name(message: types.Message, state: FSMContext):
     user_logger.info(f"{user.full_name()} при создании задачи вводит '{text}'")
     if text.lower() == 'отмена' or text.lower() == 'cancel':
         user_logger.info(f"{user.full_name()} отменил создание задачи")
-        await message.edit_text("Создание задачи отменено")
+        await message.answer("Создание задачи отменено")
         await state.finish()
         return
     data = await state.get_data()
     await create_task(text, data)
     await message.answer("Задача создана")
     await state.finish()
-
-
-
-
-
-
-

@@ -1,6 +1,7 @@
 import logging
 import re
 from pprint import pprint
+from typing import List
 
 import aiogram.utils.exceptions
 
@@ -65,9 +66,9 @@ async def manager_commands(message: types.Message) -> None:
     await message.answer("Команды менеджера:", reply_markup=await get_manager_menu())
 
 
-@dp.callback_query_handler(callback_manager.filter(action="add_to_project"),
+@dp.callback_query_handler(callback_manager_select.filter(action="add_to_project"),
                            lambda message: User.get_user_by_telegram_id(message.from_user.id).is_manager())
-async def select_project_for_staff(call: types.CallbackQuery):
+async def select_project_for_staff(call: types.CallbackQuery, callback_data: dict):
     """
     По нажатию кнопки "Назначить на проект" выводит клавиатуру проектов данного менеджера
     :param call:
@@ -75,7 +76,8 @@ async def select_project_for_staff(call: types.CallbackQuery):
     """
     user = User.get_user_by_telegram_id(call.from_user.id)
     manager_logger.info(f"{user.full_name()} нажал кнопку 'Назначить на проект'")
-    keyboard: InlineKeyboardMarkup = await get_managers_project(user, "staff")
+    statuses: List[str] = callback_data.get("project_id").split("_")
+    keyboard: InlineKeyboardMarkup = await get_managers_project(user, "staff", statuses)
     await call.message.edit_text("Выберите проект для которого хотите назначить или удалить исполнителей",
                                  reply_markup=keyboard)
 
@@ -158,7 +160,7 @@ async def manager_cancel(call: types.CallbackQuery):
     await call.message.edit_text("Ввод завершён.")
 
 
-@dp.callback_query_handler(callback_manager.filter(action="create_project"),
+@dp.callback_query_handler(callback_manager_select.filter(action="create_project"),
                            lambda call: User.get_user_by_telegram_id(call.from_user.id).is_manager())
 async def start_create_project(call: types.CallbackQuery):
     """
@@ -221,7 +223,7 @@ async def wait_project_description(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-@dp.callback_query_handler(callback_manager.filter(action="manage_project"),
+@dp.callback_query_handler(callback_manager_select.filter(action="manage_project"),
                            lambda call: User.get_user_by_telegram_id(call.from_user.id).is_manager())
 async def edit_project_menu(call: types.CallbackQuery, callback_data: dict):
     """
@@ -232,7 +234,8 @@ async def edit_project_menu(call: types.CallbackQuery, callback_data: dict):
     """
     manager: User = User.get_user_by_telegram_id(call.from_user.id)
     manager_logger.info(f"{manager.full_name()} вызывает меню редактирования проекта")
-    keyboard: InlineKeyboardMarkup = await get_managers_project(manager, "edit")
+    statuses: List[str] = callback_data.get("project_id").split("_")
+    keyboard: InlineKeyboardMarkup = await get_managers_project(manager, "edit", statuses)
     await call.message.edit_text("Выберите проект для редактирования", reply_markup=keyboard)
 
 
@@ -275,7 +278,7 @@ async def archiving_the_project(call: types.CallbackQuery, callback_data: dict):
                                    f"{user.full_name()} не получил уведомление об архивации проекта")
 
 
-@dp.callback_query_handler(callback_manager.filter(action="report_project"),
+@dp.callback_query_handler(callback_manager_select.filter(action="report_project"),
                            lambda call: User.get_user_by_telegram_id(call.from_user.id).is_manager())
 async def report(call: types.CallbackQuery):
     manager: User = User.get_user_by_telegram_id(call.from_user.id)

@@ -116,6 +116,10 @@ class Task(Base):
         self.status = "done"
         session.commit()
 
+    def reactivate_task(self):
+        self.status = "active"
+        session.commit()
+
     @staticmethod
     def new_task(task_name: str, project_id: int, parent_id: int = None) -> None:
         t = Task(task_name=task_name,
@@ -137,13 +141,13 @@ class Task(Base):
 
     @staticmethod
     def get_subtasks(parent_task_id: int) -> list:
-        sub_tasks: list[Task] = session.query(Task).filter(Task.parent_id == parent_task_id, Task.status == "active").all()
+        sub_tasks: list[Task] = session.query(Task).filter(Task.parent_id == parent_task_id).all()
         return sub_tasks
 
     @staticmethod
     def get_tasks(project_id: int) -> list:
         tasks: list[Task] = session.query(Task)\
-            .filter(Task.project_id == project_id, Task.parent_id == None, Task.status == "active").all()
+            .filter(Task.project_id == project_id, Task.parent_id == None).all()
         return tasks
 
     @staticmethod
