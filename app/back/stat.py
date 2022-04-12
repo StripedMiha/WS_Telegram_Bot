@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import collections
 
-from app.api.work_calendar import is_work_day
+from app.api.work_calendar import is_work_day, count_work_day
 from app.db.db_access import get_all_costs_for_period, get_the_user_projects_time_cost_per_period, \
     get_user_costs_per_week
 from app.db.structure_of_db import Comment, User
@@ -51,10 +51,8 @@ def get_f_date(i: int) -> datetime:
     return datetime(month=datetime.now().month, year=datetime.now().year, day=i)
 
 
-def get_count_work_days() -> int:
-    now_day = datetime.now().day
-    w = [1 if is_work_day(get_f_date(i)) else 0 for i in range(1, now_day + 1)]
-    counter_work_days = sum(w)
+def get_count_work_month_days() -> int:
+    counter_work_days: int = count_work_day()
     return counter_work_days
 
 
@@ -147,7 +145,7 @@ def show_month_gist():
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
-    max_value = get_count_work_days() * 8
+    max_value = get_count_work_month_days() * 8
     plt.gcf().clear()
     plt.title('Статистика за текущий календарный месяц')
     plt.axhline(max_value, color='green', label='Эталон')
