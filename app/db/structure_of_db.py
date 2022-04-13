@@ -254,7 +254,7 @@ class User(Base):
     email = Column(String(30))
     first_name: str = Column(String(50))
     last_name = Column(String(50))
-    date_of_input = Column(String(15))
+    date_of_input: datetime = Column(DateTime, nullable=True, default=None)
     selected_task: int = Column(Integer(), ForeignKey("tasks.task_id"), nullable=True, unique=False)
     notification_status = Column(Boolean, default=True)
     notification_time = Column(DateTime, default='')
@@ -293,9 +293,11 @@ class User(Base):
         return [i.status_name for i in self.statuses]
 
     def get_date(self, ru: bool = False) -> str:
-        if ru and self.date_of_input == "today":
-            return "сегодня"
-        return self.date_of_input
+        if self.date_of_input is None:
+            if ru:
+                return "сегодня"
+            return "today"
+        return self.date_of_input.strftime("%d.%m.%Y")
 
     def get_email(self) -> str:
         return self.email
@@ -315,8 +317,10 @@ class User(Base):
         return admin_id
 
     def change_date(self, new_date: str):
-        if new_date == "сегодня":
-            new_date = "today"
+        if new_date == "сегодня" or new_date == "today":
+            new_date = None
+        else:
+            new_date = datetime.strptime(new_date, "%d.%m.%Y")
         self.date_of_input = new_date
         session.commit()
 
