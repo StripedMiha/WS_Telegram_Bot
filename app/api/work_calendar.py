@@ -1,15 +1,12 @@
 import requests
 from datetime import datetime
 
-s = 'https://isdayoff.ru/'
-
 
 def is_work_day(day: datetime) -> bool:
-    link = ''.join([s, day.strftime("%Y%m%d")])
-    if int(requests.get(link).content) == 0:
-        return True
-    else:
-        return False
+    m: str = f"https://isdayoff.ru/api/getdata?year={day.year}&month={day.month}&day={day.day}"
+    req: int = int(requests.get(m).content)
+    ans = True if req == 0 or req == 2 or req == 4 else False
+    return ans
 
 
 def count_work_day() -> int:
