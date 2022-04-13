@@ -71,6 +71,10 @@ class Project(Base):
         self.project_status = "archive"
         session.commit()
 
+    def activate_project(self):
+        self.project_status = "active"
+        session.commit()
+
     @staticmethod
     def get_last_project():
         return session.query(Project).all()

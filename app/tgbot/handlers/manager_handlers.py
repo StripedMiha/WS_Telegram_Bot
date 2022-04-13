@@ -3,9 +3,9 @@ import re
 from pprint import pprint
 from typing import List
 
-import aiogram.utils.exceptions
 
 from aiogram import types
+from aiogram.utils.exceptions import ChatNotFound, BotBlocked, ChatIdIsEmpty
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup
@@ -139,9 +139,7 @@ async def change_user_in_project(call: types.CallbackQuery, callback_data: dict)
     try:
         text = await change_user_status_in_project(user, project)
         await bot.send_message(user.telegram_id, text)
-    except aiogram.utils.exceptions.ChatNotFound:
-        pass
-    except aiogram.utils.exceptions.ChatIdIsEmpty:
+    except (ChatNotFound, ChatIdIsEmpty):
         pass
     await call.message.edit_text(f"Выберите пользователя которого включить/исключить из {project.project_name}",
                                  reply_markup=await get_users_list_by_type_staff(project, selected_list))
@@ -273,14 +271,48 @@ async def archiving_the_project(call: types.CallbackQuery, callback_data: dict):
     for user in [user for user in project.users if user != manager]:
         try:
             await bot.send_message(user.telegram_id, text)
-        except (aiogram.utils.exceptions.ChatNotFound, aiogram.utils.exceptions.ChatIdIsEmpty):
+        except (ChatNotFound, ChatIdIsEmpty):
             await bot.send_message(manager.telegram_id,
                                    f"{user.full_name()} не получил уведомление об архивации проекта")
+
+
+@dp.callback_query_handler(callback_manager_select.filter(action=["reactivate_project", "keep_as_is"]),
+                           lambda call: User.get_user_by_telegram_id(call.from_user.id).is_manager())
+async def handler_reactivate_project(call: types.CallbackQuery, callback_data: dict):
+    """
+    Обработчик кнопок выбора активации неактивного проекта
+    :param call:
+    :param callback_data:
+    :return:
+    """
+    action: str = callback_data.get("action")
+    manager: User = User.get_user_by_telegram_id(call.from_user.id)
+    project_id: int = int(callback_data.get("project_id"))
+    project: Project = Project.get_project(project_id)
+    if action == "reactivate_project":
+        project.activate_project()
+        manager_logger.info(f"{manager.full_name()} активировал архивный проект {project.project_name}")
+        await call.message.edit_text(f"Вы успешно активировали {project.project_name}")
+        for user in [user for user in project.users if user.telegram_id and user.telegram_id != manager.telegram_id]:
+            try:
+                await bot.send_message(user.telegram_id,
+                                       f"{manager.full_name()} вновь активировал проект {project.project_name}")
+                manager_logger.info(f"{manager.full_name()} получил уведомление о реактивации проекта")
+            except (ChatNotFound, BotBlocked, ChatIdIsEmpty) as err:
+                manager_logger.error(
+                    f"{manager.full_name()} не получил уведомление о реактивации проекта потому что {err}")
+    else:
+        manager_logger.info(f"{manager.full_name()} не стал менять статус у проекта {project.project_name}")
 
 
 @dp.callback_query_handler(callback_manager_select.filter(action="report_project"),
                            lambda call: User.get_user_by_telegram_id(call.from_user.id).is_manager())
 async def report(call: types.CallbackQuery):
+    """
+    Выводит сообщение со ссылкой на бота с отчётами.
+    :param call:
+    :return:
+    """
     manager: User = User.get_user_by_telegram_id(call.from_user.id)
     manager_logger.info(f"{manager.full_name()} получил ссылку на бота с отчётами")
     await call.message.edit_text(await get_report())

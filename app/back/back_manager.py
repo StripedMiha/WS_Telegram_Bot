@@ -238,6 +238,22 @@ async def archiving_project(project: Project) -> str:
     return answer
 
 
+async def reactivate_project_keyboard(user: User, task: Task) -> tuple[str, InlineKeyboardMarkup]:
+    """
+    Возвращает набор данных для реактивации проекта
+    :param user:
+    :param task:
+    :return:
+    """
+    text: str = f"{user.full_name()} внёс трудочасы в задачу {task.task_name} архивного проекта " \
+                f"{task.project.project_name}. \n" \
+                f"Активируем проект, чтобы было проще его находить и вносить часы в дальнейшем?"
+    buttons: List[tuple] = [("Активировать проект", task.project_id, "reactivate_project"),
+                            ("Оставить как есть", task.project_id, "keep_as_is")]
+    keyboard: InlineKeyboardMarkup = get_keyboard_1(buttons, 2, False)
+    return text, keyboard
+
+
 async def get_report() -> str:
     """
     Возвращает сообщение со ссылкой на бота с отчётами.
