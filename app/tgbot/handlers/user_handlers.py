@@ -12,6 +12,7 @@ from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import ChatNotFound, BotBlocked, ChatIdIsEmpty
 
 from app.KeyboardDataClass import KeyboardData
+from app.back.back_manager import reactivate_project_keyboard
 from app.back.user_back import get_user_help, validate_old_user
 from app.tgbot.loader import dp, bot
 from app.create_log import setup_logger
@@ -620,11 +621,43 @@ async def wait_hours(message: types.Message, state: FSMContext):
         await message.answer(i_status)
     await message.answer('Внесение завершено', reply_markup=types.ReplyKeyboardRemove())
     await state.finish()
-    task: Task = Task.get_task(data.get("id"))
+    task_id: int = data.get("id")
+    await check_task_status(user, task_id)
+    await check_project_status(user, task_id)
+
+
+async def check_task_status(user: User, task_id: int) -> None:
+    """
+    Проверка статуса задачи в которую внесли. И предложение активировать задачу если она была архивной
+    :param user:
+    :param task_id:
+    :return:
+    """
+    task: Task = Task.get_task(task_id)
     if task.status == "done":
         buttons: list[KeyboardData] = await reactivate_task_keyboard(task.task_id)
-        await message.answer("Желаете сделать задачу вновь активной?",
-                             reply_markup=await get_remove_keyboard(buttons, 2, False))
+        await bot.send_message(user.telegram_id,
+                               "Желаете сделать задачу вновь активной?",
+                               reply_markup=await get_remove_keyboard(buttons, 2, False))
+
+
+async def check_project_status(user: User, task_id: int) -> None:
+    """
+    Проверка статуса проекта в которую внесли. И предложение активировать проект если он был архивным.
+    :param user:
+    :param task_id:
+    :return:
+    """
+    task: Task = Task.get_task(task_id)
+    if task.project.project_status == "archive":
+        text, keyboard = await reactivate_project_keyboard(user, task)
+        for manager in [manager for manager in task.project.users if manager.is_manager()]:
+            try:
+                await bot.send_message(manager.telegram_id, text, reply_markup=keyboard)
+                user_logger.info(f"{manager.full_name()} получил уведомление о внесении в неактивный проект")
+            except (ChatNotFound, BotBlocked, ChatIdIsEmpty) as err:
+                user_logger.error(
+                    f"{manager.full_name()} не получил уведомление о внесении в неактивный проект потому что {err}")
 
 
 @dp.callback_query_handler(callback_remove.filter(action=["reactivate_task", "keep_completed"]))
