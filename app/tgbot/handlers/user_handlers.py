@@ -8,21 +8,23 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import ChatNotFound, BotBlocked, ChatIdIsEmpty
 
 from app.KeyboardDataClass import KeyboardData
 from app.back.back_manager import reactivate_project_keyboard
-from app.back.user_back import get_user_help, validate_old_user
+from app.back.user_back import get_user_help, validate_old_user, get_project_list, get_type_of_search_keyboard, \
+    callback_search, callback_search_pages, get_tasks, get_text_add_costs
 from app.tgbot.loader import dp, bot
 from app.create_log import setup_logger
 from app.db.structure_of_db import User, Bookmark, Task
 from app.exceptions import FutureDate, CancelInput, WrongDate
 from app.tgbot.handlers.admin_handlers import get_keyboard_admin
 from app.back.main import see_days_costs, get_about_user_info, menu_buttons, days_costs_for_remove, remove_costs, \
-    remove_cost, text_count_removed_costs, bookmarks_for_remove, get_project_list, get_tasks, get_list_bookmark, \
-    add_costs, INPUT_COST_EXAMPLE, add_bookmark, get_text_add_costs, remind_settings_button, \
-    get_text_menu_notification, fast_date_keyboard, change_date, get_subtasks, check_user, create_task, \
+    remove_cost, text_count_removed_costs, bookmarks_for_remove, get_list_bookmark, \
+    add_costs, INPUT_COST_EXAMPLE, add_bookmark, remind_settings_button, \
+    get_text_menu_notification, fast_date_keyboard, change_date, check_user, create_task, \
     reactivate_task_keyboard, task_fate
 
 user_logger: logging.Logger = setup_logger("App.Bot.user", "app/log/user.log")
@@ -57,7 +59,7 @@ def get_fast_keyboard(buttons: list) -> types.ReplyKeyboardMarkup:
 
 # Словарь для считывания инлайн кнопок
 callback_menu = CallbackData("fab_menu", "action")
-callback_search = CallbackData("fab_search", "action", "path")
+# callback_search = CallbackData("fab_search", "action", "path")
 callback_remove = CallbackData("fab_remove", "action", 'id')
 
 
@@ -299,22 +301,16 @@ async def wait_offer(message: types.Message, state: FSMContext):
 async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
     user = User.get_user_by_telegram_id(call.from_user.id)
     user_logger.info("%s выбирает способ поиска задачи" % user.full_name())
-    buttons = [['Через поиск', 'via_search'],
-               ['❤️ Через закладки', 'via bookmarks'],
-               # ['Ввести id задачи', 'task id input'],
-               ['Задача по умолчанию', 'fast input']]
-    await call.message.edit_text('Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
+    keyboard = await get_type_of_search_keyboard()
+    await call.message.edit_text('Как будем искать задачу:', reply_markup=keyboard)
 
 
 # Меню выбора способа поиска задачи
 async def type_of_selection_message(message: types.Message):
     user: User = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("%s выбирает способ поиска задачи" % user.full_name())
-    buttons = [['Через поиск', 'via_search'],
-               ['❤️ Через закладки', 'via bookmarks'],
-               # ['Ввести id задачи', 'task id input'],
-               ['Задача по умолчанию', 'fast input']]
-    await bot.send_message(user.telegram_id, 'Как будем искать задачу:', reply_markup=get_keyboard(buttons, 2))
+    keyboard = await get_type_of_search_keyboard()
+    await bot.send_message(user.telegram_id, 'Как будем искать задачу:', reply_markup=keyboard)
 
 
 # Выбран способ поиска задачи - введение ID задачи
@@ -349,8 +345,6 @@ async def wait_task_id(message: types.Message, state: FSMContext):
 
 # Выбран способ поиска задачи - через поиск
 @dp.callback_query_handler(callback_menu.filter(action="via_search"))
-@dp.callback_query_handler(callback_remove.filter(action="via_search"))
-@dp.callback_query_handler(callback_remove.filter(action="via_search_with_hided"))
 async def search_project_via_search(call: types.CallbackQuery, callback_data: dict):
     """
     Выводит клавиатуру проектов пользователя. Так же кнопки показать/скрыть архивные проекты
@@ -359,16 +353,25 @@ async def search_project_via_search(call: types.CallbackQuery, callback_data: di
     :return:
     """
     user: User = User.get_user_by_telegram_id(call.from_user.id)
-    if callback_data.get("action") == "via_search_with_hided":
-        log: str = f"{user.full_name()} нажал кнопку 'Показать архивные проекты'. Получил список проектов"
-        hide_archive: bool = False
-    else:
-        log: str = f"{user.full_name()} начинает поиск задачи через через поиск. Получил список проектов"
-        hide_archive: bool = True
+    text, keyboard, log = await get_project_list(user)
     user_logger.info(log)
-    user_projects: list[KeyboardData] = await get_project_list(user, hide_archive)
-    keyboard = await get_remove_keyboard(user_projects, width=2)
-    await call.message.edit_text('Выберите проект', reply_markup=keyboard)
+    await call.message.edit_text(text, reply_markup=keyboard)
+
+
+@dp.callback_query_handler(callback_search_pages.filter(action="via_search"))
+async def search_project_via_search(call: types.CallbackQuery, callback_data: dict):
+    """
+    Выводит клавиатуру проектов пользователя. Так же кнопки показать/скрыть архивные проекты
+    :param call:
+    :param callback_data:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
+    page: int = int(callback_data.get("page"))
+    hide_archive: bool = bool(int(callback_data.get("hide")))
+    text, keyboard, log = await get_project_list(user, page, hide_archive)
+    user_logger.info(log)
+    await call.message.edit_text(text, reply_markup=keyboard)
 
 
 # Выбран способ поиска задачи - через закладки
@@ -384,8 +387,7 @@ async def search_task_via_bookmarks(call: types.CallbackQuery, callback_data: di
 
 
 # Поиск задачи
-@dp.callback_query_handler(callback_remove.filter(action="search_task"))
-@dp.callback_query_handler(callback_remove.filter(action="search_task_with_done"))
+@dp.callback_query_handler(callback_search.filter(action=["search_task", "search_subtask"]))
 async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     """
     Выводит клавиатуру задач пользователя. Так же кнопки показать/скрыть выполненный задачи
@@ -398,49 +400,84 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
     project_id: int = int(callback_data['id'])
     await call.message.edit_text('Идёт поиск всех задач. Секундочку подождите')
     try:
-        statuses: list[str] = ["active"]
-        if "done" in callback_data.get("action").split("_"):
-            statuses.append("done")
-        tasks = get_tasks(project_id, int(call.from_user.id), statuses)
-        if isinstance(tasks, str):
-            await start_comment_input(state, tasks, call.from_user.id, callback_data['id'], call)
+        print(callback_data)
+        sub: int = 1 if callback_data.get("action") == "search_subtask" else 0
+        # sub: int = int(callback_data.get("hide").split("_")[2])
+        answer = await get_tasks(project_id, int(call.from_user.id), sub=sub)
+        if isinstance(answer, str):
+            await start_comment_input(state, answer, call.from_user.id, callback_data['id'], call)
             return None
-        keyboard = await get_remove_keyboard(tasks, width=2)
-        await call.message.edit_text('Выберите задачу', reply_markup=keyboard)
+        else:
+            text, keyboard, log = answer
+            await call.message.edit_text(text, reply_markup=keyboard)
+            user_logger.info(log)
     except Exception as e:
         await call.message.edit_text("Ошибка.\nБыло сообщено куда следует.")
         await call.message.answer_sticker("CAACAgIAAxkBAAED9xBiD5m7P2yNcjqvs3y5LhHVJGcfxAACjgADfI5YFQLQ025DM_NRIwQ")
         await bot.send_message(User.get_admin_id(), f"У {call.from_user.full_name} ошибка:\n{e.args}")
 
 
-# Поиск подзадачи
-@dp.callback_query_handler(callback_remove.filter(action="search_subtask"))
-@dp.callback_query_handler(callback_remove.filter(action="search_subtask_with_done"))
-async def search_subtasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+# Поиск задачи
+@dp.callback_query_handler(callback_search_pages.filter(action=["search_task", "search_subtask"]))
+async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     """
-    Выводит клавиатуру подзадач пользователя. Так же кнопки показать/скрыть выполненный подзадачи
+    Выводит клавиатуру задач пользователя. Так же кнопки показать/скрыть выполненный задачи
     :param call:
     :param callback_data:
     :param state:
     :return:
     """
-    user_logger.info("%s поиск подзадачи через поиск. Получает список подзадач" % call.from_user.full_name)
-    parent_task_id: int = int(callback_data['id'])
-    await call.message.edit_text('Идёт поиск всех подзадач. Секундочку подождите')
-    try:
-        statuses: list[str] = ["active"]
-        if "done" in callback_data.get("action").split("_"):
-            statuses.append("done")
-        tasks = get_subtasks(parent_task_id, int(call.from_user.id), statuses)
-        if isinstance(tasks, str):
-            await start_comment_input(state, tasks, call.from_user.id, callback_data['id'], call)
-            return None
-        keyboard = await get_remove_keyboard(tasks, width=2)
-        await call.message.edit_text('Выберите подзадачу', reply_markup=keyboard)
-    except Exception as e:
-        await call.message.edit_text("Ошибка.\nБыло сообщено куда следует.")
-        await call.message.answer_sticker("CAACAgIAAxkBAAED9xBiD5m7P2yNcjqvs3y5LhHVJGcfxAACjgADfI5YFQLQ025DM_NRIwQ")
-        await bot.send_message(User.get_admin_id(), f"У {call.from_user.full_name} ошибка:\n{e.args}")
+    user_logger.info("%s поиск задачи через поиск. Получает список задач" % call.from_user.full_name)
+    project_id: int = int(callback_data['page'])
+    await call.message.edit_text('Идёт поиск всех задач. Секундочку подождите')
+    # try:
+    parameters: list[int] = list(map(int, callback_data.get("hide").split("_")))
+    print(callback_data)
+    print(parameters)
+    page, hide, sub = parameters
+    answer = await get_tasks(project_id, int(call.from_user.id), page, hide, sub)
+    if isinstance(answer, str):
+        await start_comment_input(state, answer, call.from_user.id, callback_data['page'], call)
+        return None
+    else:
+        text, keyboard, log = answer
+        await call.message.edit_text(text, reply_markup=keyboard)
+        user_logger.info(log)
+    # except Exception as e:
+    #     print(e)
+    #     await call.message.edit_text("Ошибка.\nБыло сообщено куда следует.")
+    #     await call.message.answer_sticker("CAACAgIAAxkBAAED9xBiD5m7P2yNcjqvs3y5LhHVJGcfxAACjgADfI5YFQLQ025DM_NRIwQ")
+    #     await bot.send_message(User.get_admin_id(), f"У {call.from_user.full_name} ошибка:\n{e.args}")
+
+
+# # Поиск подзадачи
+# @dp.callback_query_handler(callback_search.filter(action="search_subtask"))
+# @dp.callback_query_handler(callback_search.filter(action="search_subtask_with_done"))
+# async def search_subtasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+#     """
+#     Выводит клавиатуру подзадач пользователя. Так же кнопки показать/скрыть выполненный подзадачи
+#     :param call:
+#     :param callback_data:
+#     :param state:
+#     :return:
+#     """
+#     user_logger.info("%s поиск подзадачи через поиск. Получает список подзадач" % call.from_user.full_name)
+#     parent_task_id: int = int(callback_data['id'])
+#     await call.message.edit_text('Идёт поиск всех подзадач. Секундочку подождите')
+#     try:
+#         statuses: list[str] = ["active"]
+#         if "done" in callback_data.get("action").split("_"):
+#             statuses.append("done")
+#         tasks = get_subtasks(parent_task_id, int(call.from_user.id), statuses)
+#         if isinstance(tasks, str):
+#             await start_comment_input(state, tasks, call.from_user.id, callback_data['id'], call)
+#             return None
+#         keyboard = await get_remove_keyboard(tasks, width=2)
+#         await call.message.edit_text('Выберите подзадачу', reply_markup=keyboard)
+#     except Exception as e:
+#         await call.message.edit_text("Ошибка.\nБыло сообщено куда следует.")
+#         await call.message.answer_sticker("CAACAgIAAxkBAAED9xBiD5m7P2yNcjqvs3y5LhHVJGcfxAACjgADfI5YFQLQ025DM_NRIwQ")
+#         await bot.send_message(User.get_admin_id(), f"У {call.from_user.full_name} ошибка:\n{e.args}")
 
 
 # Задача выбрана. Запуск ожидания ввода трудоёмкости
@@ -571,21 +608,6 @@ async def handler_task_complete(message: types.Message, state: FSMContext):
             await message.answer(answer)
 
 
-@dp.message_handler(lambda message: 'не понял' in message.text.lower() or '!' not in message.text.lower(),
-                    state=OrderMenu.waiting_for_time_comment)
-async def handler_input_help(message: types.Message, state: FSMContext):
-    """
-    Обработчик вывода шпаргалки при вводе
-    :param message:
-    :param state:
-    :return:
-    """
-    user: User = User.get_user_by_telegram_id(message.from_user.id)
-    user_logger.info("%s не понимает что происходит (при вводе трудоёмкости)" % user.full_name())
-    await message.answer(INPUT_COST_EXAMPLE)
-    return
-
-
 @dp.message_handler(lambda message: message.text.lower() in ["отмена", "cancel"],
                     state=OrderMenu.waiting_for_time_comment)
 async def handler_input_help(message: types.Message, state: FSMContext):
@@ -599,6 +621,21 @@ async def handler_input_help(message: types.Message, state: FSMContext):
     user_logger.info("%s отменяет ввод трудоёмкости" % user.full_name())
     await message.answer('Отмена ввода', reply_markup=types.ReplyKeyboardRemove())
     await state.finish()
+
+
+@dp.message_handler(lambda message: 'не понял' in message.text.lower() or '!' not in message.text.lower(),
+                    state=OrderMenu.waiting_for_time_comment)
+async def handler_input_help(message: types.Message, state: FSMContext):
+    """
+    Обработчик вывода шпаргалки при вводе
+    :param message:
+    :param state:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    user_logger.info("%s не понимает что происходит (при вводе трудоёмкости)" % user.full_name())
+    await message.answer(INPUT_COST_EXAMPLE)
+    return
 
 
 # Ожидание ввода трудоёмкости
@@ -762,7 +799,7 @@ async def wait_notification_time(message: types.Message, state: FSMContext):
         return
 
 
-@dp.callback_query_handler(callback_remove.filter(action=["create_task", "create_subtask"]))
+@dp.callback_query_handler(callback_search.filter(action=["create_task", "create_subtask"]))
 async def start_create_task(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     user: User = User.get_user_by_telegram_id(call.from_user.id)
     action = callback_data.get("action")
@@ -794,3 +831,14 @@ async def read_task_name(message: types.Message, state: FSMContext):
     await create_task(text, data)
     await message.answer("Задача создана")
     await state.finish()
+
+
+@dp.callback_query_handler(callback_search.filter(action="empty_button"))
+async def handler_empty_button(call: types.CallbackQuery, callback_data: dict):
+    print(113)
+    await call.answer("Это пустая кнопка", show_alert=True)
+
+
+@dp.callback_query_handler(callback_search.filter())
+async def prost(call: types.CallbackQuery, callback_data: dict):
+    print(callback_data)

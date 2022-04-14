@@ -16,19 +16,7 @@ from app.back.stat import show_month_gist, show_week_gist, get_first_week_day, s
 main_logger: logging.Logger = setup_logger("App.back.main", "app/log/main.log")
 back_logger: logging.Logger = setup_logger("App.back", "app/log/back.log")
 
-INPUT_COSTS = """
-Введите часы и описание деятельности:
-Можно ввести в одну строку, можно в несколько(но в одном сообщении).
-В начале указываете количество часов, следом через '!' можно перечислить один или несколько комментариев.
-Можно ввести больше двух часов. Алгоритм сам разделит по два часа. Пробелы между '!' не важны
 
-Шаблон: 
-{число часов}!{описание деятельности}!{описание деятельности}
-Пример№1:\n<i>3</i> ! <i>Печать деталей корпуса</i> ! <i>Сборка печатного прототипа</i>
-
-Для создания подзадачи введите 'создать подзадачу'.
-Для закрытия задачи введите 'задача выполнена'.
-"""
 
 INPUT_COST_EXAMPLE = """
 Дробную и целую часть часа можно разделить '.', ','
@@ -220,89 +208,6 @@ def remove_costs(user: User):
     id_comments = [i[-1] for i in comments]
     for i in id_comments:
         yield remove_cost(i)
-
-
-async def get_project_list(user: User, hide_archive: bool = True) -> list[KeyboardData]:
-    """
-    Возвращает набор данных для клавиатуры выбора проекта
-    :param user:
-    :param hide_archive: показывать ли архивные проекты
-    :return:
-    """
-    projects: list[KeyboardData] = [KeyboardData(i.project_name, i.project_id, "search_task") for i in user.projects
-                                    if i.project_status == "active"]
-    projects.sort(key=lambda project: project.text)
-    if hide_archive:
-        projects.append(KeyboardData("📦Показать архивные", "---", "via_search_with_hided"))
-    else:
-        archive_projects: list[KeyboardData] = [KeyboardData("📦 " + i.project_name, i.project_id, "search_task") for i
-                                                in
-                                                user.projects
-                                                if i.project_status == "archive"]
-        for archive_project in archive_projects:
-            projects.append(archive_project)
-        projects.append(KeyboardData("Скрыть архивные", "---", "via_search"))
-    return projects
-
-
-def get_text_add_costs(task_id: int, user: User) -> str:
-    task = Task.get_task(task_id)
-    date = f'Установленная дата - {user.get_date(True)}'
-    answer: str = '\n'.join([task.full_name(), date, INPUT_COSTS])
-    return answer
-
-
-def get_tasks(project_id: int, user_id: int, statuses: List[str]) -> Union[list[KeyboardData], str]:
-    """
-    Возвращает набор данных для клавиатуры выбора задачи
-    :param project_id:
-    :param user_id:
-    :param statuses: показывать ли закрытые задачи
-    :return:
-    """
-    subtasks: list[Task] = Task.get_tasks(project_id)
-    child_tasks: list[KeyboardData] = []
-    for status in statuses:
-        child_tasks += [KeyboardData("✅ " + task.task_name if task.status == "done" else task.task_name,
-                                     task.task_id,
-                                     "search_subtask")
-                        for task in subtasks if task.status == status]
-    child_tasks.append(KeyboardData("🛠Создать задачу", project_id, "create_task"))
-    if "done" in statuses:
-        child_tasks.append(KeyboardData("❌скрыть выполненные", project_id, "search_task"))
-    else:
-        child_tasks.append(KeyboardData("✅показать выполненные", project_id, "search_task_with_done"))
-
-    return child_tasks
-
-
-def get_subtasks(parent_id: int, user_id: int, statuses: List[str]) -> Union[list[KeyboardData], str]:
-    """
-    Возвращает набор данных для клавиатуры выбора подзадачи
-    :param parent_id:
-    :param user_id:
-    :param statuses: показывать ли закрытые подзадачи
-    :return:
-    """
-    user = User.get_user_by_telegram_id(user_id)
-    subtasks: list[Task] = Task.get_subtasks(parent_id)
-    if len(subtasks) == 0:
-        return get_text_add_costs(parent_id, user)
-    else:
-        child_tasks: list[KeyboardData] = []
-        task_name = ' '.join([f'🗂', Task.get_task(parent_id).task_name])
-        child_tasks += [KeyboardData(task_name, int(parent_id), 'input_here')]
-        for status in statuses:
-            child_tasks += [KeyboardData("✅ " + task.task_name if task.status == "done" else task.task_name,
-                                         task.task_id,
-                                         "search_subtask")
-                            for task in subtasks if task.status == status]
-    child_tasks.append(KeyboardData("🛠Создать подзадачу", parent_id, "create_subtask"))
-    if "done" in statuses:
-        child_tasks.append(KeyboardData("❌скрыть выполненные", parent_id, "search_subtask"))
-    else:
-        child_tasks.append(KeyboardData("✅показать выполненные", parent_id, "search_subtask_with_done"))
-    return child_tasks
 
 
 async def create_task(name: str, data: dict):
