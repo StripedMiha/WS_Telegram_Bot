@@ -469,7 +469,7 @@ class Comment(Base):
                f" via_bot - {self.via_bot}, date - {self.date}, time - {self.time}, text - {self.comment_text}"
 
     @staticmethod
-    def add_comment_in_db( user_id: int, task_id: int,
+    def add_comment_in_db(user_id: int, task_id: int,
                           comment_time: str, text: str, comment_date: str, via_bot: bool = True):
         comment = Comment(
             user_id=user_id,

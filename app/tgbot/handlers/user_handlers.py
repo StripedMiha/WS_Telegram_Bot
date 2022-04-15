@@ -14,7 +14,7 @@ from aiogram.utils.exceptions import ChatNotFound, BotBlocked, ChatIdIsEmpty
 
 from app.KeyboardDataClass import KeyboardData
 from app.back.back_manager import reactivate_project_keyboard
-from app.back.user_back import get_user_help, validate_old_user, get_project_list, get_type_of_search_keyboard, \
+from app.back.user_back import get_user_help, validate_old_user, get_project_keyboard, get_type_of_search_keyboard, \
     callback_search, callback_search_pages, get_tasks, get_text_add_costs
 from app.tgbot.loader import dp, bot
 from app.create_log import setup_logger
@@ -353,7 +353,7 @@ async def search_project_via_search(call: types.CallbackQuery, callback_data: di
     :return:
     """
     user: User = User.get_user_by_telegram_id(call.from_user.id)
-    text, keyboard, log = await get_project_list(user)
+    text, keyboard, log = await get_project_keyboard(user)
     user_logger.info(log)
     await call.message.edit_text(text, reply_markup=keyboard)
 
@@ -369,7 +369,7 @@ async def search_project_via_search(call: types.CallbackQuery, callback_data: di
     user: User = User.get_user_by_telegram_id(call.from_user.id)
     page: int = int(callback_data.get("page"))
     hide_archive: bool = bool(int(callback_data.get("hide")))
-    text, keyboard, log = await get_project_list(user, page, hide_archive)
+    text, keyboard, log = await get_project_keyboard(user, page, hide_archive)
     user_logger.info(log)
     await call.message.edit_text(text, reply_markup=keyboard)
 

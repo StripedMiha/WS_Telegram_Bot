@@ -9,7 +9,7 @@ from sqlalchemy.exc import NoResultFound
 
 from app.KeyboardDataClass import KeyboardData
 from app.create_log import setup_logger
-from app.db.structure_of_db import User, Comment, Bookmark, Task, Project, Status
+from app.db.structure_of_db import User, Task
 from app.tgbot.handlers.admin_handlers import get_keyboard_admin
 
 back_logger: logging.Logger = setup_logger("App.back.user", "app/log/b_user.log")
@@ -72,6 +72,13 @@ def get_fast_keyboard(buttons: list, width: int = 3) -> ReplyKeyboardMarkup:
 # Формирование инлайн клавиатуры меню
 async def get_keyboard(list_data: list[list], width: int = 3,
                        enable_cancel: Union[bool, str] = True) -> InlineKeyboardMarkup:
+    """
+    Создание клавиатуры без данных, а только с action для отловки обработчиком.
+    :param list_data:
+    :param width: Количество столбцов кнопок.
+    :param enable_cancel: Добавлять ли кнопку отмены.
+    :return:
+    """
     buttons = []
     for name, action in list_data:
         buttons.append(InlineKeyboardButton(text=name,
@@ -93,6 +100,16 @@ async def get_search_keyboard(list_data: list[tuple],
                               status_button: Optional[tuple] = None,
                               width: int = 3,
                               enable_cancel: Union[bool, str] = True) -> InlineKeyboardMarkup:
+    """
+    Создание клавиатуры для поиска проектов и задач для пользователя. С разбиением объектов на страницы и возможностью
+    листать странички и показывать скрытые объекты.
+    :param list_data: Данные для кнопок проектов и задач.
+    :param page_buttons: Данные для кнопок перелистывания страниц.
+    :param status_button: Данные для кнопки показать или скрыть скрытые проекты и задачи.
+    :param width: Количество столбцов кнопок.
+    :param enable_cancel: Добавлять ли кнопку отмены.
+    :return:
+    """
     buttons = []
     for name, action, id in list_data:
         buttons.append(InlineKeyboardButton(text=name,
@@ -184,6 +201,10 @@ async def validate_old_user(message: aiogram.types.Message):
 
 
 async def get_type_of_search_keyboard() -> InlineKeyboardMarkup:
+    """
+    Возвращает клавиатуру с кнопками выбора способа поиска задачи.
+    :return:
+    """
     buttons = [('Через поиск', 'via_search'),
                ('❤ Через закладки', 'via bookmarks'),
                ('Задача по умолчанию', 'fast input')]
@@ -191,6 +212,12 @@ async def get_type_of_search_keyboard() -> InlineKeyboardMarkup:
 
 
 async def get_number_max_page(count: int, max_on_page: int = 10) -> int:
+    """
+    Считает необходимое количество страниц для размещения всех объектов.
+    :param count: Количество объектов.
+    :param max_on_page: Максимальное количество объектов на странице.
+    :return:
+    """
     if count <= max_on_page:
         return 0
     else:
@@ -200,14 +227,26 @@ async def get_number_max_page(count: int, max_on_page: int = 10) -> int:
             return count // max_on_page
 
 
-async def get_project_list(user: User,
-                           page: int = 0,
-                           hide_archive: bool = True) -> tuple[str, InlineKeyboardMarkup, str]:
+async def get_next_prev_page_number(page: int, max_page: int) -> tuple[int, int]:
     """
-    Возвращает набор данных для клавиатуры выбора проекта
-    :param page:
+    Получаем номер предыдущей и следующей страницы
+    :param page: Текущая страница.
+    :param max_page: Количество страниц
+    :return:
+    """
+    next_page, prev_page = page + 1, page - 1
+    if next_page > max_page:
+        next_page = 0
+    if prev_page < 0:
+        prev_page = max_page
+    return prev_page, next_page
+
+
+async def get_projects_data_for_keyboard(user: User, hide_archive: bool) -> list[tuple]:
+    """
+    Получаем набор данных для кнопок проектов.
     :param user:
-    :param hide_archive: показывать ли архивные проекты
+    :param hide_archive:
     :return:
     """
     projects: list[tuple] = [(i.project_name, "search_task", i.project_id) for i in user.projects
@@ -219,32 +258,75 @@ async def get_project_list(user: User,
         archive_projects.sort(key=lambda project: project[0])
         for archive_project in archive_projects:
             projects.append(archive_project)
-    button_on_page: int = 20
     if len(projects) % 2 != 0:
         projects.append(("  ", "empty_button", "---"))
-    max_page: int = await get_number_max_page(len(projects), button_on_page)
-    log: str = f"{user.full_name()} запросил список проектов"
-    text: str = "Выберите проект:"
+    return projects
+
+
+async def get_project_pages_data_for_keyboard(max_page: int, page: int, hide_archive: bool) -> Optional[list[tuple]]:
+    """
+    Получаем набор данных для кнопок перелистывания
+    :param max_page: Номер последней страницы.
+    :param page: Текущая страница.
+    :param hide_archive: Статус отображения скрытых проектов.
+    :return:
+    """
     if max_page > page or (max_page == page and max_page > 0):
-        next_page, prev_page = page + 1, page - 1
-        if next_page > max_page:
-            next_page = 0
-        if prev_page < 0:
-            prev_page = max_page
+        prev_page, next_page = await get_next_prev_page_number(page, max_page)
         page_buttons: list[tuple] = [("⬅ ", "via_search", prev_page, int(hide_archive)),
                                      ("➡ ", "via_search", next_page, int(hide_archive))]
-        text += f" Страница {page + 1}/{max_page + 1}"
-        log += text
     else:
         page_buttons: None = None
+    return page_buttons
 
-    split_projects: list[tuple] = projects[page * button_on_page: button_on_page + (page * button_on_page)]
+
+async def get_status_button_for_keyboard(hide_archive: bool) -> tuple[str, int]:
+    """
+    Получаем набор данных для кнопки отображения архивных проектов.
+    :param hide_archive: Статус отображения архивных проектов.
+    :return:
+    """
     if hide_archive:
         status_button: tuple = ("📦Показать архивные", "via_search", 0, 0)
     else:
         status_button: tuple = ("Скрыть архивные", "via_search", 0, 1)
-        text += "\t включая архивные"
-        log += text
+    return status_button
+
+
+async def get_project_keyboard(user: User,
+                               page: int = 0,
+                               hide_archive: bool = True) -> tuple[str, InlineKeyboardMarkup, str]:
+    """
+    Возвращает набор данных для клавиатуры выбора проекта
+    :param page:
+    :param user:
+    :param hide_archive: Показывать ли архивные проекты
+    :return:
+    """
+    # Получаем данные по проектам
+    button_on_page: int = 20
+    projects = await get_projects_data_for_keyboard(user, hide_archive)
+    max_page: int = await get_number_max_page(len(projects), button_on_page)
+
+    log: str = f"{user.full_name()} запросил список проектов"
+    text: str = "Выберите проект:"
+
+    # Получаем данные для кнопок перелистывания
+    page_buttons: Optional[list[tuple]] = await get_project_pages_data_for_keyboard(max_page, page, hide_archive)
+    if page_buttons is not None:
+        text += f" Страница {page + 1}/{max_page + 1}"
+        log += f" Страница {page + 1}/{max_page + 1}"
+
+    # Режем проекты на страницы
+    split_projects: list[tuple] = projects[page * button_on_page: button_on_page + (page * button_on_page)]
+
+    # Получаем кнопку статуса
+    status_button: tuple = await get_status_button_for_keyboard(hide_archive)
+    if status_button[-1] == 1:
+        text += " включая архивные"
+        log += " включая архивные"
+
+    # Получаем клавиатуру
     keyboard: InlineKeyboardMarkup = await get_search_keyboard(split_projects,
                                                                page_buttons,
                                                                status_button,
@@ -254,10 +336,76 @@ async def get_project_list(user: User,
 
 
 def get_text_add_costs(task_id: int, user: User) -> str:
+    """
+    Возвращает текст сообщения для ввода.
+    :param task_id: ID задачи.
+    :param user: Пользователь.
+    :return:
+    """
     task = Task.get_task(task_id)
-    date = f'Установленная дата - {user.get_date(True)}'
+    date = f"Установленная дата - {user.get_date(True)}"
     answer: str = '\n'.join([task.full_name(), date, INPUT_COSTS])
     return answer
+
+
+async def get_tasks_data_for_keyboard(tasks: list[Task],
+                                      hide_done: bool) -> list[tuple]:
+    """
+    Получаем набор данных для кнопок задач.
+    :param tasks:
+    :param hide_done:
+    :return:
+    """
+    child_tasks: list[tuple] = []
+    child_tasks += [(task.task_name, "search_subtask", task.task_id)
+                    for task in tasks if task.status == "active"]
+    if not hide_done:
+        child_tasks += [("✅ " + task.task_name if task.status == "done" else task.task_name,
+                         "search_subtask",
+                         task.task_id)
+                        for task in tasks if task.status == "done"]
+    return child_tasks
+
+
+async def get_task_pages_data_for_keyboard(max_page: int,
+                                           page: int,
+                                           hide_done: bool,
+                                           sub: int,
+                                           parent_id: int,
+                                           action: str) -> Optional[list[tuple]]:
+    """
+    Получаем набор данных для кнопок перелистывания.
+    :param max_page: Номер последней страницы.
+    :param page: Номер текущей страницы.
+    :param hide_done: Статус отображения выполненных задач.
+    :param sub: Статус уровня вложенности.
+    :param parent_id: ID проекта или родительской задачи.
+    :param action: Составная действия.
+    :return:
+    """
+    if max_page > page or (max_page == page and max_page > 0):
+        prev_page, next_page = await get_next_prev_page_number(page, max_page)
+        page_buttons: list[tuple] = [("⬅ ", f"search_{action}", parent_id, f"{prev_page}_{int(hide_done)}_{sub}"),
+                                     ("➡ ", f"search_{action}", parent_id, f"{next_page}_{int(hide_done)}_{sub}")]
+    else:
+        page_buttons: None = None
+    return page_buttons
+
+
+async def get_status_task_button(hide_done: bool, sub: int, parent_id: int, action: str) -> tuple:
+    """
+    Получаем набор данных для кнопки отображения выполненных задач.
+    :param action:
+    :param hide_done: Статус отображения выполненных задач.
+    :param sub: Статус задача или подзадачи.
+    :param parent_id: ID проекта или родительской задачи.
+    :return:
+    """
+    if hide_done:
+        status_button: tuple = ("✅показать выполненные", f"search_{action}", parent_id, f"0_0_{sub}")
+    else:
+        status_button: tuple = ("❌скрыть выполненные", f"search_{action}", parent_id, f"0_1_{sub}")
+    return status_button
 
 
 async def get_tasks(parent_id: int,
@@ -274,8 +422,9 @@ async def get_tasks(parent_id: int,
     :param hide_done: показывать ли закрытые задачи
     :return:
     """
-
     user: User = User.get_user_by_telegram_id(user_id)
+
+    # Получить задачи проекта или подзадачи задачи
     if not sub:
         tasks: list[Task] = Task.get_tasks(parent_id)
     else:
@@ -283,45 +432,36 @@ async def get_tasks(parent_id: int,
     if len(tasks) == 0:
         return get_text_add_costs(parent_id, user)
 
-    child_tasks: list[tuple] = []
-    child_tasks += [(task.task_name, "search_subtask", task.task_id)
-                    for task in tasks if task.status == "active"]
-    if not hide_done:
-        child_tasks += [("✅ " + task.task_name if task.status == "done" else task.task_name,
-                         "search_subtask",
-                         task.task_id)
-                        for task in tasks if task.status == "done"]
-
+    # Получение данных для кнопок проектов
     button_on_page: int = 20
+    child_tasks: list[tuple] = await get_tasks_data_for_keyboard(tasks, hide_done)
 
-    max_page: int = await get_number_max_page(len(child_tasks), button_on_page)
     log: str = f"{user.full_name()} запросил список задач"
     text: str = "Выберите задачу:"
-    action: str = "subtask" if sub else "task"
-    if max_page > page or (max_page == page and max_page > 0):
-        next_page, prev_page = page + 1, page - 1
-        if next_page > max_page:
-            next_page = 0
-        if prev_page < 0:
-            prev_page = max_page
-        page_buttons: list[tuple] = [("⬅ ", f"search_{action}", parent_id, f"{prev_page}_{int(hide_done)}_{sub}"),
-                                     ("➡ ", f"search_{action}", parent_id, f"{next_page}_{int(hide_done)}_{sub}")]
-        text += f" Страница {page + 1}/{max_page + 1}"
-        log += text
-    else:
-        page_buttons: None = None
 
+    # Получение кнопок перелистывания страниц
+    action: str = "subtask" if sub else "task"
+    max_page: int = await get_number_max_page(len(child_tasks), button_on_page)
+    page_buttons: Optional[list[tuple]] = await get_task_pages_data_for_keyboard(max_page, page, hide_done, sub,
+                                                                                 parent_id, action)
+    if page_buttons is None:
+        text += f" Страница {page + 1}/{max_page + 1}"
+        log += f" Страница {page + 1}/{max_page + 1}"
+
+    # Вырезка блока задач на страницу
     split_tasks: list[tuple] = child_tasks[page * button_on_page: button_on_page + (page * button_on_page)]
+
+    # Получение кнопки создания задачи и кнопки переключения статуса видимости
     if len(split_tasks) % 2 == 0:
         split_tasks.append(("  ", "empty_button", "---"))
     split_tasks.append(("🛠Создать задачу", f"create_{action}", parent_id))
 
-    if hide_done:
-        status_button: tuple = ("✅показать выполненные", f"search_{action}", parent_id, f"0_0_{sub}")
-    else:
-        status_button: tuple = ("❌скрыть выполненные", f"search_{action}", parent_id, f"0_1_{sub}")
+    status_button: tuple = await get_status_task_button(hide_done, sub, parent_id, action)
+    if status_button:
         text += "\t включая выполненные"
-        log += text
+        log += "\t включая выполненные"
+
+    # Создание клавиатуры
     keyboard: InlineKeyboardMarkup = await get_search_keyboard(split_tasks,
                                                                page_buttons,
                                                                status_button,

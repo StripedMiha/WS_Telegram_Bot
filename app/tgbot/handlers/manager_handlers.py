@@ -76,10 +76,13 @@ async def select_project_for_staff(call: types.CallbackQuery, callback_data: dic
     """
     user = User.get_user_by_telegram_id(call.from_user.id)
     manager_logger.info(f"{user.full_name()} нажал кнопку 'Назначить на проект'")
-    statuses: List[str] = callback_data.get("project_id").split("_")
-    keyboard: InlineKeyboardMarkup = await get_managers_project(user, "staff", statuses)
-    await call.message.edit_text("Выберите проект для которого хотите назначить или удалить исполнителей",
+    statuses: str = callback_data.get("project_id")
+    keyboard: InlineKeyboardMarkup
+    text: str
+    keyboard, text, log = await get_managers_project(user, "add_to_project", statuses)
+    await call.message.edit_text(f"Выберите проект для которого хотите назначить или удалить исполнителей: \n{text}",
                                  reply_markup=keyboard)
+    manager_logger.info(log)
 
 
 @dp.callback_query_handler(callback_manager_select.filter(action="add_staff_on_project"),
@@ -232,8 +235,8 @@ async def edit_project_menu(call: types.CallbackQuery, callback_data: dict):
     """
     manager: User = User.get_user_by_telegram_id(call.from_user.id)
     manager_logger.info(f"{manager.full_name()} вызывает меню редактирования проекта")
-    statuses: List[str] = callback_data.get("project_id").split("_")
-    keyboard: InlineKeyboardMarkup = await get_managers_project(manager, "edit", statuses)
+    statuses: str = callback_data.get("project_id")
+    keyboard: InlineKeyboardMarkup = await get_managers_project(manager, "manage_project", statuses)
     await call.message.edit_text("Выберите проект для редактирования", reply_markup=keyboard)
 
 

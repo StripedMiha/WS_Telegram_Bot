@@ -1,19 +1,13 @@
 import logging
-import re
-from pprint import pprint
 
-import aiogram.utils.exceptions
-import sqlalchemy.exc
 from aiogram import types
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.utils.callback_data import CallbackData
+
 
 from app.back.top_back import get_top_help, callback_top, get_top_menu, get_select_staff, get_ru_type_staff, \
     get_possible_user, callback_top_select, add_user_in_department, get_selected_staff_user, remove_user_from_department
 from app.create_log import setup_logger
 from app.tgbot.loader import dp, bot
-from app.db.structure_of_db import User, Status, Project
+from app.db.structure_of_db import User
 
 top_logger: logging.Logger = setup_logger("App.Bot.top", "app/log/h_top.log")
 
@@ -34,7 +28,7 @@ async def top_help(message: types.Message):
 
 
 @dp.callback_query_handler(callback_top.filter(action="cancel"))
-# @dp.callback_query_handler(callback_top_select.filter(action="cancel"))
+@dp.callback_query_handler(callback_top_select.filter(action="cancel"))
 # @dp.callback_query_handler(callback_top_decision.filter(action="cancel"))
 async def top_cancel(call: types.CallbackQuery):
     """
