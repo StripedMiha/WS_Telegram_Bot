@@ -14,4 +14,5 @@ def count_work_day() -> int:
     first_day: str = now_day.strftime('%Y%m')
     last_day: str = now_day.strftime('%Y%m%d')
     m: str = f"https://isdayoff.ru/api/getdata?date1={first_day}01&date2={last_day}"
-    return m.count('0')
+    req: str = str(requests.get(m).content)
+    return req.count('0')
