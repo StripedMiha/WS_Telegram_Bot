@@ -59,6 +59,7 @@ INPUT_COSTS = """
 
 Для создания подзадачи введите 'создать подзадачу'.
 Для закрытия задачи введите 'задача выполнена'.
+Для изменения названия задачи введите 'изменить название'.
 """
 
 
@@ -468,3 +469,19 @@ async def get_tasks(parent_id: int,
                                                                width=2,
                                                                enable_cancel=True)
     return text, keyboard, log
+
+
+async def rename_task(user: User, task: Task, new_task_name: str) -> tuple[str, str]:
+    """
+    Изменение названия задачи.
+    :param user: Экземпляр пользователя.
+    :param task: Экземпляр задачи.
+    :param new_task_name: Новое название задачи.
+    :return:
+    """
+    old_task_name: str = task.task_name
+    task.rename_task(new_task_name)
+    template: str = f"'{old_task_name}' -> '{task.task_name}'"
+    to_user: str = f"Вы изменили название задачи {template}"
+    to_log: str = f"{user.full_name()} изменил название задачи {template}"
+    return to_user, to_log

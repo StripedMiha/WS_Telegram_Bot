@@ -15,7 +15,7 @@ from aiogram.utils.exceptions import ChatNotFound, BotBlocked, ChatIdIsEmpty
 from app.KeyboardDataClass import KeyboardData
 from app.back.back_manager import reactivate_project_keyboard
 from app.back.user_back import get_user_help, validate_old_user, get_project_keyboard, get_type_of_search_keyboard, \
-    callback_search, callback_search_pages, get_tasks, get_text_add_costs
+    callback_search, callback_search_pages, get_tasks, get_text_add_costs, rename_task
 from app.tgbot.loader import dp, bot
 from app.create_log import setup_logger
 from app.db.structure_of_db import User, Bookmark, Task
@@ -39,6 +39,7 @@ class OrderMenu(StatesGroup):
     wait_for_date = State()
     wait_for_notification_time = State()
     wait_for_task_name = State()
+    wait_for_new_task_name = State()
 
 
 # Набор кнопок выбора даты
@@ -610,7 +611,7 @@ async def handler_task_complete(message: types.Message, state: FSMContext):
 
 @dp.message_handler(lambda message: message.text.lower() in ["отмена", "cancel"],
                     state=OrderMenu.waiting_for_time_comment)
-async def handler_input_help(message: types.Message, state: FSMContext):
+async def handler_cancel_input(message: types.Message, state: FSMContext):
     """
     Обработчик отмены ввода
     :param message:
@@ -621,6 +622,25 @@ async def handler_input_help(message: types.Message, state: FSMContext):
     user_logger.info("%s отменяет ввод трудоёмкости" % user.full_name())
     await message.answer('Отмена ввода', reply_markup=types.ReplyKeyboardRemove())
     await state.finish()
+
+
+@dp.message_handler(lambda message: message.text.lower() in ["редактировать задачу", "edit task", "изменить название"],
+                    state=OrderMenu.waiting_for_time_comment)
+async def handler_change_task_name(message: types.Message, state: FSMContext):
+    """
+    Обработчик изменения названия.
+    :param message:
+    :param state:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    user_logger.info(f"{user.full_name()} запускает изменение названия задачи")
+    data = await state.get_data()
+    task_id: int = data.get("id")
+    task: Task = Task.get_task(task_id)
+    await message.answer("Ввод трудоёмкости прерван", reply_markup=types.ReplyKeyboardRemove())
+    await message.answer(f"Введите новое название для задачи '{task.task_name}'")
+    await OrderMenu.wait_for_new_task_name.set()
 
 
 @dp.message_handler(lambda message: 'не понял' in message.text.lower() or '!' not in message.text.lower(),
@@ -663,6 +683,40 @@ async def wait_hours(message: types.Message, state: FSMContext):
     await check_project_status(user, task_id)
 
 
+@dp.message_handler(lambda message: message.text.lower() in ["отмена", "cancel"],
+                    state=OrderMenu.wait_for_new_task_name)
+async def handler_cancel_rename_task(message: types.Message, state: FSMContext):
+    """
+    Отмена изменения названия.
+    :param message:
+    :param state:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    task_id: int = int((await state.get_data()).get("id"))
+    task: Task = Task.get_task(task_id)
+    user_logger.info(f"{user.full_name()} отменяет переименование задачи ID{task.task_id}")
+    await message.answer("Отмена изменения названия задачи", reply_markup=types.ReplyKeyboardRemove())
+    await state.finish()
+
+
+@dp.message_handler(state=OrderMenu.wait_for_new_task_name)
+async def wait_new_task_name(message: types.Message, state: FSMContext):
+    """
+    Выполнение изменения названия.
+    :param message:
+    :param state:
+    :return:
+    """
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    task_id: int = int((await state.get_data()).get("id"))
+    task: Task = Task.get_task(task_id)
+    text, log = await rename_task(user, task, message.text)
+    user_logger.info(log)
+    await message.answer(text, reply_markup=types.ReplyKeyboardRemove())
+    await state.finish()
+
+
 async def check_task_status(user: User, task_id: int) -> None:
     """
     Проверка статуса задачи в которую внесли. И предложение активировать задачу если она была архивной
@@ -701,8 +755,7 @@ async def check_project_status(user: User, task_id: int) -> None:
 async def handler_reactivate_task(call: types.CallbackQuery, callback_data: dict):
     """
     Обработчик кнопок выбора активации/неактивации неактивной задачи
-    :param call:
-    :param callback_data:
+    :param call:    :param callback_data:
     :return:
     """
     user: User = User.get_user_by_telegram_id(call.from_user.id)

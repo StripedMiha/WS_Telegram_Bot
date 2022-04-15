@@ -124,6 +124,10 @@ class Task(Base):
         self.status = "active"
         session.commit()
 
+    def rename_task(self, new_name: str):
+        self.task_name = new_name
+        session.commit()
+
     @staticmethod
     def new_task(task_name: str, project_id: int, parent_id: int = None) -> None:
         t = Task(task_name=task_name,
