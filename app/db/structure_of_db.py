@@ -75,6 +75,14 @@ class Project(Base):
         self.project_status = "active"
         session.commit()
 
+    def redescription(self, new_description: str):
+        self.project_description = new_description
+        session.commit()
+
+    def rename(self, new_name: str):
+        self.project_name = new_name
+        session.commit()
+
     @staticmethod
     def get_last_project():
         return session.query(Project).all()

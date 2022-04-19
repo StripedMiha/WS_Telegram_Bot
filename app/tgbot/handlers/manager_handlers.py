@@ -3,16 +3,15 @@ import re
 from pprint import pprint
 from typing import List
 
-
 from aiogram import types
-from aiogram.utils.exceptions import ChatNotFound, BotBlocked, ChatIdIsEmpty
+from aiogram.utils.exceptions import ChatNotFound, BotBlocked, ChatIdIsEmpty, MessageIsTooLong
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup
 
 from app.back.back_manager import get_manager_menu, get_managers_project, get_types_staff, get_users_list_by_type_staff, \
     change_user_status_in_project, finish_creating_project, get_manager_help, get_keyboard_of_settings, \
-    archiving_project, get_report
+    archiving_project, get_report, change_project_description, PROJECT_NAME_TEMPLATE, change_project_name
 from app.create_log import setup_logger
 from app.tgbot.loader import dp, bot
 from app.db.structure_of_db import User, Status, Project
@@ -24,6 +23,8 @@ manager_logger: logging.Logger = setup_logger("App.Bot.manager", "app/log/h_mana
 class OrderCreateProject(StatesGroup):
     wait_for_project_name = State()
     wait_for_project_description = State()
+    wait_for_new_project_name = State()
+    wait_for_new_project_description = State()
 
 
 @dp.callback_query_handler(callback_manager.filter(action="cancel"))
@@ -175,9 +176,6 @@ async def start_create_project(call: types.CallbackQuery):
     await OrderCreateProject.wait_for_project_name.set()
 
 
-PROJECT_NAME_TEMPLATE = r"^[a-z,A-Z]{3,5}-\d{3}[a-z,-]?\d?\d?"
-
-
 @dp.message_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_manager(),
                     state=OrderCreateProject.wait_for_project_name)
 async def wait_project_name(message: types.Message, state: FSMContext):
@@ -193,11 +191,14 @@ async def wait_project_name(message: types.Message, state: FSMContext):
     if re.match(PROJECT_NAME_TEMPLATE, message_text):
         await state.update_data(project_name=message_text)
         await message.answer(f"Напишите описание проекта для {message_text}")
+        manager_logger.info(f"Ввёл корректное название")
         await OrderCreateProject.wait_for_project_description.set()
     elif message_text.lower() == "cancel" or message_text.lower() == "отмена":
         await message.answer("Отмена создания проекта")
+        manager_logger.info(f"Отмена создание проекта")
         await state.finish()
     else:
+        manager_logger.info(f"Ввёл некорректное название")
         await message.answer("Вы ввели некорректное название для проекта\n")
 
 
@@ -216,6 +217,7 @@ async def wait_project_description(message: types.Message, state: FSMContext):
     manager_logger.info(f"{manager.full_name()} ввёл описание {message_text}")
     if message_text.lower() == "cancel" or message_text.lower() == "отмена":
         await message.answer("Отмена ввода описания проекта и создания проекта")
+        manager_logger.info(f"Отмена создания проекта")
         await state.finish()
         return
     data: dict = await state.get_data()
@@ -309,6 +311,139 @@ async def handler_reactivate_project(call: types.CallbackQuery, callback_data: d
                     f"{manager.full_name()} не получил уведомление о реактивации проекта потому что {err}")
     else:
         manager_logger.info(f"{manager.full_name()} не стал менять статус у проекта {project.project_name}")
+
+
+@dp.callback_query_handler(callback_manager_select.filter(action="change_project_description"),
+                           lambda call: User.get_user_by_telegram_id(call.from_user.id).is_manager())
+async def handler_change_project_description(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    """
+    Обработчик начала изменения описания проекта и запуск ожидания ввода нового описания.
+    :param call:
+    :param callback_data:
+    :param state:
+    :return:
+    """
+    manager: User = User.get_user_by_telegram_id(call.from_user.id)
+    project_id: int = int(callback_data.get("project_id"))
+    project: Project = Project.get_project(project_id)
+    await state.update_data(project_id=project_id)
+    await call.message.edit_text(f"Вы выбрали проект '{project.project_name}' для редактирования его описания\n"
+                                 f"Текущее его описание вы можете скопировать с сообщения ниже.")
+    manager_logger.info(
+        f"{manager.full_name()} выбрали проект '{project.project_name}' для редактирования его описания")
+    await call.message.answer(f"{project.project_description if project.project_description else 'Нет описания.'}")
+    await OrderCreateProject.wait_for_new_project_description.set()
+
+
+@dp.message_handler(lambda message: message.text.lower() in ["cancel", "отмена"],
+                    state=OrderCreateProject.wait_for_new_project_description)
+async def cancel_edit_project_description(message: types.Message, state: FSMContext):
+    """
+    Обработчик отмены редактирования описания проекта.
+    :param message:
+    :param state:
+    :return:
+    """
+    manager: User = User.get_user_by_telegram_id(message.from_user.id)
+    data = await state.get_data()
+    project: Project = Project.get_project(int(data.get("project_id")))
+    manager_logger.info(f"{manager.full_name()} отменил редактирование описания проекта с ID{project.project_id}")
+    await message.answer("Отмена редактирования описания проекта.")
+    await state.finish()
+
+
+@dp.message_handler(state=OrderCreateProject.wait_for_new_project_description)
+async def handler_edit_project_description(message: types.Message, state: FSMContext):
+    """
+    Обработчик ввода нового описания проекта
+    :param message:
+    :param state:
+    :return:
+    """
+    manager: User = User.get_user_by_telegram_id(message.from_user.id)
+    data: dict = await state.get_data()
+    project: Project = Project.get_project(int(data.get("project_id")))
+    new_description: str = message.text.strip(" ")
+    to_other, to_manager = await change_project_description(manager, project, new_description)
+    try:
+        await message.answer(to_manager)
+    except MessageIsTooLong:
+        await message.answer("Новое описание было применено, но оно слишком длинное для вывода в сообщении.")
+    for user in [user for user in project.users if user != manager]:
+        try:
+            await bot.send_message(user.telegram_id, to_other)
+            manager_logger.info(to_other)
+        except MessageIsTooLong:
+            await bot.send_message(user.telegram_id,
+                                   f"{manager.full_name()} ввёл настолько длинное новое описание проекта "
+                                   f"'{project.project_name}', что я затрудняюсь его вывести в сообщении")
+        except (ChatNotFound, BotBlocked, ChatIdIsEmpty) as err:
+            manager_logger.error(
+                f"{manager.full_name()} не получил уведомление об изменении описания проекта потому что {err}")
+    await state.finish()
+
+
+@dp.callback_query_handler(callback_manager_select.filter(action="change_project_name"),
+                           lambda call: User.get_user_by_telegram_id(call.from_user.id).is_manager())
+async def handler_change_project_name(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    """
+    Обработчик начала изменения названия проекта и запуск ожидания ввода нового названия.
+    :param call:
+    :param callback_data:
+    :param state:
+    :return:
+    """
+    manager: User = User.get_user_by_telegram_id(call.from_user.id)
+    project_id: int = int(callback_data.get("project_id"))
+    project: Project = Project.get_project(project_id)
+    await state.update_data(project_id=project_id)
+    await call.message.edit_text(f"Вы выбрали проект '{project.project_name}' для переименования\n")
+    manager_logger.info(f"{manager.full_name()} выбрали проект '{project.project_name}' для переименования")
+    await OrderCreateProject.wait_for_new_project_name.set()
+
+
+@dp.message_handler(lambda message: message.text.lower() in ["cancel", "отмена"],
+                    state=OrderCreateProject.wait_for_new_project_name)
+async def cancel_edit_project_description(message: types.Message, state: FSMContext):
+    """
+    Обработчик отмены переименования проекта.
+    :param message:
+    :param state:
+    :return:
+    """
+    manager: User = User.get_user_by_telegram_id(message.from_user.id)
+    data = await state.get_data()
+    project: Project = Project.get_project(int(data.get("project_id")))
+    manager_logger.info(f"{manager.full_name()} отменил переименования проекта с ID{project.project_id}")
+    await message.answer("Отмена переименования проекта.")
+    await state.finish()
+
+
+@dp.message_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_manager(),
+                    state=OrderCreateProject.wait_for_new_project_name)
+async def handler_edit_project_name(message: types.Message, state: FSMContext):
+    """
+    Ожидание ввода корректного названия проекта.
+    :param message:
+    :param state:
+    :return:
+    """
+    manager: User = User.get_user_by_telegram_id(message.from_user.id)
+    message_text: str = message.text
+    manager_logger.info(f"{manager.full_name()} ввёл название {message_text}")
+    data = await state.get_data()
+    project: Project = Project.get_project(data.get("project_id"))
+    status, to_other, to_manager = await change_project_name(manager, project, message_text)
+    await message.answer(to_manager)
+    manager_logger.info(to_other)
+    if status:
+        for user in [user for user in project.users if user != manager]:
+            try:
+                await bot.send_message(user.telegram_id, to_other)
+            except (ChatNotFound, BotBlocked, ChatIdIsEmpty) as err:
+                manager_logger.error(
+                    f"{manager.full_name()} не получил уведомление о переименовании проекта потому что {err}")
+        await state.finish()
 
 
 @dp.callback_query_handler(callback_manager_select.filter(action="report_project"),

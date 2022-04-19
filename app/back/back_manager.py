@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import List, Optional
 
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -14,6 +15,9 @@ back_logger: logging.Logger = setup_logger("App.back.manager", "app/log/b_manage
 callback_manager = CallbackData("fab_menu", "action")
 callback_manager_select = CallbackData("button_text", "action", "project_id")
 callback_manager_decision = CallbackData("button_text", "action", "project_id", "user_id")
+
+
+PROJECT_NAME_TEMPLATE = r"^[a-z,A-Z]{3,5}-\d{3}[a-z,-]?\d?\d?"
 
 
 # Формирование инлайн клавиатуры меню
@@ -316,6 +320,43 @@ async def reactivate_project_keyboard(user: User, task: Task) -> tuple[str, Inli
                             ("Оставить как есть", "keep_as_is", task.project_id)]
     keyboard: InlineKeyboardMarkup = get_keyboard_1(buttons, 2, False)
     return text, keyboard
+
+
+async def change_project_description(user: User, project: Project, new_description: str) -> tuple[str, str]:
+    """
+Меняет описание проекта и возвращает сообщения для менеджера и участников проекта
+    :param user:
+    :param project:
+    :param new_description:
+    :return:
+    """
+    project.redescription(new_description)
+    to_other: str = f"{user.full_name()} проекту {project.project_name} ввёл новое описание:\n" \
+                    f"{new_description}"
+    to_manager: str = f"Для проекта {project.project_name} вы ввели новое описание:\n" \
+                      f"{new_description}"
+    return to_other, to_manager
+
+
+async def change_project_name(user: User, project: Project, new_name: str) -> tuple[bool, str, str]:
+    """
+Меняет описание проекта и возвращает сообщения для менеджера и участников проекта
+    :param user:
+    :param project:
+    :param new_description:
+    :return:
+    """
+    if re.match(PROJECT_NAME_TEMPLATE, new_name):
+        old_name: str = project.project_name
+        project.rename(new_name)
+        to_other: str = f"{user.full_name()} переименовал проект '{old_name}' -> '{new_name}'"
+        to_manager: str = f"Вы переименовали проект '{old_name}' -> '{new_name}'"
+        status: bool = True
+    else:
+        to_manager: str = f"Вы ввели некорректное название"
+        to_other: str = f"{user.full_name()} ввёл некорректное название"
+        status: bool = False
+    return status, to_other, to_manager
 
 
 async def get_report() -> str:
