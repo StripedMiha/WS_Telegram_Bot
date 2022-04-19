@@ -236,8 +236,10 @@ async def edit_project_menu(call: types.CallbackQuery, callback_data: dict):
     manager: User = User.get_user_by_telegram_id(call.from_user.id)
     manager_logger.info(f"{manager.full_name()} вызывает меню редактирования проекта")
     statuses: str = callback_data.get("project_id")
-    keyboard: InlineKeyboardMarkup = await get_managers_project(manager, "manage_project", statuses)
-    await call.message.edit_text("Выберите проект для редактирования", reply_markup=keyboard)
+    ans = await get_managers_project(manager, "manage_project", statuses)
+    keyboard, text, log = ans
+    await call.message.edit_text(f"Выберите проект для редактирования\n{text}", reply_markup=keyboard)
+    manager_logger.info("Для редактирования " + log)
 
 
 @dp.callback_query_handler(callback_manager_select.filter(action="edit_project"),
@@ -269,14 +271,15 @@ async def archiving_the_project(call: types.CallbackQuery, callback_data: dict):
     manager: User = User.get_user_by_telegram_id(call.from_user.id)
     project: Project = Project.get_project(callback_data.get("project_id"))
     manager_logger.info(f"{manager.full_name()} архивирует проект {project.project_name}")
-    text: str = await archiving_project(project)
+    text, mailing_status = await archiving_project(project)
     await call.message.edit_text(text)
-    for user in [user for user in project.users if user != manager]:
-        try:
-            await bot.send_message(user.telegram_id, text)
-        except (ChatNotFound, ChatIdIsEmpty):
-            await bot.send_message(manager.telegram_id,
-                                   f"{user.full_name()} не получил уведомление об архивации проекта")
+    if mailing_status:
+        for user in [user for user in project.users if user != manager]:
+            try:
+                await bot.send_message(user.telegram_id, text)
+            except (ChatNotFound, ChatIdIsEmpty):
+                await bot.send_message(manager.telegram_id,
+                                       f"{user.full_name()} не получил уведомление об архивации проекта")
 
 
 @dp.callback_query_handler(callback_manager_select.filter(action=["reactivate_project", "keep_as_is"]),

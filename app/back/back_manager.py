@@ -155,7 +155,7 @@ async def get_managers_project(user: User, purpose: str,
     button_on_page: int = 20
     max_page: int = await get_number_max_page(len(projects_button), button_on_page)
 
-    log: str = f"{user.full_name()} запросил список проектов"
+    log: str = f"{user.full_name()} запросил список проектов "
     text: str = ""
 
     # Получаем данные для кнопок перелистывания
@@ -163,8 +163,8 @@ async def get_managers_project(user: User, purpose: str,
                                                                                     purpose)
 
     if page_buttons is not None:
-        text += f"Страница {page + 1}/{max_page + 1}"
-        log += f"Страница {page + 1}/{max_page + 1}"
+        text += f"Страница {page + 1}/{max_page + 1} "
+        log += f"Страница {page + 1}/{max_page + 1} "
 
     split_projects: list[tuple] = projects_button[page * button_on_page: button_on_page + (page * button_on_page)]
 
@@ -175,8 +175,8 @@ async def get_managers_project(user: User, purpose: str,
     status_button: tuple = await get_status_button(hide_status, BACK_QUERY.get(purpose))
     split_projects.append(status_button)
     if status_button[-1].split("_")[-1] == '1':
-        text += "\tвключая архивные"
-        log += "\tвключая архивные"
+        text += "включая архивные"
+        log += "включая архивные"
 
     return get_keyboard_1(split_projects, width=2), text, log
 
@@ -286,7 +286,7 @@ async def get_keyboard_of_settings(project: Project) -> InlineKeyboardMarkup:
     return keyboard
 
 
-async def archiving_project(project: Project) -> str:
+async def archiving_project(project: Project) -> tuple[str, bool]:
     """
     Архивирование проекта и возврат сообщения менеджеру
     :param project:
@@ -294,10 +294,12 @@ async def archiving_project(project: Project) -> str:
     """
     if project.project_status == "active":
         project.archive_project()
-        answer: str = f"Проект {project.project_name} отправлен в архив."
+        answer: str = f"Проект '{project.project_name}' отправлен в архив."
+        mailing_status: bool = True
     else:
-        answer: str = f"Проект {project.project_name} итак в архиве."
-    return answer
+        answer: str = f"Проект '{project.project_name}' итак в архиве."
+        mailing_status: bool = False
+    return answer, mailing_status
 
 
 async def reactivate_project_keyboard(user: User, task: Task) -> tuple[str, InlineKeyboardMarkup]:
