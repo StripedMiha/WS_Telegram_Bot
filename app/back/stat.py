@@ -145,12 +145,14 @@ def show_month_gist():
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
-    max_value = get_count_work_month_days() * 8
+    max_value: int = get_count_work_month_days() * 8
     plt.gcf().clear()
     plt.title('Статистика за текущий календарный месяц')
     plt.axhline(max_value, color='green', label='Эталон')
     # plt.axhline(max_value + 10, color='white')
-    for i in range(16, max_value-1, 8):
+    for i in range(16, max(int(max(time)), max_value-1), 8):
+        if i == max_value:
+            continue
         plt.axhline(i, color='grey')
     plt.axhline(8, color='grey', label='День')
     plt.legend(loc=1)
