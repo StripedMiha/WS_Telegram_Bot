@@ -16,3 +16,11 @@ def count_work_day() -> int:
     m: str = f"https://isdayoff.ru/api/getdata?date1={first_day}01&date2={last_day}"
     req: str = str(requests.get(m).content)
     return req.count('0')
+
+
+def get_work_day(dates: list[datetime.date]) -> bytes:
+    first_day: str = min(dates).strftime('%Y%m%d')
+    last_day: str = max(dates).strftime('%Y%m%d')
+    m: str = f"https://isdayoff.ru/api/getdata?date1={first_day}&date2={last_day}"
+    req: bytes = requests.get(m).content
+    return req

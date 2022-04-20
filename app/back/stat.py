@@ -1,15 +1,15 @@
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pprint import pprint
 
 import matplotlib.pyplot as plt
 import numpy as np
 import collections
 
-from app.api.work_calendar import is_work_day, count_work_day
+from app.api.work_calendar import count_work_day, get_work_day
 from app.db.db_access import get_all_costs_for_period, get_the_user_projects_time_cost_per_period, \
     get_user_costs_per_week
-from app.db.structure_of_db import Comment, User
+from app.db.structure_of_db import Comment, User, Status
 from app.exceptions import EmptyCost
 
 
@@ -221,3 +221,108 @@ def show_week_report(user: User):
     plt.legend()
     plt.grid(axis="y", linestyle=":")
     plt.savefig('app/db/png/%s_%s.png' % ('report', user.full_name()))
+
+
+async def get_dates() -> list[datetime.date]:
+    dates: list[datetime.date] = [date.today()]
+    i = 1
+    for d in range(7):
+        delta = timedelta(days=i)
+        dates.append(date.today() - delta)
+        i += 1
+    return dates
+
+
+async def sum_costs(now_costs: list[Comment]) -> float:
+    s: timedelta = timedelta(0)
+    for cost in now_costs:
+        h, m = list(map(int, cost.time.split(":")))
+        s += timedelta(hours=h, minutes=m)
+    sum_h: float = s.total_seconds() / 60 / 60
+    return sum_h
+
+
+async def get_data() -> dict[int:dict]:
+    users: list[User] = Status.get_users('constructor') + \
+                        Status.get_users('electronic') + \
+                        Status.get_users('designer') #+ \
+                        # Status.get_users('graphics')
+    users: list[User] = [user for user in users if user.has_access()]
+    users.sort(key=lambda user: user.last_name)
+
+    d = await get_dates()
+
+    users_costs: dict = {user.full_name(): {date.isoformat(): [] for date in d} for user in users}
+    for user in users:
+        costs = [cost for cost in user.comments if cost.date in d]
+        for cost in costs:
+            users_costs[user.full_name()][cost.date.isoformat()].append(cost)
+
+    users_summed_costs: dict = {}
+    for user in users_costs.keys():
+        users_summed_costs[user] = {}
+        for date, costs in users_costs[user].items():
+            summed_cost = await sum_costs(costs)
+            users_summed_costs[user][date] = summed_cost
+
+    return users_summed_costs
+
+
+async def short_name(full_name: str) -> str:
+    first, last = full_name.split()
+    return f"{last} {first[0]}."
+
+
+async def get_color(work_day_index, date_index, hours) -> str:
+    if int(work_day_index[date_index]) and hours == 0:
+        return 'grey'
+    else:
+        if 7.9 < hours <= 8.1:
+            return 'green'
+        elif hours == 0:
+            return 'darkred'
+        elif hours > 8:
+            return 'darkgreen'  # 'teal'
+        elif 0 < hours <= 1:
+            return 'orangered'
+        elif 0 < hours <= 2:
+            return 'orange'
+        elif 2 < hours <= 4:
+            return 'yellow'
+        elif 4 < hours <= 6:
+            return 'greenyellow'
+        elif 6 < hours <= 8:
+            return 'lime'
+
+
+async def create_graf():
+    data = await get_data()
+    users = list(data.keys())
+    dates = await get_dates()
+    dates.reverse()
+    work_day_index = get_work_day(dates).decode("UTF-8")
+    fig, ax = plt.subplots(len(users), len(dates), figsize=(12.85, 8.5))
+
+    for i in range(8):
+        ax[0, i].set_title(dates[i])
+
+    for i in range(len(users)):
+        ax[i, 0].text(-1.9, 0.9, await short_name(users[i]))
+
+    for i, axs in enumerate(ax.flat, start=0):
+        axs.set_xticklabels([])
+        axs.set_yticklabels([])
+        axs.set_yticks([])
+        axs.set_xticks([])
+        date_index = i % 8
+        user_index = i // 8
+        count_hours = round(data[users[user_index]][dates[date_index].isoformat()], 2)
+        axs.text(0.45, 0.9, str(count_hours) + ' часов')
+        color_name = await get_color(work_day_index, date_index, count_hours)
+        axs.barh(1, 2, height=1, color=color_name)
+        axs.set()
+        for edge in ['left', 'right', 'bottom', 'top']:
+            axs.spines[edge].set_color('#FFFFFF')
+
+    fig.subplots_adjust(left=0.1, right=0.9, top=0.88, bottom=0.08, hspace=0, wspace=0)
+    plt.savefig("app/db/png/atata.png")
