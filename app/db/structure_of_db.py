@@ -473,7 +473,7 @@ class Comment(Base):
     comment_text = Column(Text())
     date = Column(Date)
     via_bot = Column(Boolean)
-    user: User = relationship("User", uselist=False)
+    user: User = relationship("User", uselist=False, backref="comments")
     task: Task = relationship("Task", backref="comments")
 
     def __repr__(self):

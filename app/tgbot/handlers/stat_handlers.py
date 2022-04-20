@@ -2,6 +2,7 @@ import logging
 
 from aiogram import types
 
+from app.back.stat import create_graf
 from app.create_log import setup_logger
 from app.db.structure_of_db import User
 from app.exceptions import EmptyCost
@@ -50,3 +51,16 @@ async def get_week_report(message: types.Message):
         return
     await bot.send_photo(user.telegram_id, types.InputFile("app/db/png/%s_%s.png" % ('report', user.full_name())))
     stat_logger.info("%s Успешно получил отчёт за неделю" % user.full_name())
+
+
+@dp.message_handler(commands="atata")
+@dp.message_handler(commands="атата")
+@dp.message_handler(lambda message: "atata" in message.text)
+@dp.message_handler(lambda message: "атата" in message.text)
+async def atata_report(message: types.Message):
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    stat_logger.info(f"{user.full_name()} запросил стату 'атата'")
+    new_message: types.Message = await bot.send_message(user.telegram_id, "Секунду")
+    await create_graf()
+    await bot.send_document(user.telegram_id, types.InputFile("app/db/png/atata.png"))
+    await new_message.delete()
