@@ -238,9 +238,10 @@ class Status(Base):
     Base.metadata = metadata
     status_id = Column(Integer(), primary_key=True, nullable=False)
     status_name = Column(String(20), nullable=False)
+    status_ru_name = Column(String(30))
 
     def __repr__(self):
-        return f'{self.status_name}'
+        return f'{self.status_ru_name}'
 
     @staticmethod
     def get_users(status: str) -> list:
