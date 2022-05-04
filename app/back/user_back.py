@@ -430,7 +430,7 @@ async def get_tasks(parent_id: int,
         tasks: list[Task] = Task.get_tasks(parent_id)
     else:
         tasks: list[Task] = Task.get_subtasks(parent_id)
-    if len(tasks) == 0:
+    if len(tasks) == 0 and sub:
         return get_text_add_costs(parent_id, user)
 
     # Получение данных для кнопок проектов

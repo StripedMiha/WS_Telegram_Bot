@@ -8,6 +8,7 @@ import aioschedule
 
 from aiogram import types
 
+from app.tgbot.handlers.user_handlers import type_of_selection_message
 from app.tgbot.loader import bot, dp
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
@@ -22,7 +23,8 @@ time_logger: logging.Logger = setup_logger("App.Bot.time", "app/log/time.log")
 callback_time = CallbackData("fab_time", "action", "time")
 REMIND_BUTTON = [["Напомнить через 10 минут", "0.10", "remind"],
                  ["Напомнить через 1 час", "1.00", "remind"],
-                 ["Напомнить через 3 часа", "3.00", "remind"]]
+                 ["Напомнить через 3 часа", "3.00", "remind"],
+                 ["Внести сейчас", "000", "input_now"]]
 
 
 # Формирование инлайн клавиатуры отложенных напоминаний
@@ -129,6 +131,12 @@ async def delay_remind(call: types.CallbackQuery, callback_data: dict):
     await call.message.edit_text(mes_text)
     await call.message.answer(text)
 
+
+@dp.callback_query_handler(callback_time.filter(action="input_now"))
+async def input_now(call: types.CallbackQuery, callback_data: dict):
+    user: User = User.get_user_by_telegram_id(call.from_user.id)
+    await call.message.edit_text("Так вводите же")
+    await type_of_selection_message(call.from_user.id)
 
 async def time_scanner():
     aioschedule.every().friday.at("18:40").do(week_report)

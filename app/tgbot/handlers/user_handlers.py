@@ -246,7 +246,7 @@ async def wait_date(message: types.Message, state: FSMContext):
     try:
         answer: str = await change_date(user, message.text.lower().strip(" "))
         await message.answer(answer, reply_markup=types.ReplyKeyboardRemove())
-        await type_of_selection_message(message)
+        await type_of_selection_message(message.from_user.id)
     except CancelInput:
         await message.answer('Отменён ввод даты.\n', reply_markup=types.ReplyKeyboardRemove())
         user_logger.info("%s Отменяет ввод даты" % user.full_name())
@@ -307,8 +307,8 @@ async def type_of_selection(call: types.CallbackQuery, callback_data: dict):
 
 
 # Меню выбора способа поиска задачи
-async def type_of_selection_message(message: types.Message):
-    user: User = User.get_user_by_telegram_id(message.from_user.id)
+async def type_of_selection_message(user_id: int):
+    user: User = User.get_user_by_telegram_id(user_id)
     user_logger.info("%s выбирает способ поиска задачи" % user.full_name())
     keyboard = await get_type_of_search_keyboard()
     await bot.send_message(user.telegram_id, 'Как будем искать задачу:', reply_markup=keyboard)
@@ -431,10 +431,7 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
     user_logger.info("%s поиск задачи через поиск. Получает список задач" % call.from_user.full_name)
     project_id: int = int(callback_data['page'])
     await call.message.edit_text('Идёт поиск всех задач. Секундочку подождите')
-    # try:
     parameters: list[int] = list(map(int, callback_data.get("hide").split("_")))
-    print(callback_data)
-    print(parameters)
     page, hide, sub = parameters
     answer = await get_tasks(project_id, int(call.from_user.id), page, hide, sub)
     if isinstance(answer, str):
@@ -444,41 +441,6 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
         text, keyboard, log = answer
         await call.message.edit_text(text, reply_markup=keyboard)
         user_logger.info(log)
-    # except Exception as e:
-    #     print(e)
-    #     await call.message.edit_text("Ошибка.\nБыло сообщено куда следует.")
-    #     await call.message.answer_sticker("CAACAgIAAxkBAAED9xBiD5m7P2yNcjqvs3y5LhHVJGcfxAACjgADfI5YFQLQ025DM_NRIwQ")
-    #     await bot.send_message(User.get_admin_id(), f"У {call.from_user.full_name} ошибка:\n{e.args}")
-
-
-# # Поиск подзадачи
-# @dp.callback_query_handler(callback_search.filter(action="search_subtask"))
-# @dp.callback_query_handler(callback_search.filter(action="search_subtask_with_done"))
-# async def search_subtasks_via_search(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
-#     """
-#     Выводит клавиатуру подзадач пользователя. Так же кнопки показать/скрыть выполненный подзадачи
-#     :param call:
-#     :param callback_data:
-#     :param state:
-#     :return:
-#     """
-#     user_logger.info("%s поиск подзадачи через поиск. Получает список подзадач" % call.from_user.full_name)
-#     parent_task_id: int = int(callback_data['id'])
-#     await call.message.edit_text('Идёт поиск всех подзадач. Секундочку подождите')
-#     try:
-#         statuses: list[str] = ["active"]
-#         if "done" in callback_data.get("action").split("_"):
-#             statuses.append("done")
-#         tasks = get_subtasks(parent_task_id, int(call.from_user.id), statuses)
-#         if isinstance(tasks, str):
-#             await start_comment_input(state, tasks, call.from_user.id, callback_data['id'], call)
-#             return None
-#         keyboard = await get_remove_keyboard(tasks, width=2)
-#         await call.message.edit_text('Выберите подзадачу', reply_markup=keyboard)
-#     except Exception as e:
-#         await call.message.edit_text("Ошибка.\nБыло сообщено куда следует.")
-#         await call.message.answer_sticker("CAACAgIAAxkBAAED9xBiD5m7P2yNcjqvs3y5LhHVJGcfxAACjgADfI5YFQLQ025DM_NRIwQ")
-#         await bot.send_message(User.get_admin_id(), f"У {call.from_user.full_name} ошибка:\n{e.args}")
 
 
 # Задача выбрана. Запуск ожидания ввода трудоёмкости

@@ -1,6 +1,7 @@
 import re
 from datetime import datetime, timedelta, date
 from pprint import pprint
+from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -142,24 +143,25 @@ def user_week_data(user: User) -> collections.defaultdict:
 def show_month_gist():
     data = current_month_stat()
     users: list[str] = [f"{User.get_user(i).last_name} {User.get_user(i).first_name[0]}." for i in data.keys()]
-    time = [to_float(i) for i in data.values()]
+    time: list[float] = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
-    max_value: int = get_count_work_month_days() * 8
+    max_time: int = get_count_work_month_days() * 8
+    max_value: int = int(max(max(time), max_time)) + 7
     plt.gcf().clear()
     plt.title('Статистика за текущий календарный месяц')
-    plt.axhline(max_value, color='green', label='Эталон')
+
     # plt.axhline(max_value + 10, color='white')
-    for i in range(16, max(int(max(time)), max_value-1), 8):
-        if i == max_value:
+    for i in range(16, max_value, 8):
+        if i == max_time:
             continue
         plt.axhline(i, color='grey')
     plt.axhline(8, color='grey', label='День')
+    plt.axhline(max_time, color='green', label='Эталон')
     plt.legend(loc=1)
     plt.ylabel('часы')
-    # plt.grid(visible=True)
     step: int = 5 if max_value < 100 else 10
-    plt.yticks(np.arange(0, max(time) + 15 if max(time) > max_value else max_value + 15, step=step))
+    plt.yticks(np.arange(0, max_value + 8, step=step))
     plt.xticks(rotation=0 if len(users) < 6 else 15)
     plt.bar(users, time)
     plt.savefig('app/db/png/1')
@@ -171,16 +173,19 @@ def show_week_gist():
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
-    max_value = 5 * 8
+    max_time: int = 5 * 8
+    max_value: int = max(max_time, int(max(time))) + 8
     plt.gcf().clear()
     plt.title('Статистика за текущую неделю')
-    plt.axhline(max_value, color='green', label='Эталон')
-    for i in [8, 16, 24]:
+    plt.axhline(max_time, color='green', label='Эталон')
+    for i in range(16, max_value, 8):
+        if i == max_time:
+            continue
         plt.axhline(i, color='grey')
-    plt.axhline(32, color='grey', label='День')
+    plt.axhline(8, color='grey', label='День')
     plt.legend(loc=1)
     plt.ylabel('часы')
-    plt.yticks(np.arange(0, max(time) + 15 if max(time) > max_value else max_value + 15, step=5))
+    plt.yticks(np.arange(0, max_value, step=5))
     plt.xticks(rotation=0 if len(users) < 6 else 15)
     plt.bar(users, time)
     plt.savefig('app/db/png/2')

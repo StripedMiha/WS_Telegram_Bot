@@ -55,8 +55,8 @@ async def get_week_report(message: types.Message):
 
 @dp.message_handler(commands="atata")
 @dp.message_handler(commands="атата")
-@dp.message_handler(lambda message: "atata" in message.text)
-@dp.message_handler(lambda message: "атата" in message.text)
+@dp.message_handler(lambda message: "atata" in message.text.lower())
+@dp.message_handler(lambda message: "атата" in message.text.lower())
 async def atata_report(message: types.Message):
     user: User = User.get_user_by_telegram_id(message.from_user.id)
     stat_logger.info(f"{user.full_name()} запросил стату 'атата'")
