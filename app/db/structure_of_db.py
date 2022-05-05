@@ -7,8 +7,7 @@ import sqlalchemy
 from sqlalchemy.exc import NoResultFound
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, DateTime, Table, \
-    select, insert  # , Table, , Numeric
+from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, DateTime, Table, Interval
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Session, relationship
 
@@ -470,7 +469,7 @@ class Comment(Base):
     comment_id = Column(Integer(), primary_key=True, nullable=False)
     user_id = Column(Integer(), ForeignKey('users.user_id'))
     task_id = Column(Integer(), ForeignKey('tasks.task_id'))
-    time = Column(String(10))
+    time = Column(Interval())
     comment_text = Column(Text())
     date = Column(Date)
     via_bot = Column(Boolean)
@@ -501,7 +500,6 @@ class Comment(Base):
 
     @staticmethod
     def get_comment(cost_id: int):
-
         try:
             return session.query(Comment).filter(Comment.comment_id == cost_id).one()
         except NoResultFound:
