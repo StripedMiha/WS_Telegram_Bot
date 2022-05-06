@@ -271,6 +271,7 @@ class User(Base):
     notification_status = Column(Boolean, default=True)
     notification_time = Column(DateTime, default='')
     remind_notification = Column(DateTime)
+    hashed_password: Optional[str] = Column(String(), default=None)
 
     default_task: Task = relationship("Task", uselist=False)
 
@@ -453,6 +454,10 @@ class User(Base):
         # print(session.query(User.email).filter(User.email != None, User.telegram_id == None).all())
         return [i[0] for i in emails]
 
+    def set_hashed_password(self, hashed_password: Optional[str]):
+        self.hashed_password = hashed_password
+        session.add(self)
+        session.commit()
 
 # class UserBookmark(Base):
 #     __tablename__ = 'user_bookmark'
