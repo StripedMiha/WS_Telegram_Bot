@@ -79,6 +79,6 @@ async def input_second_password(message: types.Message, state: FSMContext):
         await state.finish()
         return
     user.set_hashed_password(get_password_hash(possible_password))
-    await message.answer("Пароль успешно создан.\n"
-                         "Веб версия доступна по ссылке localhost:4400/home")
+    await message.answer("Пароль успешно создан.\n" 
+                         "Веб версия доступна по ссылке http://192.168.0.237:4400/home")
     await state.finish()
