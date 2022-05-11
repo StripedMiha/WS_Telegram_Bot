@@ -7,7 +7,7 @@ import sqlalchemy
 from sqlalchemy.exc import NoResultFound
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, DateTime, Table, Interval
+from sqlalchemy import MetaData, String, Integer, Column, Text, Date, Boolean, DateTime, Table, Interval, LargeBinary
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Session, relationship
 
@@ -50,6 +50,7 @@ class Project(Base):
     project_path = Column(String(40), nullable=True)
     project_status = Column(String(15), nullable=False)
     project_description = Column(Text(), nullable=True)
+    project_image = Column(LargeBinary(), nullable=True)
 
     def __repr__(self):
         return f"{self.project_id}, {self.project_name}, {self.project_description}"
