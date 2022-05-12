@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from sqlalchemy import select
 
@@ -27,7 +28,7 @@ def dec_get_session(func):
     return decorated
 
 
-def get_user_days_costs(user_id: int, user_date: str) -> list[tuple]:
+def get_user_days_costs(user_id: int, user_date: str) -> list[tuple[str, timedelta, str, str, int]]:
     session = get_session()
     query_comments = session.query(Comment.comment_text, Comment.time, Task.task_name, Project.project_name,
                                    Comment.comment_id) \

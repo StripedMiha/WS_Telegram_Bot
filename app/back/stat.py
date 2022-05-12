@@ -18,8 +18,7 @@ def sum_period_time_costs(first_day: str) -> dict:
     users_sum: collections.defaultdict = collections.defaultdict(get_zero_time)
     users_costs: list[list[str, str]] = get_all_costs_for_period(first_day)
     for i, j in users_costs:
-        users_sum[i] += timedelta(hours=int(j.split(':')[0]),
-                                  minutes=int(j.split(':')[1]))
+        users_sum[i] += j
     return users_sum
 
 

@@ -1,21 +1,20 @@
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Union, List, Tuple
+from typing import Union, List
 
 from sqlalchemy.exc import NoResultFound
 
 from app.KeyboardDataClass import KeyboardData
 from app.api.work_calendar import is_work_day
 from app.create_log import setup_logger
-from app.db.structure_of_db import User, Comment, Bookmark, Task, Status, Project
+from app.db.structure_of_db import User, Comment, Bookmark, Task, Status
 from app.exceptions import NotUserTime, EmptyDayCosts, CancelInput, WrongDate, FutureDate
 from app.db.db_access import get_user_days_costs, get_the_user_costs_for_period
 from app.back.stat import show_month_gist, show_week_gist, get_first_week_day, show_week_report
 
 main_logger: logging.Logger = setup_logger("App.back.main", "app/log/main.log")
 back_logger: logging.Logger = setup_logger("App.back", "app/log/back.log")
-
 
 
 INPUT_COST_EXAMPLE = """
@@ -39,9 +38,9 @@ remind_settings_button: list = [["Вкл/выкл напоминания", "togg
                                 ["Установить время для напоминаний", "Set_notification_time"]]
 
 
-def format_time(time: str) -> str:
-    hours = int(time.split(':')[0].strip(' '))
-    minutes = int(time.split(':')[1].strip(' '))
+def format_time(time: timedelta) -> str:
+    hours = time.seconds // 60 // 60
+    minutes = time.seconds // 60 % 60
     f_hours: str = ''
     f_minutes: str = ''
     if minutes > 0:
@@ -64,16 +63,16 @@ def to_ru_today_date(date: str) -> str:
     return f_date
 
 
-def sum_time(times: list[str]) -> str:
+def sum_time(times: list[timedelta]) -> timedelta:
     tot_time: timedelta = timedelta()
     for i in times:
-        tot_time += timedelta(hours=int(i.split(':')[0]), minutes=int(i.split(':')[1]))
-    return ':'.join(str(tot_time).split(':')[:2])
+        tot_time += i
+    return tot_time
 
 
 def text_count_removed_costs(user_id: int) -> str:
     user = User.get_user_by_telegram_id(user_id)
-    count = len(get_user_days_costs(user.user_id, user.get_date()))
+    count: int = len(get_user_days_costs(user.user_id, user.get_date()))
     if 2 <= count <= 4:
         word = 'записи'
     else:
@@ -139,12 +138,12 @@ def get_text_for_empty_costs(date: str) -> str:
 async def see_days_costs(user: User, date: str = "0") -> str:
     if date == "0":
         date = user.get_date()
-    comments: list[tuple] = get_user_days_costs(user.user_id, date)
+    comments: list[tuple[str, timedelta, str, str, int]] = get_user_days_costs(user.user_id, date)
     answer: str = ''
     if comments is None or len(comments) == 0:
         answer: str = get_text_for_empty_costs(date)
     else:
-        total_time: list[str] = []
+        total_time: list[timedelta] = []
         prev_proj_name, prev_task_name = comments[0][3], comments[0][2]
         now_proj = ' '.join(["Проект:", prev_proj_name])
         now_task = ' '.join(["  Задача:", prev_task_name])
@@ -222,7 +221,6 @@ def get_list_bookmark(user_id: int) -> Union[list[KeyboardData], str]:
     user: User = User.get_user_by_telegram_id(user_id)
     user_list_bookmark: list[KeyboardData] = [KeyboardData(bookmark.bookmark_name, bookmark.task.task_id)
                                               for bookmark in user.bookmarks]
-    # user_list_bookmark: list[KeyboardData] = get_list_user_bookmark(user_id)
     if len(user_list_bookmark) == 0:
         return 'У вас нет закладок.\n Добавить закладки можно через кнопку "Найти задачу"'
     for i in user_list_bookmark:
