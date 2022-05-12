@@ -117,7 +117,7 @@ def get_list_times() -> list:
     return [get_zero_time(), get_zero_time()]
 
 
-def user_week_data(user: User) -> collections.defaultdict:
+def user_week_data(user: User) -> list[list]:
     first_day: str = get_first_week_day()
     comments: list[Comment] = get_user_costs_per_week(first_day, user)
     week_comments: collections.defaultdict = collections.defaultdict(get_list_times)
@@ -125,12 +125,10 @@ def user_week_data(user: User) -> collections.defaultdict:
         week_comments[i] = get_list_times()
     for comment in comments:
         weekday = comment.date.strftime("%A")
-        str_time = comment.time.split(":")
-        time: timedelta = timedelta(hours=int(str_time[0]), minutes=int(str_time[1]))
         if comment.via_bot:
-            week_comments[weekday][0] += time
-        week_comments[weekday][1] += time
-    coms = []
+            week_comments[weekday][0] += comment.time
+        week_comments[weekday][1] += comment.time
+    coms: list[list] = []
     for i, j in week_comments.items():
         c = [i, j[0], j[1]]
         coms.append(c)
@@ -205,7 +203,7 @@ def show_week_projects_report(user: User):
 
 
 def show_week_report(user: User):
-    coms = user_week_data(user)
+    coms: list = user_week_data(user)
     days: list = [i[0] for i in coms]
     via_bot: list = [to_float(i[1]) for i in coms]
     via_ws: list = [to_float(i[2]) for i in coms]
@@ -240,8 +238,7 @@ async def get_dates() -> list[datetime.date]:
 async def sum_costs(now_costs: list[Comment]) -> float:
     s: timedelta = timedelta(0)
     for cost in now_costs:
-        h, m = list(map(int, cost.time.split(":")))
-        s += timedelta(hours=h, minutes=m)
+        s += cost.time
     sum_h: float = s.total_seconds() / 60 / 60
     return sum_h
 

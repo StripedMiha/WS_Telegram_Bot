@@ -335,7 +335,7 @@ def get_week_stat():
     show_week_gist()
 
 
-async def get_week_report_gist(user: User):
+async def get_week_report_gist(user: User) -> None:
     first_week_day = get_first_week_day()
     show_week_report(user)
 

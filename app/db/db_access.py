@@ -1,5 +1,5 @@
 import logging
-from datetime import timedelta
+from datetime import timedelta, date
 
 from sqlalchemy import select
 
@@ -80,7 +80,7 @@ def get_the_user_projects_time_cost_per_period(first_day: str, user: User) -> li
     return [list(i) for i in test]
 
 
-def get_user_costs_per_week(first_day: str, user: User) -> list:
+def get_user_costs_per_week(first_day: str, user: User) -> list[Comment]:
     session = get_session()
     comments = session.query(Comment.date, Comment.time, Comment.via_bot).filter(Comment.user_id == user.user_id,
                                                                                  Comment.date >= first_day).all()

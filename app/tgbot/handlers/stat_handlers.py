@@ -41,14 +41,14 @@ async def stat_week(message: types.Message):
 async def get_week_report(message: types.Message):
     stat_logger.info("%s ввёл команду /report" % message.from_user.full_name)
     user: User = User.get_user_by_telegram_id(message.from_user.id)
-    try:
-        await get_week_report_gist(user)
-    except Exception as err:
-        await message.answer("Происходит некоторая ошибка. Сообщите о ней Мишане")
-        print(err.args)
-        await bot.send_message(User.get_admin_id(), "У %s ошибка графика недельного отчёта" % user.full_name())
-        stat_logger.error("Ошибка %s" % err)
-        return
+    # try:
+    await get_week_report_gist(user)
+    # except Exception as err:
+    #     await message.answer("Происходит некоторая ошибка. Сообщите о ней Мишане")
+    #     print(err.args)
+    #     await bot.send_message(User.get_admin_id(), "У %s ошибка графика недельного отчёта" % user.full_name())
+    #     stat_logger.error("Ошибка %s" % err)
+    #     return
     await bot.send_photo(user.telegram_id, types.InputFile("app/db/png/%s_%s.png" % ('report', user.full_name())))
     stat_logger.info("%s Успешно получил отчёт за неделю" % user.full_name())
 
