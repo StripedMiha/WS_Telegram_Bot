@@ -51,6 +51,9 @@ TASK_BUTTONS = ["Выбрать по умолчанию", "Добавить за
 CANCEL_BUTTON = ["Отмена"]
 
 
+USER_EMAIL_PATTERN = r"[a-zA-Z]\.[a-z]{3,15}@smde\.ru|[a-z]\d@s-t.studio|[a-zA-Z]\.[a-z]{3,15}@smirnovdesign\.com"
+
+
 # Создание клавиатуры быстрого набора
 def get_fast_keyboard(buttons: list) -> types.ReplyKeyboardMarkup:
     fast_keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -265,7 +268,7 @@ async def wait_date(message: types.Message, state: FSMContext):
 async def wait_email(message: types.Message, state: FSMContext):
     user = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("%s Вводит почту: %s" % (user.full_name(), message.text))
-    if re.match(r'[a-zA-Z]\.[a-z]{3,15}@smde\.ru|[a-z]\d@s-t.studio', message.text):
+    if re.match(USER_EMAIL_PATTERN, message.text):
         user.change_mail(message.text)
         answer = message.from_user.full_name + ', вы установили почту: ' + user.get_email()
         await message.answer(answer)
