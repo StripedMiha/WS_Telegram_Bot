@@ -75,7 +75,7 @@ async def select_staff_list(call: types.CallbackQuery, callback_data: dict):
 
 @dp.callback_query_handler(callback_top.filter(action=["set_constructor", "set_designer",
                                                        "set_electronic", "set_manager",
-                                                       "set_graphics"]))
+                                                       "set_graphics", "set_topmanager"]))
 async def select_user_for_add_in_staff(call: types.CallbackQuery, callback_data: dict):
     """
     Выводит клавиатуру пользователей для добавления их в выбранный отдел
@@ -93,7 +93,7 @@ async def select_user_for_add_in_staff(call: types.CallbackQuery, callback_data:
 
 @dp.callback_query_handler(callback_top_select.filter(action=["set_constructor", "set_designer",
                                                               "set_electronic", "set_manager",
-                                                              "set_graphics"]))
+                                                              "set_graphics", "set_topmanager"]))
 async def add_user_in_selected_staff(call: types.CallbackQuery, callback_data: dict):
     """
     Добавляет выбранному пользователю user новую должность. И уведомляет его об этом.

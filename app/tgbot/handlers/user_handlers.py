@@ -860,3 +860,10 @@ async def handler_empty_button(call: types.CallbackQuery, callback_data: dict):
 @dp.callback_query_handler(callback_search.filter())
 async def prost(call: types.CallbackQuery, callback_data: dict):
     print(callback_data)
+
+
+@dp.message_handler(lambda message: User.get_user_by_telegram_id(message.from_user.id).has_access(),
+                    commands='link')
+async def get_link(message: types.Message):
+    await message.answer("Ссылка на веб ресурс:\n"
+                         "http://192.168.0.237:4400/home")
