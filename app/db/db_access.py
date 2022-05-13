@@ -55,7 +55,7 @@ def get_all_costs_for_period(first_day: str):
     return [list(i) for i in q]
 
 
-def get_the_user_costs_for_period(user: User, day_from: str) -> list:
+def get_the_user_costs_for_period(user: User, day_from: str) -> list[timedelta]:
     session = get_session()
     q = session.query(Comment.time).filter(Comment.user_id == user.user_id, Comment.date == day_from).all()
     session.close()

@@ -418,11 +418,11 @@ def get_header_for_report(hours: float, date: str) -> str:
     return "\n".join([date_header, header])
 
 
-def sum_costs_to_float(costs: list[str]) -> float:
+def sum_costs_to_float(costs: list[timedelta]) -> float:
     day_cost_hours: timedelta = timedelta(hours=0)
     for i in costs:
-        hours, minutes = i.split(":")
-        day_cost_hours += timedelta(hours=int(hours), minutes=int(minutes))
+        # hours, minutes = i.split(":")
+        day_cost_hours += i
     day_cost_hours: float = day_cost_hours.seconds / 60 / 60 + (day_cost_hours.days * 24)
     return day_cost_hours
 
@@ -447,7 +447,7 @@ async def day_report_message(user: User) -> tuple[str, float]:
         if notif_time == now_time:
             now_date: str = get_work_date_for_report(notif_time)
             main_logger.info("Подготавливаем для %s ежедневный отчёт/напоминание" % user.full_name())
-            costs: list = get_the_user_costs_for_period(user, now_date)
+            costs: list[timedelta] = get_the_user_costs_for_period(user, now_date)
             day_cost_hours: float = sum_costs_to_float(costs)
             main_logger.info("Пользователь %s наработал на %s часов" % (user.full_name(), day_cost_hours))
             text = "\n\n".join([get_header_for_report(day_cost_hours, now_date), await see_days_costs(user, now_date)])
