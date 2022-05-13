@@ -413,7 +413,7 @@ class User(Base):
             first_name=first_name,
             last_name=last_name if last_name else "Snow",
             email=None,
-            date_of_input='today',
+            date_of_input=None,
             selected_task=None,
             notification_status=True,
             notification_time=time(hour=18, minute=30),
