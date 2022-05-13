@@ -70,7 +70,7 @@ def get_period_user(first_day: str) -> list[int]:
     return [i[0] for i in users]
 
 
-def get_the_user_projects_time_cost_per_period(first_day: str, user: User) -> list:
+def get_the_user_projects_time_cost_per_period(first_day: str, user: User) -> list[list[str, timedelta]]:
     session = get_session()
     statement = select(Project.project_name, Comment.time) \
         .join_from(Comment, Task).join_from(Task, Project) \

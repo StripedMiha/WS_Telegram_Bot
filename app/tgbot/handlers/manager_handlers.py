@@ -459,7 +459,4 @@ async def report(call: types.CallbackQuery):
     await call.message.edit_text(await get_report())
 
 
-@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).is_manager())
-async def sorry(call: types.CallbackQuery):
-    pprint(call)
-    await call.answer("Пока не работает, сорре", show_alert=True)
+

@@ -27,11 +27,12 @@ def get_zero_time() -> timedelta:
 
 
 def sum_project_time_costs_for_week(first_day: str, user: User) -> collections.defaultdict:
-    users = get_the_user_projects_time_cost_per_period(first_day, user)
+    users: list[list[str, timedelta]] = get_the_user_projects_time_cost_per_period(first_day, user)
     users_sum: collections.defaultdict = collections.defaultdict(get_zero_time)
     for i, j in users:
-        users_sum[i] += timedelta(hours=int(j.split(':')[0]),
-                                  minutes=int(j.split(':')[1]))
+        i: str
+        j: timedelta
+        users_sum[i] += j
     return users_sum
 
 

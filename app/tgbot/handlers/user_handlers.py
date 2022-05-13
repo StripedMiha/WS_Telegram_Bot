@@ -867,3 +867,8 @@ async def prost(call: types.CallbackQuery, callback_data: dict):
 async def get_link(message: types.Message):
     await message.answer("Ссылка на веб ресурс:\n"
                          "http://192.168.0.237:4400/home")
+
+
+@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).has_access())
+async def sorry(call: types.CallbackQuery):
+    await call.answer("Пока не работает, сорре", show_alert=True)
