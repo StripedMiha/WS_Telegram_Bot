@@ -57,9 +57,9 @@ async def top_commands(message: types.Message):
 
 
 @dp.callback_query_handler(callback_top.filter(action="set_user"),
-                           lambda message: User.get_user_by_telegram_id(message.from_user.id).is_admin())
+                           lambda call: User.get_user_by_telegram_id(call.from_user.id).is_admin())
 @dp.callback_query_handler(callback_top.filter(action="set_user"),
-                           lambda message: User.get_user_by_telegram_id(message.from_user.id).is_top_manager())
+                           lambda call: User.get_user_by_telegram_id(call.from_user.id).is_top_manager())
 async def select_staff_list(call: types.CallbackQuery, callback_data: dict):
     """
     Выводит меню выбора в какой отдел назначить.

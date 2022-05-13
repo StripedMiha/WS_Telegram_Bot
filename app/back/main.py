@@ -121,7 +121,7 @@ def menu_buttons(user: User) -> list[list[str]]:
 def get_about_user_info(user: User) -> str:
     answer = [f"Ваше имя - {user.full_name()}",
               f"Ваша почта - {user.get_email()}",
-              f"Ваш статус - {', '.join([status.status_name for status in user.statuses])}",
+              f"Ваш статус - {', '.join([status.status_ru_name for status in user.statuses])}",
               f"Указанная дата - {user.get_date(True)}",
               f"Задача по умолчанию - {user.default_task.full_name() if user.default_task else 'не установлена'}",
               f"Статус напоминаний - {'включены' if user.notification_status else 'выключены'}",

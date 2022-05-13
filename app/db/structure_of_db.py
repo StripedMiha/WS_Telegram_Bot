@@ -236,9 +236,9 @@ user_project = Table("user_project", Base.metadata,
 class Status(Base):
     __tablename__ = "statuses"
     Base.metadata = metadata
-    status_id = Column(Integer(), primary_key=True, nullable=False)
-    status_name = Column(String(20), nullable=False)
-    status_ru_name = Column(String(30))
+    status_id: int = Column(Integer(), primary_key=True, nullable=False)
+    status_name: str = Column(String(20), nullable=False)
+    status_ru_name: str = Column(String(30))
 
     def __repr__(self):
         return f'{self.status_ru_name}'
