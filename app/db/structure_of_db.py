@@ -156,7 +156,7 @@ class Task(Base):
         session.commit()
 
     @staticmethod
-    def get_subtasks(parent_task_id: int) -> list:
+    def get_subtasks(parent_task_id: int) -> list["Task"]:
         sub_tasks: list[Task] = session.query(Task).filter(Task.parent_id == parent_task_id).all()
         return sub_tasks
 
@@ -273,6 +273,7 @@ class User(Base):
     notification_time = Column(DateTime, default='')
     remind_notification = Column(DateTime)
     hashed_password: Optional[str] = Column(String(), default=None)
+    user_image: Optional[bytes] = Column(LargeBinary(), nullable=True)
 
     default_task: Task = relationship("Task", uselist=False)
 
@@ -457,6 +458,11 @@ class User(Base):
 
     def set_hashed_password(self, hashed_password: Optional[str]):
         self.hashed_password = hashed_password
+        session.add(self)
+        session.commit()
+
+    def set_image(self, image: bytes):
+        self.user_image = image
         session.add(self)
         session.commit()
 

@@ -15,7 +15,8 @@ from aiogram.utils.exceptions import ChatNotFound, BotBlocked, ChatIdIsEmpty
 from app.KeyboardDataClass import KeyboardData
 from app.back.back_manager import reactivate_project_keyboard
 from app.back.user_back import get_user_help, validate_old_user, get_project_keyboard, get_type_of_search_keyboard, \
-    callback_search, callback_search_pages, get_tasks, get_text_add_costs, rename_task
+                               get_tasks, get_text_add_costs, rename_task
+from app.back.user_back import callback_menu, callback_remove, callback_search, callback_search_pages, callback_cancel
 from app.tgbot.loader import dp, bot
 from app.create_log import setup_logger
 from app.db.structure_of_db import User, Bookmark, Task
@@ -62,7 +63,7 @@ def get_fast_keyboard(buttons: list) -> types.ReplyKeyboardMarkup:
 
 
 # Словарь для считывания инлайн кнопок
-callback_menu = CallbackData("fab_menu", "action")
+# callback_menu = CallbackData("fab_menu", "action")
 # callback_search = CallbackData("fab_search", "action", "path")
 callback_remove = CallbackData("fab_remove", "action", 'id')
 
@@ -448,9 +449,11 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
 
 # Задача выбрана. Запуск ожидания ввода трудоёмкости
 @dp.callback_query_handler(callback_remove.filter(action="input_here"))
+@dp.callback_query_handler(callback_search.filter(action="input_here"))
 async def task_found(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     user_logger.info("%s выбрал задачу" % call.from_user.full_name)
     task_id: int = int(callback_data['id'])
+    await bot.get_user_profile_photos()
     text = get_text_add_costs(task_id, User.get_user_by_telegram_id(call.from_user.id))
     await start_comment_input(state, text, call.from_user.id, task_id, call)
 
@@ -860,13 +863,6 @@ async def handler_empty_button(call: types.CallbackQuery, callback_data: dict):
 @dp.callback_query_handler(callback_search.filter())
 async def prost(call: types.CallbackQuery, callback_data: dict):
     print(callback_data)
-
-
-@dp.message_handler(lambda message: User.get_user_by_telegram_id(message.from_user.id).has_access(),
-                    commands='link')
-async def get_link(message: types.Message):
-    await message.answer("Ссылка на веб ресурс:\n"
-                         "http://192.168.0.237:4400/home")
 
 
 @dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).has_access())

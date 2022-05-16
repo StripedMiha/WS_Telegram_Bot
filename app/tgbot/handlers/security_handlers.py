@@ -1,5 +1,7 @@
 import logging
 import re
+import typing
+from pprint import pprint
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
@@ -8,7 +10,8 @@ from passlib.context import CryptContext
 
 from app.create_log import setup_logger
 from app.db.structure_of_db import User
-from app.tgbot.loader import dp
+from app.back.user_back import callback_menu, get_keyboard
+from app.tgbot.loader import dp, bot
 
 security_logger: logging.Logger = setup_logger("App.Bot.security", "app/log/security.log")
 
@@ -23,7 +26,6 @@ class OrderSecurity(StatesGroup):
 
 
 def verify_password(plain_password, hashed_password):
-
     return pwd_context.verify(plain_password, hashed_password)
 
 
@@ -36,7 +38,6 @@ async def start_password_set(message: types.Message):
     user: User = User.get_user_by_telegram_id(message.from_user.id)
     if user.hashed_password:
         await message.answer("У вас уже задан пароль. Для сборса пароля свяжитесь с разработчиком.")
-        return
     elif not user.email:
         await message.answer("У вас не установлена почта. Невозможно создать пароль.")
         return
@@ -79,6 +80,60 @@ async def input_second_password(message: types.Message, state: FSMContext):
         await state.finish()
         return
     user.set_hashed_password(get_password_hash(possible_password))
-    await message.answer("Пароль успешно создан.\n" 
+    await message.answer("Пароль успешно создан.\n"
                          "Веб версия доступна по ссылке http://192.168.0.237:4400/home")
     await state.finish()
+    if user.user_image is None:
+        await message.answer("Вы так же можете добавить фото из Telegram.\n"
+                             "Для этого введите команду /photo")
+    # if user.user_image is None and image is not None:
+
+
+@dp.message_handler(lambda message: User.get_user_by_telegram_id(message.from_user.id).has_access(),
+                    commands='link')
+async def get_link(message: types.Message):
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    if user.hashed_password:
+        await message.answer("Ссылка на веб ресурс:\n"
+                             "http://192.168.0.237:4400/home")
+    else:
+        await message.answer("Для получения доступа необходимо сначала задать пароль\n"
+                             "Для этого введите команду /set_password")
+
+
+@dp.message_handler(commands='photo')
+async def get_photo(message: types.Message):
+    user: User = User.get_user_by_telegram_id(message.from_user.id)
+    image = await bot.get_user_profile_photos(user.telegram_id, limit=1)
+    if len(image.photos) == 0:
+        await message.answer('У вас не установленно фото в телеграм.')
+        return
+    image_id = image.photos[0][-1].file_id
+    file_path = (await bot.get_file(image_id)).file_path
+    result: typing.BinaryIO = await bot.download_file(file_path)
+    print(123)
+    await bot.send_photo(user.telegram_id,
+                         result,
+                         'Хотите установить это фото?',
+                         reply_markup=await get_keyboard(
+                             [["Добавить фото", "add_image"],
+                              ["Не добавлять фото", "ignore_image"]],
+                             enable_cancel=False)
+                         )
+
+
+@dp.callback_query_handler(callback_menu.filter(action=["add_image", "ignore_image"]))
+async def image_decide(call: types.CallbackQuery, callback_data: dict):
+    action: str = callback_data.get('action')
+    if action == "add_image":
+        user: User = User.get_user_by_telegram_id(call.from_user.id)
+        image = await bot.get_user_profile_photos(user.telegram_id, limit=1)
+        image_id = image.photos[0][-1].file_id
+        file_path = (await bot.get_file(image_id)).file_path
+        await bot.download_file(file_path, 'app/db/png/profile_image.png')
+        user: User = User.get_user_by_telegram_id(call.from_user.id)
+        with open('app/db/png/profile_image.png', 'rb') as f:
+            user.set_image(f.read())
+        await call.message.edit_caption("Фото добавлено")
+    else:
+        await call.message.edit_caption("Фото не добавлено :с")

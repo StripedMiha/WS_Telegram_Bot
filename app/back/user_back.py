@@ -350,16 +350,20 @@ def get_text_add_costs(task_id: int, user: User) -> str:
 
 
 async def get_tasks_data_for_keyboard(tasks: list[Task],
-                                      hide_done: bool) -> list[tuple]:
+                                      hide_done: bool,
+                                      sub: int) -> list[tuple]:
     """
     Получаем набор данных для кнопок задач.
     :param tasks:
     :param hide_done:
     :return:
     """
-    child_tasks: list[tuple] = []
+    if sub:
+        child_tasks: list[tuple] = [("🗂" + tasks[0].task_name, "input_here", tasks[0].task_id)]
+    else:
+        child_tasks: list[tuple] = []
     child_tasks += [(task.task_name, "search_subtask", task.task_id)
-                    for task in tasks if task.status == "active"]
+                    for task in tasks[1:] if task.status == "active"]
     if not hide_done:
         child_tasks += [("✅ " + task.task_name if task.status == "done" else task.task_name,
                          "search_subtask",
@@ -429,13 +433,14 @@ async def get_tasks(parent_id: int,
     if not sub:
         tasks: list[Task] = Task.get_tasks(parent_id)
     else:
-        tasks: list[Task] = Task.get_subtasks(parent_id)
-    if len(tasks) == 0 and sub:
+        tasks: list[Task] = [Task.get_task(parent_id)] + Task.get_subtasks(parent_id)
+    print(len(tasks), sub)
+    if (len(tasks) == 0 and sub) or (len(tasks) == 1 and sub):
         return get_text_add_costs(parent_id, user)
 
     # Получение данных для кнопок проектов
     button_on_page: int = 20
-    child_tasks: list[tuple] = await get_tasks_data_for_keyboard(tasks, hide_done)
+    child_tasks: list[tuple] = await get_tasks_data_for_keyboard(tasks, hide_done, sub)
 
     log: str = f"{user.full_name()} запросил список задач"
     text: str = "Выберите задачу:"
