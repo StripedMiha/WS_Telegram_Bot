@@ -106,12 +106,12 @@ async def get_photo(message: types.Message):
     user: User = User.get_user_by_telegram_id(message.from_user.id)
     image = await bot.get_user_profile_photos(user.telegram_id, limit=1)
     if len(image.photos) == 0:
-        await message.answer('У вас не установленно фото в телеграм.')
+        await message.answer('У вас не установленно фото в телеграм.\n'
+                             'Либо ваши настройки приватности не позволяют его взять. 😢')
         return
     image_id = image.photos[0][-1].file_id
     file_path = (await bot.get_file(image_id)).file_path
     result: typing.BinaryIO = await bot.download_file(file_path)
-    print(123)
     await bot.send_photo(user.telegram_id,
                          result,
                          'Хотите установить это фото?',

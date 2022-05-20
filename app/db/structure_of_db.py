@@ -1,7 +1,7 @@
-
+import os
 from datetime import datetime, date, time, timedelta
 from pprint import pprint
-from typing import Optional
+from typing import Optional, Union
 
 import sqlalchemy
 from sqlalchemy.exc import NoResultFound
@@ -24,9 +24,10 @@ else:
 psql_user = config["db"]["user"]
 password = config["db"]["password"]
 bd_name = config["db"]["bd_name"]
-host = config["db"]["host"]
+host = config["db"]["host"] if os.environ.get("IS_DOCKER", False) else "localhost"
 
 bd_url = f"postgresql+psycopg2://{psql_user}:{password}@{host}/{bd_name}"
+print(bd_url)
 
 engine = sqlalchemy.create_engine(bd_url, echo=False, pool_size=6, max_overflow=10, encoding='latin1')
 Base = declarative_base()
@@ -44,43 +45,66 @@ session = get_session()
 class Project(Base):
     __tablename__ = 'projects'
     Base.metadata = metadata
-    project_id = Column(Integer(), primary_key=True)
-    project_ws_id = Column(String(15), nullable=True)
-    project_name = Column(Text(), nullable=False, unique=True)
-    project_path = Column(String(40), nullable=True)
-    project_status = Column(String(15), nullable=False)
-    project_description = Column(Text(), nullable=True)
-    project_image = Column(LargeBinary(), nullable=True)
+    project_id: int = Column(Integer(), primary_key=True)
+    project_ws_id: str = Column(String(15), nullable=True)
+    project_label: str = Column(String(20), nullable=True, unique=True)
+    project_name: str = Column(Text(), nullable=False)
+    project_path: str = Column(String(40), nullable=True)
+    project_status: str = Column(String(15), nullable=False)
+    project_description: str = Column(Text(), nullable=True)
+    project_image: bytes = Column(LargeBinary(), nullable=True)
+    date_create: datetime = Column(DateTime(), default=datetime.now())
+    date_update: datetime = Column(DateTime(), nullable=True)
 
     def __repr__(self):
-        return f"{self.project_id}, {self.project_name}, {self.project_description}"
+        if self.project_label:
+            return f"{self.project_label} {self.project_name}"
+        return self.project_name
 
     @staticmethod
-    def new_project(project_name: str, project_description: str):
+    def new_project(project_label: str, project_name: str, project_description: str):
         project = Project(
             project_status="active",
+            project_label=project_label,
             project_name=project_name,
-            project_description=project_description
+            project_description=project_description,
+            date_create=datetime.now(),
+            date_update=None
         )
         session.add(project)
         session.commit()
-        returning_project = Project.get_project_by_name(project_name)
+        print(project)
+        returning_project = Project.get_project_by_label(project_label)
         return returning_project
 
     def archive_project(self):
+        Changes.new(self.__tablename__, 'project_status', self.project_status, "archive")
         self.project_status = "archive"
+        self.date_update = datetime.now()
         session.commit()
 
     def activate_project(self):
+        Changes.new(self.__tablename__, 'project_status', self.project_status, "active")
         self.project_status = "active"
+        self.date_update = datetime.now()
         session.commit()
 
     def redescription(self, new_description: str):
+        Changes.new(self.__tablename__, 'project_description', self.project_description, new_description)
         self.project_description = new_description
+        self.date_update = datetime.now()
         session.commit()
 
     def rename(self, new_name: str):
+        Changes.new(self.__tablename__, 'project_name', self.project_name, new_name)
         self.project_name = new_name
+        self.date_update = datetime.now()
+        session.commit()
+
+    def relabel(self, new_label: str):
+        Changes.new(self.__tablename__, 'project_label', self.project_label, new_label)
+        self.project_label = new_label
+        self.date_update = datetime.now()
         session.commit()
 
     @staticmethod
@@ -100,20 +124,26 @@ class Project(Base):
         return {i[0] for i in session.query(Project.project_id).all()}
 
     @staticmethod
-    def get_project_by_name(name: str):
-        return session.query(Project).filter(Project.project_name == name).one()
+    def get_project_by_label(label: str):
+        try:
+            project = session.query(Project).filter(Project.project_label == label).one()
+            return project
+        except NoResultFound:
+            return None
 
 
 class Task(Base):
     __tablename__ = 'tasks'
     Base.metadata = metadata
-    task_id = Column(Integer(), primary_key=True, nullable=False)
-    task_ws_id = Column(Integer())
-    task_path = Column(String(40), nullable=True)
-    project_id = Column(Integer(), ForeignKey("projects.project_id"), nullable=False)
-    task_name = Column(Text())
-    parent_id = Column(Integer())
-    status = Column(String(10), default='active')
+    task_id: int = Column(Integer(), primary_key=True, nullable=False)
+    task_ws_id: int = Column(Integer())
+    task_path: str = Column(String(40), nullable=True)
+    project_id: int = Column(Integer(), ForeignKey("projects.project_id"), nullable=False)
+    task_name: str = Column(Text())
+    parent_id: int = Column(Integer())
+    status: str = Column(String(10), default='active')
+    date_create: datetime = Column(DateTime(), default=datetime.now())
+    date_update: datetime = Column(DateTime(), nullable=True)
 
     project = relationship("Project", backref="tasks", uselist=False)
 
@@ -122,18 +152,24 @@ class Task(Base):
                f" project_id - {self.project_id}, name - {self.task_name}, status - {self.status}"
 
     def full_name(self):
-        return f"{self.project.project_name} | {self.task_name}"
+        return f"{self.project.project_label} | {self.task_name}"
 
     def complete_task(self):
+        Changes.new(self.__tablename__, 'status', self.status, "done")
         self.status = "done"
+        self.date_update = datetime.now()
         session.commit()
 
     def reactivate_task(self):
+        Changes.new(self.__tablename__, 'status', self.status, "active")
         self.status = "active"
+        self.date_update = datetime.now()
         session.commit()
 
     def rename_task(self, new_name: str):
+        Changes.new(self.__tablename__, 'task_name', self.task_name, new_name)
         self.task_name = new_name
+        self.date_update = datetime.now()
         session.commit()
 
     @staticmethod
@@ -141,18 +177,24 @@ class Task(Base):
         t = Task(task_name=task_name,
                  project_id=project_id,
                  parent_id=parent_id,
+                 date_create=datetime.now(),
+                 date_update=None,
                  status="active"
                  )
         session.add(t)
         session.commit()
 
     def update(self, parent_id: int):
+        Changes.new(self.__tablename__, 'parent_id', self.parent_id, parent_id)
         self.parent_id = parent_id
         self.status = "active"
+        self.date_update = datetime.now()
         session.commit()
 
     def mark_remove(self):
+        Changes.new(self.__tablename__, 'status', self.status, "removed")
         self.status = "removed"
+        self.date_update = datetime.now()
         session.commit()
 
     @staticmethod
@@ -162,7 +204,7 @@ class Task(Base):
 
     @staticmethod
     def get_tasks(project_id: int) -> list:
-        tasks: list[Task] = session.query(Task)\
+        tasks: list[Task] = session.query(Task) \
             .filter(Task.project_id == project_id, Task.parent_id == None).all()
         return tasks
 
@@ -184,9 +226,9 @@ class Task(Base):
 class Bookmark(Base):
     __tablename__ = 'bookmarks'
     Base.metadata = metadata
-    bookmark_id = Column(Integer(), primary_key=True, nullable=False)
-    task_id = Column(Integer(), ForeignKey('tasks.task_id'), nullable=False)
-    bookmark_name = Column(Text(), nullable=False)
+    bookmark_id: int = Column(Integer(), primary_key=True, nullable=False)
+    task_id: int = Column(Integer(), ForeignKey('tasks.task_id'), nullable=False)
+    bookmark_name: str = Column(Text(), nullable=False)
     task: Task = relationship("Task", uselist=False)
 
     def __repr__(self):
@@ -200,7 +242,7 @@ class Bookmark(Base):
             return session.query(Bookmark).filter(Bookmark.task_id == task.task_id).one()
         except NoResultFound:
             task: Task = Task.get_task(task_id)
-            bookmark_name = f"{task.task_name} | {task.project.project_name}"
+            bookmark_name = f"{task.task_name} | {str(task.project)}"
             new_bookmark = Bookmark(task_id=task.task_id,
                                     bookmark_name=bookmark_name)
             session.add(new_bookmark)
@@ -220,12 +262,10 @@ user_bookmark = Table('user_bookmark', Base.metadata,
                       Column("bookmark_id", Integer(), ForeignKey('bookmarks.bookmark_id'), nullable=False)
                       )
 
-
 user_status = Table("user_status", Base.metadata,
                     Column("user_id", Integer(), ForeignKey("users.user_id"), nullable=False),
                     Column("status_id", Integer(), ForeignKey("statuses.status_id"), nullable=False)
                     )
-
 
 user_project = Table("user_project", Base.metadata,
                      Column("user_id", Integer(), ForeignKey("users.user_id"), nullable=False),
@@ -261,19 +301,21 @@ class Status(Base):
 class User(Base):
     __tablename__ = 'users'
     Base.metadata = metadata
-    telegram_id = Column(Integer())
-    user_id = Column(Integer(), primary_key=True, nullable=False)
-    ws_id = Column(Integer(), nullable=True)
-    email = Column(String(30))
+    telegram_id: Optional[int] = Column(Integer())
+    user_id: int = Column(Integer(), primary_key=True, nullable=False)
+    ws_id: Optional[int] = Column(Integer(), nullable=True)
+    email: str = Column(String(30))
     first_name: str = Column(String(50))
-    last_name = Column(String(50))
+    last_name: str = Column(String(50))
     date_of_input: datetime = Column(DateTime, nullable=True, default=None)
-    selected_task: int = Column(Integer(), ForeignKey("tasks.task_id"), nullable=True, unique=False)
-    notification_status = Column(Boolean, default=True)
-    notification_time = Column(DateTime, default='')
-    remind_notification = Column(DateTime)
+    selected_task: Optional[int] = Column(Integer(), ForeignKey("tasks.task_id"), nullable=True, unique=False)
+    notification_status: bool = Column(Boolean, default=True)
+    notification_time: time = Column(DateTime, default='')
+    remind_notification: Optional[datetime] = Column(DateTime)
     hashed_password: Optional[str] = Column(String(), default=None)
     user_image: Optional[bytes] = Column(LargeBinary(), nullable=True)
+    date_create: datetime = Column(DateTime(), default=datetime.now())
+    date_update: datetime = Column(DateTime(), nullable=True)
 
     default_task: Task = relationship("Task", uselist=False)
 
@@ -336,11 +378,15 @@ class User(Base):
             new_date = None
         else:
             new_date = datetime.strptime(new_date, "%d.%m.%Y")
+        Changes.new(self.__tablename__, 'date_of_input', self.date_of_input, new_date)
+        self.date_update = datetime.now()
         self.date_of_input = new_date
         session.commit()
 
     def change_mail(self, new_email: str):
+        Changes.new(self.__tablename__, 'email', self.email, new_email)
         self.email = new_email
+        self.date_update = datetime.now()
         session.commit()
 
     def change_status(self, new_status: str, old_status: str):
@@ -348,36 +394,50 @@ class User(Base):
         self.add_status(new_status)
 
     def add_status(self, status_name: str):
+        Changes.new(self.__tablename__, 'add_role', None, status_name)
         status: Status = Status.get_status(status_name)
         self.statuses.append(status)
+        self.date_update = datetime.now()
         session.add(self)
         session.commit()
 
     def remove_status(self, status_name: str):
+        Changes.new(self.__tablename__, 'remove_role', None, status_name)
         status: Status = Status.get_status(status_name)
         self.statuses.remove(status)
+        self.date_update = datetime.now()
         session.add(self)
         session.commit()
 
     def add_project(self, project: Project):
+        Changes.new(self.__tablename__, 'new_project', None, project.project_id)
         self.projects.append(project)
+        self.date_update = datetime.now()
         session.commit()
 
     def remove_project(self, project: Project):
+        Changes.new(self.__tablename__, 'remove_project', None, project.project_id)
         self.projects.remove(project)
+        self.date_update = datetime.now()
         session.commit()
 
     def change_default_task(self, new_default_task_id: int) -> str:
+        Changes.new(self.__tablename__, 'selected_task', self.selected_task, new_default_task_id)
         self.selected_task = new_default_task_id
+        self.date_update = datetime.now()
         session.commit()
         return '\n'.join(['Выбранная задача:', self.default_task.full_name()])
 
     def toggle_notification_status(self):
+        Changes.new(self.__tablename__, 'notification_status', self.notification_status, not self.notification_status)
         self.notification_status = not self.notification_status
+        self.date_update = datetime.now()
         session.commit()
 
     def set_notification_time(self, new_time: datetime.time):
+        Changes.new(self.__tablename__, 'notification_time', self.notification_time.isoformat(), new_time.isoformat())
         self.notification_time = new_time
+        self.date_update = datetime.now()
         session.commit()
 
     def get_remind_notification_time(self) -> str:
@@ -386,20 +446,29 @@ class User(Base):
         return self.remind_notification.strftime("%H:%M")
 
     def set_remind_time(self, new_time: Optional[datetime]):
+        Changes.new(self.__tablename__, 'remind_notification',
+                    self.remind_notification.isoformat(), new_time.isoformat())
         self.remind_notification = new_time
+        self.date_update = datetime.now()
         session.commit()
 
     def set_telegram_id(self, telegram_id: int):
+        Changes.new(self.__tablename__, 'telegram_id', self.telegram_id, telegram_id)
         self.telegram_id = telegram_id
+        self.date_update = datetime.now()
         session.commit()
 
     def add_bookmark(self, bookmark: Bookmark):
+        Changes.new(self.__tablename__, 'add_bookmark', None, bookmark.bookmark_id)
         self.bookmarks.append(bookmark)
+        self.date_update = datetime.now()
         session.add(self)
         session.commit()
 
     def remove_bookmark(self, bookmark: Bookmark):
+        Changes.new(self.__tablename__, 'remove_bookmark', None, bookmark.bookmark_id)
         self.bookmarks.remove(bookmark)
+        self.date_update = datetime.now()
         session.commit()
 
     def remove_self(self):
@@ -418,7 +487,9 @@ class User(Base):
             selected_task=None,
             notification_status=True,
             notification_time=time(hour=18, minute=30),
-            remind_notification=None
+            remind_notification=None,
+            date_create=datetime.now(),
+            date_update=None,
         )
         session.add(user)
         session.commit()
@@ -457,14 +528,18 @@ class User(Base):
         return [i[0] for i in emails]
 
     def set_hashed_password(self, hashed_password: Optional[str]):
+        Changes.new(self.__tablename__, 'add_password', None, 'new_password')
         self.hashed_password = hashed_password
         session.add(self)
         session.commit()
 
     def set_image(self, image: bytes):
+        Changes.new(self.__tablename__, 'add_image', None, 'new_image')
         self.user_image = image
+        self.date_update = datetime.now()
         session.add(self)
         session.commit()
+
 
 # class UserBookmark(Base):
 #     __tablename__ = 'user_bookmark'
@@ -485,6 +560,9 @@ class Comment(Base):
     comment_text = Column(Text())
     date = Column(Date)
     via_bot = Column(Boolean)
+    date_create: datetime = Column(DateTime(), default=datetime.now())
+    date_update: datetime = Column(DateTime(), nullable=True)
+
     user: User = relationship("User", uselist=False, backref="comments")
     task: Task = relationship("Task", backref="comments")
 
@@ -502,6 +580,8 @@ class Comment(Base):
             comment_text=text,
             date=reformat_date(comment_date),
             via_bot=via_bot,
+            date_create=datetime.now(),
+            date_update=None,
         )
         session.add(comment)
         session.commit()
@@ -516,6 +596,37 @@ class Comment(Base):
             return session.query(Comment).filter(Comment.comment_id == cost_id).one()
         except NoResultFound:
             print("Comment not exist")
+
+
+class Changes(Base):
+    __tablename__ = 'changes'
+    Base.metadata = metadata
+    changes_id: int = Column(Integer(), primary_key=True, nullable=False)
+    date_of_changes: datetime = Column(DateTime())
+    table_changes: str = Column(String(50))
+    column_changes: str = Column(String(50))
+    old_values: str = Column(Text())
+    new_values: str = Column(Text())
+
+    @staticmethod
+    def new(table_name: str,
+            column_name: str,
+            old: Optional[Union[int, str, datetime, time]],
+            new: Optional[Union[int, str, datetime, time]]
+            ) -> None:
+        if isinstance(old, datetime) or isinstance(old, time):
+            old: str = old.isoformat()
+        if isinstance(new, datetime) or isinstance(new, time):
+            new: str = new.isoformat()
+
+        new = Changes(date_of_changes=datetime.now(),
+                      table_changes=table_name,
+                      column_changes=column_name,
+                      old_values=str(old),
+                      new_values=str(new),
+                      )
+        session.add(new)
+        session.commit()
 
 
 def reformat_date(str_date: str) -> str:
@@ -534,6 +645,5 @@ def date_to_db_format(str_date: str) -> str:
         return '-'.join(f_date)
     except:
         return str_date
-
 
 # Base.metadata.create_all(engine)

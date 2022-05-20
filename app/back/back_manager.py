@@ -142,7 +142,7 @@ async def get_managers_project(user: User, purpose: str,
     projects: list[Project] = [project for project in user.projects
                                if project.project_status == "active"]
 
-    projects_button: list[tuple] = [(project.project_name,
+    projects_button: list[tuple] = [(str(project),
                                      TARGET_QUERY.get(purpose),
                                      project.project_id)
                                     for project in projects]
@@ -151,7 +151,7 @@ async def get_managers_project(user: User, purpose: str,
         archive_projects: list[Project] = [project for project in user.projects
                                            if project.project_status == "archive"]
         for one in archive_projects:
-            projects_button.append(("📦 " + one.project_name, TARGET_QUERY.get(purpose), one.project_id))
+            projects_button.append(("📦 " + str(one), TARGET_QUERY.get(purpose), one.project_id))
 
     if len(projects_button) % 2 != 0:
         projects_button.append(("  ", "empty_button", "---"))
@@ -251,14 +251,17 @@ async def change_user_status_in_project(user: User, project: Project) -> str:
     """
     if project in user.projects:
         user.remove_project(project)
-        text: str = f"Вы больше не состоите в проекте {project.project_name}"
+        text: str = f"Вы больше не состоите в проекте {str(project)}"
     else:
         user.add_project(project)
-        text: str = f"Вас добавили в проект {project.project_name}"
+        text: str = f"Вас добавили в проект {str(project)}"
     return text
 
 
-async def finish_creating_project(manager: User, project_name: str, project_description: str) -> str:
+async def finish_creating_project(manager: User,
+                                  project_label: str,
+                                  project_name: str,
+                                  project_description: str) -> str:
     """
     Создаёт новый проект. Возвращает текстовое сообщение о создании нового проекта
     :param manager: экземпляр класса User которому будет добавлен созданный проект
@@ -266,11 +269,12 @@ async def finish_creating_project(manager: User, project_name: str, project_desc
     :param project_description: описание нового проекта
     :return:
     """
-    new_project: Project = Project.new_project(project_name, project_description)
+    new_project: Project = Project.new_project(project_label, project_name, project_description) # TODO
     manager.add_project(new_project)
     text = f"Вы создали новый проект.\n" \
+           f"Обозначение проекта: {new_project.project_label}\n" \
            f"Имя проекта: {new_project.project_name}\n" \
-           f"Описание проекта: {new_project.project_description}" \
+           f"Описание проекта: {new_project.project_description}\n" \
            f"Проект доступен для управления."
     return text
 
@@ -282,6 +286,7 @@ async def get_keyboard_of_settings(project: Project) -> InlineKeyboardMarkup:
     :return:
     """
     buttons = [
+        ("Изменить обозначение", "change_project_label", project.project_id),
         ("Изменить название", "change_project_name", project.project_id),  # TODO
         ("Изменить описание", "change_project_description", project.project_id),  # TODO
         ("Отправить в архив", "archive_project", project.project_id),
@@ -298,10 +303,10 @@ async def archiving_project(project: Project) -> tuple[str, bool]:
     """
     if project.project_status == "active":
         project.archive_project()
-        answer: str = f"Проект '{project.project_name}' отправлен в архив."
+        answer: str = f"Проект '{str(project)}' отправлен в архив."
         mailing_status: bool = True
     else:
-        answer: str = f"Проект '{project.project_name}' итак в архиве."
+        answer: str = f"Проект '{str(project)}' итак в архиве."
         mailing_status: bool = False
     return answer, mailing_status
 
@@ -314,7 +319,7 @@ async def reactivate_project_keyboard(user: User, task: Task) -> tuple[str, Inli
     :return:
     """
     text: str = f"{user.full_name()} внёс трудочасы в задачу {task.task_name} архивного проекта " \
-                f"{task.project.project_name}. \n" \
+                f"{str(task.project)}. \n" \
                 f"Активируем проект, чтобы было проще его находить и вносить часы в дальнейшем?"
     buttons: List[tuple] = [("Активировать проект", "reactivate_project", task.project_id),
                             ("Оставить как есть", "keep_as_is", task.project_id)]
@@ -331,9 +336,9 @@ async def change_project_description(user: User, project: Project, new_descripti
     :return:
     """
     project.redescription(new_description)
-    to_other: str = f"{user.full_name()} проекту {project.project_name} ввёл новое описание:\n" \
+    to_other: str = f"{user.full_name()} проекту {str(project)} ввёл новое описание:\n" \
                     f"{new_description}"
-    to_manager: str = f"Для проекта {project.project_name} вы ввели новое описание:\n" \
+    to_manager: str = f"Для проекта {str(project)} вы ввели новое описание:\n" \
                       f"{new_description}"
     return to_other, to_manager
 
@@ -347,7 +352,7 @@ async def change_project_name(user: User, project: Project, new_name: str) -> tu
     :return:
     """
     if re.match(PROJECT_NAME_TEMPLATE, new_name):
-        old_name: str = project.project_name
+        old_name: str = str(project)
         project.rename(new_name)
         to_other: str = f"{user.full_name()} переименовал проект '{old_name}' -> '{new_name}'"
         to_manager: str = f"Вы переименовали проект '{old_name}' -> '{new_name}'"

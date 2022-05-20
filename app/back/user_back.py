@@ -250,11 +250,11 @@ async def get_projects_data_for_keyboard(user: User, hide_archive: bool) -> list
     :param hide_archive:
     :return:
     """
-    projects: list[tuple] = [(i.project_name, "search_task", i.project_id) for i in user.projects
+    projects: list[tuple] = [(str(i), "search_task", i.project_id) for i in user.projects
                              if i.project_status == "active"]
     projects.sort(key=lambda project: project[0])
     if not hide_archive:
-        archive_projects: list[tuple] = [("📦 " + i.project_name, "search_task", i.project_id)
+        archive_projects: list[tuple] = [("📦 " + str(i), "search_task", i.project_id)
                                          for i in user.projects if i.project_status == "archive"]
         archive_projects.sort(key=lambda project: project[0])
         for archive_project in archive_projects:
@@ -363,7 +363,7 @@ async def get_tasks_data_for_keyboard(tasks: list[Task],
     else:
         child_tasks: list[tuple] = []
     child_tasks += [(task.task_name, "search_subtask", task.task_id)
-                    for task in tasks[1:] if task.status == "active"]
+                    for task in tasks[sub:] if task.status == "active"]
     if not hide_done:
         child_tasks += [("✅ " + task.task_name if task.status == "done" else task.task_name,
                          "search_subtask",
@@ -393,7 +393,8 @@ async def get_task_pages_data_for_keyboard(max_page: int,
         page_buttons: list[tuple] = [("⬅ ", f"search_{action}", parent_id, f"{prev_page}_{int(hide_done)}_{sub}"),
                                      ("➡ ", f"search_{action}", parent_id, f"{next_page}_{int(hide_done)}_{sub}")]
     else:
-        page_buttons: None = None
+        return None
+        # page_buttons: None = None
     return page_buttons
 
 
@@ -433,10 +434,10 @@ async def get_tasks(parent_id: int,
     if not sub:
         tasks: list[Task] = Task.get_tasks(parent_id)
     else:
-        tasks: list[Task] = [Task.get_task(parent_id)] + Task.get_subtasks(parent_id)
-    print(len(tasks), sub)
-    if (len(tasks) == 0 and sub) or (len(tasks) == 1 and sub):
-        return get_text_add_costs(parent_id, user)
+        subtasks: list[Task] = Task.get_subtasks(parent_id)
+        if len(subtasks) == 0:
+            return get_text_add_costs(parent_id, user)
+        tasks: list[Task] = [Task.get_task(parent_id)] + subtasks
 
     # Получение данных для кнопок проектов
     button_on_page: int = 20
@@ -450,7 +451,7 @@ async def get_tasks(parent_id: int,
     max_page: int = await get_number_max_page(len(child_tasks), button_on_page)
     page_buttons: Optional[list[tuple]] = await get_task_pages_data_for_keyboard(max_page, page, hide_done, sub,
                                                                                  parent_id, action)
-    if page_buttons is None:
+    if page_buttons is not None:
         text += f" Страница {page + 1}/{max_page + 1}"
         log += f" Страница {page + 1}/{max_page + 1}"
 

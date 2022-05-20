@@ -453,7 +453,6 @@ async def search_tasks_via_search(call: types.CallbackQuery, callback_data: dict
 async def task_found(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     user_logger.info("%s выбрал задачу" % call.from_user.full_name)
     task_id: int = int(callback_data['id'])
-    await bot.get_user_profile_photos()
     text = get_text_add_costs(task_id, User.get_user_by_telegram_id(call.from_user.id))
     await start_comment_input(state, text, call.from_user.id, task_id, call)
 
@@ -567,7 +566,7 @@ async def handler_task_complete(message: types.Message, state: FSMContext):
     for manager in managers:
         try:
             await bot.send_message(manager.telegram_id, f"{user.full_name()} закрыл задачу {task.task_name} "
-                                                        f"в проекте {task.project.project_name}")
+                                                        f"в проекте {str(task.project)}")
             user_logger.info(f"{manager.full_name()} получил(a) уведомление о закрытии задачи с ID{task.task_id}")
         except (ChatNotFound, BotBlocked, ChatIdIsEmpty) as error:
             reason: str = "заблокировал бота" if error is BotBlocked else "не зарегистрировался в боте"
@@ -865,6 +864,6 @@ async def prost(call: types.CallbackQuery, callback_data: dict):
     print(callback_data)
 
 
-@dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).has_access())
+# @dp.callback_query_handler(lambda call: User.get_user_by_telegram_id(call.from_user.id).has_access())
 async def sorry(call: types.CallbackQuery):
     await call.answer("Пока не работает, сорре", show_alert=True)

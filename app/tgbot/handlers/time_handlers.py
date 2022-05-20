@@ -138,6 +138,7 @@ async def input_now(call: types.CallbackQuery, callback_data: dict):
     await call.message.edit_text("Так вводите же")
     await type_of_selection_message(call.from_user.id)
 
+
 async def time_scanner():
     aioschedule.every().friday.at("18:40").do(week_report)
     aioschedule.every().minute.do(day_report)

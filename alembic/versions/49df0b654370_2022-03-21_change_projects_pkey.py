@@ -56,7 +56,7 @@ def downgrade():
     op.drop_constraint("tasks_project_id_fkey", "tasks", type_="foreignkey")
     op.drop_constraint("projects_pkey", "projects", type_="primary")
 
-    op.drop_coSlumn("tasks", "project_id")
+    op.drop_column("tasks", "project_id")
     op.drop_column("projects", "project_id")
     op.alter_column("projects", "project_ws_id", new_column_name="project_id")
 
