@@ -27,7 +27,6 @@ bd_name = config["db"]["bd_name"]
 host = config["db"]["host"] if os.environ.get("IS_DOCKER", False) else "localhost"
 
 bd_url = f"postgresql+psycopg2://{psql_user}:{password}@{host}/{bd_name}"
-print(bd_url)
 
 engine = sqlalchemy.create_engine(bd_url, echo=False, pool_size=6, max_overflow=10, encoding='latin1')
 Base = declarative_base()
