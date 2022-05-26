@@ -144,14 +144,16 @@ async def see_days_costs(user: User, date: str = "0") -> str:
         answer: str = get_text_for_empty_costs(date)
     else:
         total_time: list[timedelta] = []
-        prev_proj_name, prev_task_name = comments[0][3], comments[0][2]
+        prev_proj_name = comments[0][3] if comments[0][3] else comments[0][4]
+        prev_task_name = comments[0][2]
         now_proj = ' '.join(["Проект:", prev_proj_name])
         now_task = ' '.join(["  Задача:", prev_task_name])
         now_row = ' '.join(["    Потрачено:", format_time(comments[0][1]), "на", comments[0][0]])
         answer: str = "\n".join([now_proj, now_task, now_row])
         total_time.append(comments[0][1])
         for comment in comments[1:]:
-            cur_proj_name, cur_task_name = comment[3], comment[2]
+            cur_proj_name = comment[3] if comment[3] else comment[4]
+            cur_task_name = comment[2]
             cur_time, cur_text = comment[1], comment[0]
             if prev_proj_name == cur_proj_name:
                 if prev_task_name == cur_task_name:
@@ -179,7 +181,8 @@ def days_costs_for_remove(user: User) -> list[KeyboardData]:
     comments = get_user_days_costs(user.user_id, user.get_date())
     list_comments: list[KeyboardData] = []
     for comment in comments:
-        name = ' '.join([format_time(comment[1]), comment[0], comment[2]])
+        project_name = comment[2] if comment[2] else comment[3]
+        name = ' '.join([format_time(comment[1]), comment[0], project_name])
         list_comment = KeyboardData(name, comment[4], "remove_cost_ws")
         list_comments.append(list_comment)
     return list_comments

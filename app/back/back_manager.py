@@ -16,7 +16,6 @@ callback_manager = CallbackData("fab_menu", "action")
 callback_manager_select = CallbackData("button_text", "action", "project_id")
 callback_manager_decision = CallbackData("button_text", "action", "project_id", "user_id")
 
-
 PROJECT_NAME_TEMPLATE = r"^[a-z,A-Z]{3,5}-\d{3}[a-z,-]?\d?\d?"
 
 
@@ -269,7 +268,7 @@ async def finish_creating_project(manager: User,
     :param project_description: описание нового проекта
     :return:
     """
-    new_project: Project = Project.new_project(project_label, project_name, project_description) # TODO
+    new_project: Project = Project.new_project(project_label, project_name, project_description)  # TODO
     manager.add_project(new_project)
     text = f"Вы создали новый проект.\n" \
            f"Обозначение проекта: {new_project.project_label}\n" \
@@ -287,7 +286,7 @@ async def get_keyboard_of_settings(project: Project) -> InlineKeyboardMarkup:
     """
     buttons = [
         ("Изменить обозначение", "change_project_label", project.project_id),
-        ("Изменить название", "change_project_name", project.project_id),  # TODO
+        ("Изменить название изделия", "change_project_name", project.project_id),  # TODO
         ("Изменить описание", "change_project_description", project.project_id),  # TODO
         ("Отправить в архив", "archive_project", project.project_id),
     ]
@@ -343,23 +342,39 @@ async def change_project_description(user: User, project: Project, new_descripti
     return to_other, to_manager
 
 
-async def change_project_name(user: User, project: Project, new_name: str) -> tuple[bool, str, str]:
+async def change_project_name(user: User, project: Project, new_name: str) -> tuple[str, str]:
     """
-Меняет описание проекта и возвращает сообщения для менеджера и участников проекта
+    Меняет название изделия и возвращает сообщения для менеджера и участников проекта
     :param user:
     :param project:
-    :param new_description:
+    :param new_name:
     :return:
     """
-    if re.match(PROJECT_NAME_TEMPLATE, new_name):
-        old_name: str = str(project)
-        project.rename(new_name)
-        to_other: str = f"{user.full_name()} переименовал проект '{old_name}' -> '{new_name}'"
-        to_manager: str = f"Вы переименовали проект '{old_name}' -> '{new_name}'"
+    old_name: str = project.project_name if project.project_name else "нет названия изделия"
+    project.rename(new_name)
+    common_text: str = f"название изделия '{old_name}' -> '{new_name}'"
+    to_other: str = f"{user.full_name()} изменил {common_text}"
+    to_manager: str = f"Вы изменили {common_text}"
+    return to_other, to_manager
+
+
+async def change_project_label(user: User, project: Project, new_label: str) -> tuple[bool, str, str]:
+    """
+    Меняет обозначение проекта и возвращает сообщения для менеджера и участников проекта
+    :param user:
+    :param project:
+    :param new_label:
+    :return:
+    """
+    if re.match(PROJECT_NAME_TEMPLATE, new_label):
+        old_label: str = str(project)
+        project.relabel(new_label)
+        to_other: str = f"{user.full_name()} изменил обозначение проекта '{old_label}' -> '{new_label}'"
+        to_manager: str = f"Вы изменили обозначение проекта '{old_label}' -> '{new_label}'"
         status: bool = True
     else:
-        to_manager: str = f"Вы ввели некорректное название"
-        to_other: str = f"{user.full_name()} ввёл некорректное название"
+        to_manager: str = f"Вы ввели некорректное обозначение проекта"
+        to_other: str = f"{user.full_name()} ввёл некорректное обозначение проекта"
         status: bool = False
     return status, to_other, to_manager
 

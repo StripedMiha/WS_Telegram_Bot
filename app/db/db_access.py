@@ -29,9 +29,15 @@ def dec_get_session(func):
 
 
 def get_user_days_costs(user_id: int, user_date: str) -> list[tuple[str, timedelta, str, str, int]]:
+    """
+
+    :param user_id:
+    :param user_date:
+    :return: comment_text, time, task_name, project_label, project_name, comment_id
+    """
     session = get_session()
     query_comments = session.query(Comment.comment_text, Comment.time, Task.task_name, Project.project_label,
-                                   Comment.comment_id) \
+                                   Project.project_name, Comment.comment_id) \
         .join(Comment).join(Project) \
         .filter(Comment.user_id == user_id,
                 Comment.date == date_to_db_format(user_date)).order_by(Project.project_label, Task.task_name).all()
@@ -70,9 +76,9 @@ def get_period_user(first_day: str) -> list[int]:
     return [i[0] for i in users]
 
 
-def get_the_user_projects_time_cost_per_period(first_day: str, user: User) -> list[list[str, timedelta]]:
+def get_the_user_projects_time_cost_per_period(first_day: str, user: User) -> list[list[str, str, timedelta]]:
     session = get_session()
-    statement = select(Project.project_label, Comment.time) \
+    statement = select(Project.project_label, Project.project_name, Comment.time) \
         .join_from(Comment, Task).join_from(Task, Project) \
         .where(Comment.user_id == user.user_id, Comment.date >= first_day)
     test = session.execute(statement)

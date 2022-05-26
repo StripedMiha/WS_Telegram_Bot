@@ -1,11 +1,14 @@
+"""
+В этом модуле собираются графики
+"""
 import re
 from datetime import datetime, timedelta, date
 from pprint import pprint
-from typing import Union
+from typing import Optional
+import collections
 
 import matplotlib.pyplot as plt
 import numpy as np
-import collections
 
 from app.api.work_calendar import count_work_day, get_work_day
 from app.db.db_access import get_all_costs_for_period, get_the_user_projects_time_cost_per_period, \
@@ -27,12 +30,14 @@ def get_zero_time() -> timedelta:
 
 
 def sum_project_time_costs_for_week(first_day: str, user: User) -> collections.defaultdict:
-    users: list[list[str, timedelta]] = get_the_user_projects_time_cost_per_period(first_day, user)
+    users: list[list[str, str, timedelta]] = get_the_user_projects_time_cost_per_period(first_day, user)
     users_sum: collections.defaultdict = collections.defaultdict(get_zero_time)
-    for i, j in users:
-        i: str
+    for i, k, j in users:
+        i: Optional[str]
+        k: Optional[str]
         j: timedelta
-        users_sum[i] += j
+        name = i if i else k
+        users_sum[name] += j
     return users_sum
 
 
@@ -86,22 +91,17 @@ def short_project_name(long_name: str) -> str:
     if "Общие задачи" in long_name:
         short_name = "Общие задачи"
     elif re.search(r'[a-z]{3,5}-\d{3}([a-z]\d\d)?', long_name):
-        c = re.match(r'[a-z]{3,5}-\d{3}([a-z]\d\d)?', long_name)
-        short_name = c.group(0)
+        result = re.match(r'[a-z]{3,5}-\d{3}([a-z]\d\d)?', long_name)
+        short_name = result.group(0)
     return short_name
 
 
 def projects_report(user: User) -> float:
-    now_time: str = datetime.now().strftime("%Y-%m-%d %H:%M")
-    # time: list = show_week_projects_report(user)
-    # if user.get_notification_time() == now_time:
     time: list = show_week_projects_report(user)
     return sum(time)
-    # else:
-    #     raise WrongTime
 
 
-def sort_key(l):
+def sort_key(day_of_week):
     weekdays: dict = {
         "Monday": 1,
         "Tuesday": 2,
@@ -111,10 +111,10 @@ def sort_key(l):
         "Saturday": 6,
         "Sunday": 7
     }
-    return weekdays[l[0]]
+    return weekdays[day_of_week[0]]
 
 
-def get_list_times() -> list:
+def get_list_times() -> list[timedelta, timedelta]:
     return [get_zero_time(), get_zero_time()]
 
 
@@ -131,11 +131,10 @@ def user_week_data(user: User) -> list[list]:
         week_comments[weekday][1] += comment.time
     coms: list[list] = []
     for i, j in week_comments.items():
-        c = [i, j[0], j[1]]
-        coms.append(c)
+        now_comment: list[str, timedelta, timedelta] = [i, j[0], j[1]]
+        coms.append(now_comment)
     coms.sort(key=sort_key)
     return coms
-    # comments[-1].date.strftime("%A")
 
 
 def show_month_gist():
@@ -167,7 +166,7 @@ def show_month_gist():
 
 def show_week_gist():
     data = current_week_stat()
-    users: list[str] = [f"{User.get_user(i).last_name} {User.get_user(i).first_name[0]}." for i in data.keys()]
+    users: list[str] = [f"{user_short_name(i.full_name())}." for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
@@ -191,7 +190,8 @@ def show_week_gist():
 
 def show_week_projects_report(user: User):
     data = user_project_week_stat(user)
-    projects = [short_project_name(i) for i in data.keys()]
+    projects = list(data.keys())
+    # projects = [short_project_name(i) for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
@@ -228,19 +228,17 @@ def show_week_report(user: User):
 
 async def get_dates() -> list[datetime.date]:
     dates: list[datetime.date] = [date.today()]
-    i = 1
-    for d in range(7):
+    for i in range(1, 8):
         delta = timedelta(days=i)
         dates.append(date.today() - delta)
-        i += 1
     return dates
 
 
 async def sum_costs(now_costs: list[Comment]) -> float:
-    s: timedelta = timedelta(0)
+    sum_s: timedelta = timedelta(0)
     for cost in now_costs:
-        s += cost.time
-    sum_h: float = s.total_seconds() / 60 / 60
+        sum_s += cost.time
+    sum_h: float = sum_s.total_seconds() / 60 / 60
     return sum_h
 
 
@@ -252,11 +250,11 @@ async def get_data() -> dict[int:dict]:
     users: list[User] = [user for user in users if user.has_access()]
     users.sort(key=lambda user: user.last_name)
 
-    d = await get_dates()
+    dates = await get_dates()
 
-    users_costs: dict = {user.full_name(): {date.isoformat(): [] for date in d} for user in users}
+    users_costs: dict = {user.full_name(): {date.isoformat(): [] for date in dates} for user in users}
     for user in users:
-        costs = [cost for cost in user.comments if cost.date in d]
+        costs = [cost for cost in user.comments if cost.date in dates]
         for cost in costs:
             users_costs[user.full_name()][cost.date.isoformat()].append(cost)
 
@@ -270,31 +268,33 @@ async def get_data() -> dict[int:dict]:
     return users_summed_costs
 
 
-async def short_name(full_name: str) -> str:
+async def user_short_name(full_name: str) -> str:
     first, last = full_name.split()
     return f"{last} {first[0]}."
 
 
 async def get_color(work_day_index, date_index, hours) -> str:
     if int(work_day_index[date_index]) and hours == 0:
-        return 'grey'
+        color: str = 'grey'
+    elif 7.9 < hours <= 8.1:
+        color: str = 'green'
+    elif hours == 0:
+        color: str = 'darkred'
+    elif hours > 8:
+        color: str = 'darkgreen'  # 'teal'
+    elif 0 < hours <= 1:
+        color: str = 'orangered'
+    elif 0 < hours <= 2:
+        color: str = 'orange'
+    elif 2 < hours <= 4:
+        color: str = 'yellow'
+    elif 4 < hours <= 6:
+        color: str = 'greenyellow'
+    elif 6 < hours <= 8:
+        color: str = 'lime'
     else:
-        if 7.9 < hours <= 8.1:
-            return 'green'
-        elif hours == 0:
-            return 'darkred'
-        elif hours > 8:
-            return 'darkgreen'  # 'teal'
-        elif 0 < hours <= 1:
-            return 'orangered'
-        elif 0 < hours <= 2:
-            return 'orange'
-        elif 2 < hours <= 4:
-            return 'yellow'
-        elif 4 < hours <= 6:
-            return 'greenyellow'
-        elif 6 < hours <= 8:
-            return 'lime'
+        color: str = 'grey'
+    return color
 
 
 async def create_graf():
@@ -308,8 +308,8 @@ async def create_graf():
     for i in range(8):
         ax[0, i].set_title(dates[i])
 
-    for i in range(len(users)):
-        ax[i, 0].text(-1.9, 0.9, await short_name(users[i]))
+    for i, user in enumerate(users):
+        ax[i, 0].text(-1.9, 0.9, await user_short_name(user))
 
     for i, axs in enumerate(ax.flat, start=0):
         axs.set_xticklabels([])

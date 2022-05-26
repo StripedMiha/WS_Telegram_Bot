@@ -78,31 +78,31 @@ class Project(Base):
         return returning_project
 
     def archive_project(self):
-        Changes.new(self.__tablename__, 'project_status', self.project_status, "archive")
+        Changes.new(self.__tablename__, 'project_status', self.project_id, self.project_status, "archive")
         self.project_status = "archive"
         self.date_update = datetime.now()
         session.commit()
 
     def activate_project(self):
-        Changes.new(self.__tablename__, 'project_status', self.project_status, "active")
+        Changes.new(self.__tablename__, 'project_status', self.project_id, self.project_status, "active")
         self.project_status = "active"
         self.date_update = datetime.now()
         session.commit()
 
     def redescription(self, new_description: str):
-        Changes.new(self.__tablename__, 'project_description', self.project_description, new_description)
+        Changes.new(self.__tablename__, 'project_description', self.project_id, self.project_description, new_description)
         self.project_description = new_description
         self.date_update = datetime.now()
         session.commit()
 
     def rename(self, new_name: str):
-        Changes.new(self.__tablename__, 'project_name', self.project_name, new_name)
+        Changes.new(self.__tablename__, 'project_name', self.project_id, self.project_name, new_name)
         self.project_name = new_name
         self.date_update = datetime.now()
         session.commit()
 
     def relabel(self, new_label: str):
-        Changes.new(self.__tablename__, 'project_label', self.project_label, new_label)
+        Changes.new(self.__tablename__, 'project_label', self.project_id, self.project_label, new_label)
         self.project_label = new_label
         self.date_update = datetime.now()
         session.commit()
@@ -155,19 +155,19 @@ class Task(Base):
         return f"{self.project.project_label} | {self.task_name}"
 
     def complete_task(self):
-        Changes.new(self.__tablename__, 'status', self.status, "done")
+        Changes.new(self.__tablename__, 'status', self.task_id, self.status, "done")
         self.status = "done"
         self.date_update = datetime.now()
         session.commit()
 
     def reactivate_task(self):
-        Changes.new(self.__tablename__, 'status', self.status, "active")
+        Changes.new(self.__tablename__, 'status', self.task_id, self.status, "active")
         self.status = "active"
         self.date_update = datetime.now()
         session.commit()
 
     def rename_task(self, new_name: str):
-        Changes.new(self.__tablename__, 'task_name', self.task_name, new_name)
+        Changes.new(self.__tablename__, 'task_name', self.task_id, self.task_name, new_name)
         self.task_name = new_name
         self.date_update = datetime.now()
         session.commit()
@@ -185,14 +185,14 @@ class Task(Base):
         session.commit()
 
     def update(self, parent_id: int):
-        Changes.new(self.__tablename__, 'parent_id', self.parent_id, parent_id)
+        Changes.new(self.__tablename__, 'parent_id', self.project_id, self.parent_id, parent_id)
         self.parent_id = parent_id
         self.status = "active"
         self.date_update = datetime.now()
         session.commit()
 
     def mark_remove(self):
-        Changes.new(self.__tablename__, 'status', self.status, "removed")
+        Changes.new(self.__tablename__, 'status', self.project_id, self.status, "removed")
         self.status = "removed"
         self.date_update = datetime.now()
         session.commit()
@@ -378,13 +378,13 @@ class User(Base):
             new_date = None
         else:
             new_date = datetime.strptime(new_date, "%d.%m.%Y")
-        Changes.new(self.__tablename__, 'date_of_input', self.date_of_input, new_date)
+        Changes.new(self.__tablename__, 'date_of_input', self.user_id, self.date_of_input, new_date)
         self.date_update = datetime.now()
         self.date_of_input = new_date
         session.commit()
 
     def change_mail(self, new_email: str):
-        Changes.new(self.__tablename__, 'email', self.email, new_email)
+        Changes.new(self.__tablename__, 'email', self.user_id, self.email, new_email)
         self.email = new_email
         self.date_update = datetime.now()
         session.commit()
@@ -394,7 +394,7 @@ class User(Base):
         self.add_status(new_status)
 
     def add_status(self, status_name: str):
-        Changes.new(self.__tablename__, 'add_role', None, status_name)
+        Changes.new(self.__tablename__, 'add_role', self.user_id, None, status_name)
         status: Status = Status.get_status(status_name)
         self.statuses.append(status)
         self.date_update = datetime.now()
@@ -402,7 +402,7 @@ class User(Base):
         session.commit()
 
     def remove_status(self, status_name: str):
-        Changes.new(self.__tablename__, 'remove_role', None, status_name)
+        Changes.new(self.__tablename__, 'remove_role', self.user_id, None, status_name)
         status: Status = Status.get_status(status_name)
         self.statuses.remove(status)
         self.date_update = datetime.now()
@@ -410,32 +410,34 @@ class User(Base):
         session.commit()
 
     def add_project(self, project: Project):
-        Changes.new(self.__tablename__, 'new_project', None, project.project_id)
+        Changes.new(self.__tablename__, 'new_project', self.user_id, None, project.project_id)
         self.projects.append(project)
         self.date_update = datetime.now()
         session.commit()
 
     def remove_project(self, project: Project):
-        Changes.new(self.__tablename__, 'remove_project', None, project.project_id)
+        Changes.new(self.__tablename__, 'remove_project', self.user_id, None, project.project_id)
         self.projects.remove(project)
         self.date_update = datetime.now()
         session.commit()
 
     def change_default_task(self, new_default_task_id: int) -> str:
-        Changes.new(self.__tablename__, 'selected_task', self.selected_task, new_default_task_id)
+        Changes.new(self.__tablename__, 'selected_task', self.user_id, self.selected_task, new_default_task_id)
         self.selected_task = new_default_task_id
         self.date_update = datetime.now()
         session.commit()
         return '\n'.join(['Выбранная задача:', self.default_task.full_name()])
 
     def toggle_notification_status(self):
-        Changes.new(self.__tablename__, 'notification_status', self.notification_status, not self.notification_status)
+        Changes.new(self.__tablename__, 'notification_status', self.user_id,
+                    self.notification_status, not self.notification_status)
         self.notification_status = not self.notification_status
         self.date_update = datetime.now()
         session.commit()
 
     def set_notification_time(self, new_time: datetime.time):
-        Changes.new(self.__tablename__, 'notification_time', self.notification_time.isoformat(), new_time.isoformat())
+        Changes.new(self.__tablename__, 'notification_time', self.user_id,
+                    self.notification_time.isoformat(), new_time.isoformat())
         self.notification_time = new_time
         self.date_update = datetime.now()
         session.commit()
@@ -446,27 +448,27 @@ class User(Base):
         return self.remind_notification.strftime("%H:%M")
 
     def set_remind_time(self, new_time: Optional[datetime]):
-        Changes.new(self.__tablename__, 'remind_notification',
+        Changes.new(self.__tablename__, 'remind_notification',  self.user_id,
                     self.remind_notification.isoformat(), new_time.isoformat())
         self.remind_notification = new_time
         self.date_update = datetime.now()
         session.commit()
 
     def set_telegram_id(self, telegram_id: int):
-        Changes.new(self.__tablename__, 'telegram_id', self.telegram_id, telegram_id)
+        Changes.new(self.__tablename__, 'telegram_id', self.user_id, self.telegram_id, telegram_id)
         self.telegram_id = telegram_id
         self.date_update = datetime.now()
         session.commit()
 
     def add_bookmark(self, bookmark: Bookmark):
-        Changes.new(self.__tablename__, 'add_bookmark', None, bookmark.bookmark_id)
+        Changes.new(self.__tablename__, 'add_bookmark', self.user_id, None, bookmark.bookmark_id)
         self.bookmarks.append(bookmark)
         self.date_update = datetime.now()
         session.add(self)
         session.commit()
 
     def remove_bookmark(self, bookmark: Bookmark):
-        Changes.new(self.__tablename__, 'remove_bookmark', None, bookmark.bookmark_id)
+        Changes.new(self.__tablename__, 'remove_bookmark', self.user_id, None, bookmark.bookmark_id)
         self.bookmarks.remove(bookmark)
         self.date_update = datetime.now()
         session.commit()
@@ -528,13 +530,13 @@ class User(Base):
         return [i[0] for i in emails]
 
     def set_hashed_password(self, hashed_password: Optional[str]):
-        Changes.new(self.__tablename__, 'add_password', None, 'new_password')
+        Changes.new(self.__tablename__, 'add_password', self.user_id, None, 'new_password')
         self.hashed_password = hashed_password
         session.add(self)
         session.commit()
 
     def set_image(self, image: bytes):
-        Changes.new(self.__tablename__, 'add_image', None, 'new_image')
+        Changes.new(self.__tablename__, 'add_image', self.user_id, None, 'new_image')
         self.user_image = image
         self.date_update = datetime.now()
         session.add(self)
@@ -605,12 +607,14 @@ class Changes(Base):
     date_of_changes: datetime = Column(DateTime())
     table_changes: str = Column(String(50))
     column_changes: str = Column(String(50))
+    id_object: int = Column(Integer())
     old_values: str = Column(Text())
     new_values: str = Column(Text())
 
     @staticmethod
     def new(table_name: str,
             column_name: str,
+            id_object: int,
             old: Optional[Union[int, str, datetime, time]],
             new: Optional[Union[int, str, datetime, time]]
             ) -> None:
@@ -622,6 +626,7 @@ class Changes(Base):
         new = Changes(date_of_changes=datetime.now(),
                       table_changes=table_name,
                       column_changes=column_name,
+                      id_object=id_object,
                       old_values=str(old),
                       new_values=str(new),
                       )
