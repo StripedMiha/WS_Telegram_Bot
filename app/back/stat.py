@@ -253,26 +253,13 @@ async def get_data() -> dict[int:dict]:
     dates = await get_dates()
 
     users_costs: dict = {user.full_name(): {date.isoformat(): 0 for date in dates} for user in users}
-    # for user in users:
-    #     # costs = [cost for cost in user.comments if cost.date in dates]
-    #     for date in dates:
-    #         users_costs[user.full_name()][cost.date.isoformat()].append(cost)
 
     comments: list[tuple[str, str, datetime.date, timedelta]] = get_users_atata_costs()
-    pprint(users_costs)
-    # users_summed_costs: dict = {}
+
     for first_name, last_name, comment_date, time in comments:
         fullname: str = ' '.join([last_name, first_name])
         users_costs[fullname][comment_date.isoformat()] = float(time.total_seconds() / 60 / 60)
 
-
-
-    # for user in users_costs.keys():
-    #     users_summed_costs[user] = {}
-    #     for date, costs in users_costs[user].items():
-    #         summed_cost = await sum_costs(costs)
-    #         users_summed_costs[user][date] = summed_cost
-    pprint(users_costs)
     return users_costs
 
 

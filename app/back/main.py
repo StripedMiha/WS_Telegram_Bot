@@ -183,7 +183,7 @@ def days_costs_for_remove(user: User) -> list[KeyboardData]:
     for comment in comments:
         project_name = comment[2] if comment[2] else comment[3]
         name = ' '.join([format_time(comment[1]), comment[0], project_name])
-        list_comment = KeyboardData(name, comment[4], "remove_cost_ws")
+        list_comment = KeyboardData(name, comment[5], "remove_cost_ws")
         list_comments.append(list_comment)
     return list_comments
 
