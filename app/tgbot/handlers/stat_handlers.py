@@ -29,7 +29,7 @@ async def stat_month(message: types.Message):
 async def stat_week(message: types.Message):
     stat_logger.info("%s ввёл команду /week" % message.from_user.full_name)
     try:
-        get_week_stat()
+        await get_week_stat()
     except EmptyCost:
         await message.answer("На этой неделе никто ещё не заполнял через бота :с")
         return

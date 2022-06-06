@@ -14,7 +14,8 @@ from aiogram.types import InlineKeyboardMarkup
 
 from app.back.back_manager import get_manager_menu, get_managers_project, get_types_staff, get_users_list_by_type_staff, \
     change_user_status_in_project, finish_creating_project, get_manager_help, get_keyboard_of_settings, \
-    archiving_project, get_report, change_project_description, PROJECT_NAME_TEMPLATE, change_project_name
+    archiving_project, get_report, change_project_description, PROJECT_NAME_TEMPLATE, change_project_name, \
+    change_project_label
 from app.create_log import setup_logger
 from app.tgbot.loader import dp, bot
 from app.db.structure_of_db import User, Project
@@ -209,7 +210,7 @@ async def wait_project_label(message: types.Message, state: FSMContext):
             await message.answer("Введите незанятое обозначение, либо прервите создание проекта введя 'отмена'")
             return
         await state.update_data(project_label=result[0])
-        await message.answer("Напишите название изделия для {message_text}")
+        await message.answer(f"Напишите название изделия для {message_text}")
         manager_logger.info("Ввёл корректное название изделия")
         await OrderCreateProject.wait_for_project_name.set()
     elif message_text.lower() == "cancel" or message_text.lower() == "отмена":

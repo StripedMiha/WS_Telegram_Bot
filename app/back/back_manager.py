@@ -284,11 +284,15 @@ async def get_keyboard_of_settings(project: Project) -> InlineKeyboardMarkup:
     :param project: экземпляр класса Projects
     :return:
     """
+    if project.project_status == 'active':
+        status_button = ("Отправить в архив", "archive_project", project.project_id)
+    else:
+        status_button = ("Активировать проект", "reactivate_project", project.project_id)
     buttons = [
         ("Изменить обозначение", "change_project_label", project.project_id),
         ("Изменить название изделия", "change_project_name", project.project_id),  # TODO
         ("Изменить описание", "change_project_description", project.project_id),  # TODO
-        ("Отправить в архив", "archive_project", project.project_id),
+        status_button,
     ]
     keyboard: InlineKeyboardMarkup = get_keyboard_1(buttons, 1)
     return keyboard

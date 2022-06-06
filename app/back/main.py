@@ -334,8 +334,8 @@ def get_month_stat():
     show_month_gist()
 
 
-def get_week_stat():
-    show_week_gist()
+async def get_week_stat():
+    await show_week_gist()
 
 
 async def get_week_report_gist(user: User) -> None:

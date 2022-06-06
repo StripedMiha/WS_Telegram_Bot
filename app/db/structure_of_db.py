@@ -72,9 +72,9 @@ class Project(Base):
         )
         session.add(project)
         session.commit()
-        print(project)
-        returning_project = Project.get_project_by_label(project_label)
-        return returning_project
+        Changes.new(Project.__tablename__, 'new_project', project.project_id,
+                    None, project.project_id)
+        return project
 
     def archive_project(self):
         Changes.new(self.__tablename__, 'project_status', self.project_id, self.project_status, "archive")
@@ -89,7 +89,8 @@ class Project(Base):
         session.commit()
 
     def redescription(self, new_description: str):
-        Changes.new(self.__tablename__, 'project_description', self.project_id, self.project_description, new_description)
+        Changes.new(self.__tablename__, 'project_description', self.project_id, self.project_description,
+                    new_description)
         self.project_description = new_description
         self.date_update = datetime.now()
         session.commit()
@@ -173,15 +174,19 @@ class Task(Base):
 
     @staticmethod
     def new_task(task_name: str, project_id: int, parent_id: int = None) -> None:
-        t = Task(task_name=task_name,
-                 project_id=project_id,
-                 parent_id=parent_id,
-                 date_create=datetime.now(),
-                 date_update=None,
-                 status="active"
-                 )
-        session.add(t)
+        new_task = Task(task_name=task_name,
+                        project_id=project_id,
+                        parent_id=parent_id,
+                        date_create=datetime.now(),
+                        date_update=None,
+                        status="active"
+                        )
+        session.add(new_task)
         session.commit()
+        Changes.new(Task.__tablename__, 'new_task' if parent_id is None else "new_subtask",
+                    new_task.task_id, None, new_task.task_id)
+        Changes.new(Project.__tablename__, 'new_task' if parent_id is None else "new_subtask",
+                    project_id, None, new_task.task_id)
 
     def update(self, parent_id: int):
         Changes.new(self.__tablename__, 'parent_id', self.project_id, self.parent_id, parent_id)
@@ -410,12 +415,14 @@ class User(Base):
 
     def add_project(self, project: Project):
         Changes.new(self.__tablename__, 'new_project', self.user_id, None, project.project_id)
+        Changes.new(Project.__tablename__, 'add_user', project.project_id, None, self.user_id)
         self.projects.append(project)
         self.date_update = datetime.now()
         session.commit()
 
     def remove_project(self, project: Project):
         Changes.new(self.__tablename__, 'remove_project', self.user_id, None, project.project_id)
+        Changes.new(Project.__tablename__, 'remove_user', project.project_id, None, self.user_id)
         self.projects.remove(project)
         self.date_update = datetime.now()
         session.commit()
@@ -447,7 +454,7 @@ class User(Base):
         return self.remind_notification.strftime("%H:%M")
 
     def set_remind_time(self, new_time: Optional[datetime]):
-        Changes.new(self.__tablename__, 'remind_notification',  self.user_id,
+        Changes.new(self.__tablename__, 'remind_notification', self.user_id,
                     self.remind_notification.isoformat(), new_time.isoformat())
         self.remind_notification = new_time
         self.date_update = datetime.now()

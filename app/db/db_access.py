@@ -1,7 +1,8 @@
+import datetime
 import logging
 from datetime import timedelta, date
 
-from sqlalchemy import select
+from sqlalchemy import select, func, and_
 
 from app.KeyboardDataClass import KeyboardData
 from app.create_log import setup_logger
@@ -21,9 +22,11 @@ def date_to_db_format(date: str) -> str:
 
 def dec_get_session(func):
     session = get_session()
+
     def decorated(*arg):
         query = func(session, arg)
         return query
+
     session.close()
     return decorated
 
@@ -53,9 +56,9 @@ async def get_all_user_day_costs(date: str) -> list[tuple]:
     return all_comments
 
 
-def get_all_costs_for_period(first_day: str):
+def get_all_costs_for_period(first_day: str) -> list[list[int, str]]:
     session = get_session()
-    q = session.query(Comment.user_id, Comment.time) \
+    q: list[tuple[int, str]] = session.query(Comment.user_id, Comment.time) \
         .filter(Comment.date >= date_to_db_format(first_day), Comment.via_bot == True).all()
     session.close()
     return [list(i) for i in q]
@@ -91,6 +94,17 @@ def get_user_costs_per_week(first_day: str, user: User) -> list[Comment]:
     comments = session.query(Comment.date, Comment.time, Comment.via_bot).filter(Comment.user_id == user.user_id,
                                                                                  Comment.date >= first_day).all()
     session.close()
+    return comments
+
+
+def get_users_atata_costs(end_day: str = datetime.datetime.today(),
+                          first_day: str = datetime.datetime.today() - datetime.timedelta(days=8)
+                          ) -> list[tuple[str, str, datetime.date, datetime.timedelta]]:
+    session = get_session()
+    comments = session.query(User.last_name, User.first_name, Comment.date, func.sum(Comment.time))\
+                      .join(Comment.user)\
+                      .filter(and_(end_day >= Comment.date, Comment.date >= first_day))\
+                      .group_by(User.last_name, User.first_name, Comment.date).all()
     return comments
 
 

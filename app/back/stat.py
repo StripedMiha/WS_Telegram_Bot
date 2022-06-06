@@ -12,14 +12,14 @@ import numpy as np
 
 from app.api.work_calendar import count_work_day, get_work_day
 from app.db.db_access import get_all_costs_for_period, get_the_user_projects_time_cost_per_period, \
-    get_user_costs_per_week
+    get_user_costs_per_week, get_users_atata_costs
 from app.db.structure_of_db import Comment, User, Status
 from app.exceptions import EmptyCost
 
 
 def sum_period_time_costs(first_day: str) -> dict:
     users_sum: collections.defaultdict = collections.defaultdict(get_zero_time)
-    users_costs: list[list[str, str]] = get_all_costs_for_period(first_day)
+    users_costs: list[list[int, str]] = get_all_costs_for_period(first_day)
     for i, j in users_costs:
         users_sum[i] += j
     return users_sum
@@ -164,9 +164,9 @@ def show_month_gist():
     plt.savefig('app/db/png/1')
 
 
-def show_week_gist():
-    data = current_week_stat()
-    users: list[str] = [f"{user_short_name(i.full_name())}." for i in data.keys()]
+async def show_week_gist():
+    data: dict = current_week_stat()
+    users: list[str] = [await user_short_name(User.get_user(i).full_name()) for i in data.keys()]
     time = [to_float(i) for i in data.values()]
     if len(time) == 0:
         raise EmptyCost
@@ -252,20 +252,28 @@ async def get_data() -> dict[int:dict]:
 
     dates = await get_dates()
 
-    users_costs: dict = {user.full_name(): {date.isoformat(): [] for date in dates} for user in users}
-    for user in users:
-        costs = [cost for cost in user.comments if cost.date in dates]
-        for cost in costs:
-            users_costs[user.full_name()][cost.date.isoformat()].append(cost)
+    users_costs: dict = {user.full_name(): {date.isoformat(): 0 for date in dates} for user in users}
+    # for user in users:
+    #     # costs = [cost for cost in user.comments if cost.date in dates]
+    #     for date in dates:
+    #         users_costs[user.full_name()][cost.date.isoformat()].append(cost)
 
-    users_summed_costs: dict = {}
-    for user in users_costs.keys():
-        users_summed_costs[user] = {}
-        for date, costs in users_costs[user].items():
-            summed_cost = await sum_costs(costs)
-            users_summed_costs[user][date] = summed_cost
+    comments: list[tuple[str, str, datetime.date, timedelta]] = get_users_atata_costs()
+    pprint(users_costs)
+    # users_summed_costs: dict = {}
+    for first_name, last_name, comment_date, time in comments:
+        fullname: str = ' '.join([last_name, first_name])
+        users_costs[fullname][comment_date.isoformat()] = float(time.total_seconds() / 60 / 60)
 
-    return users_summed_costs
+
+
+    # for user in users_costs.keys():
+    #     users_summed_costs[user] = {}
+    #     for date, costs in users_costs[user].items():
+    #         summed_cost = await sum_costs(costs)
+    #         users_summed_costs[user][date] = summed_cost
+    pprint(users_costs)
+    return users_costs
 
 
 async def user_short_name(full_name: str) -> str:
@@ -318,6 +326,7 @@ async def create_graf():
         axs.set_xticks([])
         date_index = i % 8
         user_index = i // 8
+        print(data[users[user_index]][dates[date_index].isoformat()])
         count_hours = round(data[users[user_index]][dates[date_index].isoformat()], 2)
         axs.text(0.45, 0.9, str(count_hours) + ' часов')
         color_name = await get_color(work_day_index, date_index, count_hours)
