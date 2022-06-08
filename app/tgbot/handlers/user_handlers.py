@@ -65,7 +65,7 @@ def get_fast_keyboard(buttons: list) -> types.ReplyKeyboardMarkup:
 # Словарь для считывания инлайн кнопок
 # callback_menu = CallbackData("fab_menu", "action")
 # callback_search = CallbackData("fab_search", "action", "path")
-callback_remove = CallbackData("fab_remove", "action", 'id')
+# callback_remove = CallbackData("fab_remove", "action", 'id')
 
 
 # Формирование инлайн клавиатуры меню
@@ -209,7 +209,7 @@ async def menu_action(call: types.CallbackQuery, callback_data: dict, state: FSM
     user: User = User.get_user_by_telegram_id(call.from_user.id)
     user_logger.info("%s выбрал кнопку %s" % (user.full_name(), action))
     date = user.get_date(True)
-    if action == 'set email':  # or action == 'change email':
+    if action == 'set email' or action == 'change email':
         await call.message.edit_text('Введите вашу корпоративную почту:\n'
                                      'Введите "Отмена" для отмены ввода')
         await OrderMenu.wait_for_email.set()
@@ -269,18 +269,16 @@ async def wait_date(message: types.Message, state: FSMContext):
 async def wait_email(message: types.Message, state: FSMContext):
     user = User.get_user_by_telegram_id(message.from_user.id)
     user_logger.info("%s Вводит почту: %s" % (user.full_name(), message.text))
-    if re.match(USER_EMAIL_PATTERN, message.text):
-        user.change_mail(message.text)
-        answer = message.from_user.full_name + ', вы установили почту: ' + user.get_email()
-        await message.answer(answer)
-    elif message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
+
+    if message.text.lower() == 'отмена' or message.text.lower() == 'cancel':
         await message.answer('Отменён ввод почты.\n')
         user_logger.info("%s Отменяет ввод почты" % user.full_name())
         await state.finish()
-    else:
-        await message.answer('Почта введена в неверном формате.\n'
-                             'Введите "Отмена" для отмены ввода')
-        return
+        return None
+
+    user.change_mail(message.text)
+    answer = message.from_user.full_name + ', вы установили почту: ' + user.get_email()
+    await message.answer(answer)
     await state.finish()
     return
 
